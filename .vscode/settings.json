@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "*.fx5": "hlsl",
+        "*.s": "gas",
+        "*.asm": "masm",
+        "xstring": "cpp",
+        ".l": "bison",
+        ".y": "bison"
+    }
+}
