@@ -87,7 +87,7 @@ $(BUILD_DIR)/%.cc.o: $(SRC_DIR)/%.cc; $(cxx_recipe)
 # Flex
 $(BUILD_DIR)/%.lex$(FB_EXT): $(SRC_DIR)/%.l
 	mkdir -p $(dir $@)
-	$(FLEX) $(FFLAGS) -o $@ $<
+	$(FLEX) $(FFLAGS) --header-file=$(BUILD_DIR)/$*.lex.hpp -o $@ $<
 
 # Bison
 $(BUILD_DIR)/%.tab$(FB_EXT): $(SRC_DIR)/%.y

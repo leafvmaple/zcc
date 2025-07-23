@@ -6,8 +6,7 @@
 
 using namespace std;
 
-extern FILE *yyin;
-extern int yyparse(unique_ptr<string> &ast);
+#include "Scanner.h"
 
 int main(int argc, const char *argv[]) {
   assert(argc == 5);
@@ -15,13 +14,13 @@ int main(int argc, const char *argv[]) {
   auto input = argv[2];
   auto output = argv[4];
 
-  yyin = fopen(input, "r");
-  assert(yyin);
+  Scanner scanner;
 
-  unique_ptr<string> ast;
-  auto ret = yyparse(ast);
-  assert(!ret);
+  FILE* file = fopen(input, "r");
+  assert(file);
+  
+  scanner.parse(file);
 
-  cout << *ast << endl;
+  cout << "AST: " << scanner.ast << endl;
   return 0;
 }

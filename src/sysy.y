@@ -1,6 +1,25 @@
+%require "3.0.4"
+%skeleton "lalr1.cc"
+%define api.parser.class {Parser}
+%define api.token.constructor
+%define api.value.type variant
+%define api.prefix {yy}
+
+%define parse.trace
+%define parse.error verbose
+
+%defines
+%locations
+
 %code requires {
   #include <memory>
   #include <string>
+  #include "Scanner.h"
+}
+
+%code
+{
+  yy::Parser::symbol_type yylex(void* yyscanner, yy::location& loc);
 }
 
 %{
@@ -12,56 +31,48 @@
 int yylex();
 void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
-using namespace std;
-
 %}
 
-%parse-param { std::unique_ptr<std::string> &ast }
-
-%union {
-  std::string* str_val;
-  int int_val;
-}
+%lex-param {void *scanner} {yy::location& loc}
+%parse-param {void *scanner} {yy::location& loc} { class Scanner& ctx }
 
 %token INT RETURN
-%token <str_val> IDENT
-%token <int_val> INT_CONST
+%token <std::string> IDENT
+%token <int> INT_CONST
 
-%type <str_val> FuncDef FuncType Block Stmt Number
+%token END 0
+
+%type <std::string> FuncDef FuncType Block Stmt Number
 
 %%
 
 CompUnit : FuncDef {
-  ast = unique_ptr<string>($1);
+  ctx.ast = $1;
 };
 
 FuncDef : FuncType IDENT '(' ')' Block {
-  auto type = unique_ptr<string>($1);
-  auto ident = unique_ptr<string>($2);
-  auto block = unique_ptr<string>($5);
-  $$ = new string(*type + " " + *ident + "() " + *block);
+  $$ = $1 + " " + $2 + "() " + $5;
 };
 
 FuncType : INT {
-  $$ = new string("int");
+  $$ = "int";
 };
 
 Block : '{' Stmt '}' {
-  auto stmt = unique_ptr<string>($2);
-  $$ = new string("{ " + *stmt + " }");
+  $$ = "{ " + $2 + " }";
 };
 
 Stmt : RETURN Number ';' {
-  auto number = unique_ptr<string>($2);
-  $$ = new string("return " + *number + ";");
+  $$ = "return " + $2 + ";";
 };
 
 Number : INT_CONST {
-  $$ = new string(to_string($1));
+  $$ = std::to_string($1);
 };
 
 %%
 
-void yyerror(unique_ptr<string> &ast, const char *s) {
-  cerr << "error: " << s << endl;
+void yy::Parser::error(const yy::location& l, const std::string& m)
+{
+	std::cerr << l << ": " << m << std::endl;
 }
