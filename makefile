@@ -65,7 +65,7 @@ CPPFLAGS = $(INC_FLAGS) -MMD -MP
 
 # Main target
 $(BUILD_DIR)/$(TARGET_EXEC): $(FB_SRCS) $(OBJS)
-	$(CXX) $(OBJS) $(LDFLAGS) -lpthread -ldl -o $@
+	$(CXX) $(OBJS) $(LDFLAGS) -DYYDEBUG=1 -lpthread -ldl -o $@
 
 # C source
 define c_recipe
