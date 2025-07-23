@@ -16,7 +16,7 @@ int main(int argc, const char *argv[]) {
 
   Scanner scanner;
 
-  FILE* file = fopen(input, "r");
+  auto file = fopen(input, "r");
   assert(file);
   
   scanner.parse(file);

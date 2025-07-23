@@ -5,14 +5,12 @@
 
 Scanner::Scanner() {
     yylex_init(&lexer);
-    parser = new yy::Parser(lexer, *loc, *this);
-    loc = new yy::location();
+    parser = std::make_unique<yy::Parser>(lexer, *loc, *this);
+    loc = std::make_unique<yy::location>();
 }
 
 Scanner::~Scanner() {
     yylex_destroy(lexer);
-    delete parser;
-    delete loc;
 }
 
 int Scanner::parse(FILE* input) {

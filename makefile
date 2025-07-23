@@ -43,6 +43,7 @@ INC_DIR ?= $(CDE_INCLUDE_PATH)
 # CFLAGS += -I$(INC_DIR)
 # CXXFLAGS += -I$(INC_DIR)
 LDFLAGS += -L$(LIB_DIR) # -lkoopa
+LLVM_LDFLAGS := $(shell llvm-config --ldflags --system-libs --libs core)
 
 # Source files & target files
 FB_SRCS := $(patsubst $(SRC_DIR)/%.l, $(BUILD_DIR)/%.lex$(FB_EXT), $(shell find $(SRC_DIR) -name "*.l"))
@@ -61,11 +62,11 @@ INC_DIRS += $(INC_DIRS:$(SRC_DIR)%=$(BUILD_DIR)%)
 INC_FLAGS := $(addprefix -I, $(INC_DIRS))
 DEPS := $(OBJS:.o=.d)
 CPPFLAGS = $(INC_FLAGS) -MMD -MP
-
+LLVM_CXXFLAGS := $(shell llvm-config --cxxflags)
 
 # Main target
 $(BUILD_DIR)/$(TARGET_EXEC): $(FB_SRCS) $(OBJS)
-	$(CXX) $(OBJS) $(LDFLAGS) -DYYDEBUG=1 -lpthread -ldl -o $@
+	$(CXX) $(OBJS) $(LDFLAGS) $(LLVM_LDFLAGS) -DYYDEBUG=1 -lpthread -ldl  -o $@
 
 # C source
 define c_recipe
@@ -78,7 +79,7 @@ $(BUILD_DIR)/%.c.o: $(BUILD_DIR)/%.c; $(c_recipe)
 # C++ source
 define cxx_recipe
 	mkdir -p $(dir $@)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LLVM_CXXFLAGS) -c $< -o $@
 endef
 $(BUILD_DIR)/%.cpp.o: $(SRC_DIR)/%.cpp; $(cxx_recipe)
 $(BUILD_DIR)/%.cpp.o: $(BUILD_DIR)/%.cpp; $(cxx_recipe)

@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <string>
+#include <memory>
 
 namespace yy {
     class Parser;
@@ -16,8 +17,8 @@ public:
     int parse(FILE* input);
 
     void* lexer;
-    yy::Parser* parser;
-    yy::location* loc;
+    std::unique_ptr<yy::Parser> parser;
+    std::unique_ptr<yy::location> loc;
 
     std::string ast;
 };
