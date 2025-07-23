@@ -96,8 +96,12 @@ $(BUILD_DIR)/%.tab$(FB_EXT): $(SRC_DIR)/%.y
 
 
 .PHONY: clean
+.PHONY: test
 
 clean:
 	-rm -rf $(BUILD_DIR)
+
+test:
+	$(BUILD_DIR)/$(TARGET_EXEC) -mode test/hello.c -o hello.koopa
 
 -include $(DEPS)
