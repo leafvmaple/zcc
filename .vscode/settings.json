@@ -3,9 +3,6 @@
         "*.fx5": "hlsl",
         "*.s": "gas",
         "*.asm": "masm",
-        "xstring": "cpp",
-        ".l": "bison",
-        ".y": "bison",
         "array": "cpp",
         "atomic": "cpp",
         "bit": "cpp",
@@ -19,11 +16,9 @@
         "cstdint": "cpp",
         "cstdio": "cpp",
         "cstdlib": "cpp",
-        "cstring": "cpp",
         "cwchar": "cpp",
         "cwctype": "cpp",
         "deque": "cpp",
-        "list": "cpp",
         "string": "cpp",
         "unordered_map": "cpp",
         "vector": "cpp",
@@ -41,7 +36,6 @@
         "tuple": "cpp",
         "type_traits": "cpp",
         "utility": "cpp",
-        "fstream": "cpp",
         "initializer_list": "cpp",
         "iosfwd": "cpp",
         "iostream": "cpp",
@@ -54,7 +48,9 @@
         "streambuf": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "bitset": "cpp",
-        "set": "cpp"
+        "variant": "cpp",
+        "cstring": "cpp",
+        "fstream": "cpp",
+        "list": "cpp"
     }
 }

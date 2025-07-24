@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Clang + LLDB",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/compiler",
+      "args": [ "-mode", "test/hello.c", "-o", "hello.koopa"],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "lldb",
+    }
+  ]
+}

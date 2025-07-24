@@ -5,8 +5,10 @@
 
 Scanner::Scanner() {
     yylex_init(&lexer);
-    parser = std::make_unique<yy::Parser>(lexer, *loc, *this);
     loc = std::make_unique<yy::location>();
+
+    parser = std::make_unique<yy::Parser>(lexer, *loc, *this);
+    // parser->set_debug_level(1);
 }
 
 Scanner::~Scanner() {

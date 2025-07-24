@@ -42,32 +42,32 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %token END 0
 
-%type <std::string> FuncDef FuncType Block Stmt Number
+%type <std::unique_ptr<BaseAST>> FuncDef FuncType Block Stmt Number
 
 %%
 
 CompUnit : FuncDef {
-  ctx.ast = $1;
+  ctx.ast.AddFuncDef(std::move($1));
 };
 
 FuncDef : FuncType IDENT '(' ')' Block {
-  $$ = $1 + " " + $2 + "() " + $5;
+  $$ = std::make_unique<FuncDefAST>(std::move($1), $2, std::move($5));
 };
 
 FuncType : INT {
-  $$ = "int";
+  $$ = std::make_unique<FuncTypeAST>("int");
 };
 
 Block : '{' Stmt '}' {
-  $$ = "{ " + $2 + " }";
+  $$ = std::make_unique<BlockAST>(std::move($2));
 };
 
 Stmt : RETURN Number ';' {
-  $$ = "return " + $2 + ";";
+  $$ = std::make_unique<StmtAST>(std::move($2));
 };
 
 Number : INT_CONST {
-  $$ = std::to_string($1);
+  $$ = std::make_unique<NumAST>(std::move($1));
 };
 
 %%

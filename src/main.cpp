@@ -21,6 +21,6 @@ int main(int argc, const char *argv[]) {
   
   scanner.parse(file);
 
-  cout << "AST: " << scanner.ast << endl;
+  cout << "AST: " << scanner.ast.ToString() << endl;
   return 0;
 }

@@ -4,6 +4,8 @@
 #include <string>
 #include <memory>
 
+#include "ast.h"
+
 namespace yy {
     class Parser;
     class location;
@@ -20,5 +22,5 @@ public:
     std::unique_ptr<yy::Parser> parser;
     std::unique_ptr<yy::location> loc;
 
-    std::string ast;
+    CompUnitAST ast;
 };
