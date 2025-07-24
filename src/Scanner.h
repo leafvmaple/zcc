@@ -16,11 +16,11 @@ public:
     Scanner();
     ~Scanner();
 
-    int parse(FILE* input);
+    int parse(FILE* input, std::unique_ptr<CompUnitAST>&& ast);
 
     void* lexer;
     std::unique_ptr<yy::Parser> parser;
     std::unique_ptr<yy::location> loc;
 
-    CompUnitAST ast;
+    std::unique_ptr<CompUnitAST> ast;
 };

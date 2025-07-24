@@ -7,6 +7,7 @@
 using namespace std;
 
 #include "Scanner.h"
+#include "llvmir.h"
 
 int main(int argc, const char *argv[]) {
   assert(argc == 5);
@@ -15,12 +16,16 @@ int main(int argc, const char *argv[]) {
   auto output = argv[4];
 
   Scanner scanner;
+  LLVMParams llvmParams(input);
 
   auto file = fopen(input, "r");
   assert(file);
   
-  scanner.parse(file);
+  scanner.parse(file, std::make_unique<CompUnitAST>());
 
-  cout << "AST: " << scanner.ast.ToString() << endl;
+  cout << "AST: " << scanner.ast->ToString() << endl;
+
+  scanner.ast->Codegen(&llvmParams);
+  llvmParams.TheModule->print(llvm::outs(), nullptr);
   return 0;
 }

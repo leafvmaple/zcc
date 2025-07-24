@@ -15,7 +15,8 @@ Scanner::~Scanner() {
     yylex_destroy(lexer);
 }
 
-int Scanner::parse(FILE* input) {
+int Scanner::parse(FILE* input, std::unique_ptr<CompUnitAST>&& ast) {
     yyset_in(input, lexer);
+    this->ast = std::move(ast);
     return parser->parse();
 }

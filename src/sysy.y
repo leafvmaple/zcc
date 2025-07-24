@@ -47,7 +47,7 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %%
 
 CompUnit : FuncDef {
-  ctx.ast.AddFuncDef(std::move($1));
+  ctx.ast->AddFuncDef(std::move($1));
 };
 
 FuncDef : FuncType IDENT '(' ')' Block {

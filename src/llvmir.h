@@ -6,12 +6,11 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
-class LLVMIR {
+class LLVMParams {
 public:
-    LLVMIR();
-    ~LLVMIR() = default;
+    LLVMParams(std::string moduleName);
+    ~LLVMParams() = default;
 
-private:
     std::unique_ptr<llvm::LLVMContext> TheContext;
     std::unique_ptr<llvm::Module> TheModule;
     std::unique_ptr<llvm::IRBuilder<>> Builder;
