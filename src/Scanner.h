@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "ast.h"
+#include "type.h"
 
 namespace yy {
     class Parser;

@@ -42,7 +42,9 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %token END 0
 
-%type <std::unique_ptr<BaseAST>> FuncDef FuncType Block Stmt Number
+%type <std::unique_ptr<BaseAST>> FuncDef Block Stmt Number Expr UnaryExpr PrimaryExpr
+%type <std::unique_ptr<BaseType>> FuncType
+%type <std::string> UnaryOp
 
 %%
 
@@ -55,19 +57,43 @@ FuncDef : FuncType IDENT '(' ')' Block {
 };
 
 FuncType : INT {
-  $$ = std::make_unique<FuncTypeAST>("int");
+  $$ = std::make_unique<IntType>();
 };
 
 Block : '{' Stmt '}' {
   $$ = std::make_unique<BlockAST>(std::move($2));
 };
 
-Stmt : RETURN Number ';' {
+Stmt : RETURN Expr ';' {
   $$ = std::make_unique<StmtAST>(std::move($2));
 };
 
+Expr : UnaryExpr {
+  $$ = std::make_unique<ExprAST>(std::move($1));
+};
+
+PrimaryExpr : '(' Expr ')' {
+  $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::Type::Expr, std::move($2));
+} | Number {
+  $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::Type::Number, std::move($1));
+};
+
 Number : INT_CONST {
-  $$ = std::make_unique<NumAST>(std::move($1));
+  $$ = std::make_unique<NumberAST>(std::move($1));
+};
+
+UnaryExpr : PrimaryExpr {
+  $$ = std::make_unique<UnaryExprAST>(std::move($1));
+} | UnaryOp UnaryExpr {
+  $$ = std::make_unique<UnaryExprAST>($1, std::move($2));
+};
+
+UnaryOp : '+'  {
+  $$ = "+";
+} | '-' {
+  $$ = "-";
+} | '!' {
+  $$ = "!";
 };
 
 %%

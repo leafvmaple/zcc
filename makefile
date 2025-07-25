@@ -104,6 +104,9 @@ clean:
 	-rm -rf $(BUILD_DIR)
 
 test: all
-	$(BUILD_DIR)/$(TARGET_EXEC) -mode test/hello.c -o hello.koopa
+	$(BUILD_DIR)/$(TARGET_EXEC) -mode test/hello.c -o test/hello.ll
+
+riscv: test
+	llc -march=riscv32 -filetype=asm -O0 test/hello.ll -o test/hello.s
 
 -include $(DEPS)

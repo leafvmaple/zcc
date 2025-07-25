@@ -5,24 +5,15 @@ void CompUnitAST::AddFuncDef(unique_ptr<BaseAST>&& funcDef) {
     this->funcDef = std::move(funcDef);
 }
 
-std::string CompUnitAST::ToString() const {
-    return "CompUnitAST { " + funcDef->ToString() + " }";
-}
-
 llvm::Value* CompUnitAST::Codegen(LLVMParams* params) {
     return funcDef->Codegen(params);
 }
 
-std::string FuncDefAST::ToString() const {
-    return "FuncDefAST { " + funcType->ToString() + ", " + ident + ", " + block->ToString() + " }";
-}
-
 llvm::Value* FuncDefAST::Codegen(LLVMParams* params) {
-    auto intType = llvm::Type::getInt32Ty(params->TheContext);
-
     std::vector<llvm::Type*> ParamTypes {};  // Params is 0
 
-    auto* FuncType = llvm::FunctionType::get(intType, ParamTypes, false);
+    auto* retType = funcType->Codegen(params);
+    auto* FuncType = llvm::FunctionType::get(retType, ParamTypes, false);
     auto* Func = llvm::Function::Create(FuncType, llvm::Function::ExternalLinkage, ident, &params->TheModule);
     auto* BB = llvm::BasicBlock::Create(params->TheContext, "entry", Func);
 
@@ -33,31 +24,47 @@ llvm::Value* FuncDefAST::Codegen(LLVMParams* params) {
     return Func;
 }
 
-std::string FuncTypeAST::ToString() const {
-    return "FuncTypeAST { " + type + " }";
-}
-
-std::string BlockAST::ToString() const {
-    return "BlockAST { " + stmts->ToString() + " }";
-}
-
 llvm::Value* BlockAST::Codegen(LLVMParams* params) {
     return stmts->Codegen(params);
 }
 
-std::string StmtAST::ToString() const {
-    return "StmtAST { " + num->ToString() + " }";
-}
-
 llvm::Value* StmtAST::Codegen(LLVMParams* params) {
-    auto* val = num->Codegen(params);
+    auto* val = expr->Codegen(params);
     return params->Builder.CreateRet(val);
 }
 
-std::string NumAST::ToString() const {
-    return std::to_string(value);
+llvm::Value* ExprAST::Codegen(LLVMParams* params) {
+    return unaryExpr->Codegen(params);
 }
 
-llvm::Value* NumAST::Codegen(LLVMParams* params) {
+llvm::Value* PrimaryExprAST::Codegen(LLVMParams* params) {
+    if (expr) {
+        return expr->Codegen(params);
+    } else if (number) {
+        return number->Codegen(params);
+    }
+    return nullptr;  // Should not reach here
+}
+
+llvm::Value* NumberAST::Codegen(LLVMParams* params) {
     return llvm::ConstantInt::get(params->TheContext, llvm::APInt(32, value, true));
+}
+
+llvm::Value* UnaryExprAST::Codegen(LLVMParams* params) {
+    if (primaryExpr) {
+        return primaryExpr->Codegen(params);
+    }
+    else if (unaryExpr) {
+        if (op == "+") {
+            return unaryExpr->Codegen(params);
+        } else if (op == "-") {
+            auto* exprVal = unaryExpr->Codegen(params);
+            return params->Builder.CreateNeg(exprVal);
+        } else if (op == "!") {
+            auto* exprVal = unaryExpr->Codegen(params);
+            auto* res = params->Builder.CreateICmpEQ(exprVal, llvm::ConstantInt::get(exprVal->getType(), 0));
+            return params->Builder.CreateZExt(res, llvm::Type::getInt32Ty(params->TheContext));
+        }
+    }
+    return nullptr;  // Should not reach here
 }
