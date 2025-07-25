@@ -8,10 +8,11 @@
 
 class LLVMParams {
 public:
-    LLVMParams(std::string moduleName);
+    LLVMParams(std::string moduleName)
+        : TheModule(std::forward<std::string>(moduleName), TheContext), Builder(TheContext){};
     ~LLVMParams() = default;
 
-    std::unique_ptr<llvm::LLVMContext> TheContext;
-    std::unique_ptr<llvm::Module> TheModule;
-    std::unique_ptr<llvm::IRBuilder<>> Builder;
+    llvm::LLVMContext TheContext;
+    llvm::Module TheModule;
+    llvm::IRBuilder<> Builder;
 };

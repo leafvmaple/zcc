@@ -52,7 +52,7 @@ class BlockAST : public BaseAST {
 public:
     BlockAST(unique_ptr<BaseAST>&& stmts) : stmts(std::move(stmts)) {}
     string ToString() const override;
-    llvm::Value* Codegen(LLVMParams* params) override {};
+    llvm::Value* Codegen(LLVMParams* params) override;
 protected:
     unique_ptr<BaseAST> stmts;
 };
@@ -61,7 +61,7 @@ class StmtAST : public BaseAST {
 public:
     StmtAST(unique_ptr<BaseAST>&& num) : num(std::move(num)) {};
     string ToString() const override;
-    llvm::Value* Codegen(LLVMParams* params) override {};
+    llvm::Value* Codegen(LLVMParams* params) override;
 protected:
     unique_ptr<BaseAST> num;
 };
@@ -70,7 +70,7 @@ class NumAST : public BaseAST {
 public:
     NumAST(int value) : value(value) {}
     string ToString() const override;
-    llvm::Value* Codegen(LLVMParams* params) override {};
+    llvm::Value* Codegen(LLVMParams* params) override;
 protected:
     int value;
 };

@@ -23,9 +23,9 @@ int main(int argc, const char *argv[]) {
   
   scanner.parse(file, std::make_unique<CompUnitAST>());
 
-  cout << "AST: " << scanner.ast->ToString() << endl;
+  // cout << "AST: " << scanner.ast->ToString() << endl;
 
   scanner.ast->Codegen(&llvmParams);
-  llvmParams.TheModule->print(llvm::outs(), nullptr);
+  llvmParams.TheModule.print(llvm::outs(), nullptr);
   return 0;
 }

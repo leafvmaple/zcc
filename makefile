@@ -65,6 +65,7 @@ CPPFLAGS = $(INC_FLAGS) -MMD -MP
 LLVM_CXXFLAGS := $(shell llvm-config --cxxflags)
 
 # Main target
+all: $(BUILD_DIR)/$(TARGET_EXEC)
 $(BUILD_DIR)/$(TARGET_EXEC): $(FB_SRCS) $(OBJS)
 	$(CXX) $(OBJS) $(LDFLAGS) $(LLVM_LDFLAGS) -DYYDEBUG=1 -lpthread -ldl  -o $@
 
@@ -102,7 +103,7 @@ $(BUILD_DIR)/%.tab$(FB_EXT): $(SRC_DIR)/%.y
 clean:
 	-rm -rf $(BUILD_DIR)
 
-test:
+test: all
 	$(BUILD_DIR)/$(TARGET_EXEC) -mode test/hello.c -o hello.koopa
 
 -include $(DEPS)
