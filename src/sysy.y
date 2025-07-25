@@ -36,13 +36,13 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %lex-param {void *scanner} {yy::location& loc}
 %parse-param {void *scanner} {yy::location& loc} { class Scanner& ctx }
 
-%token INT RETURN
+%token INT RETURN AND OR EQ NE LE GE
 %token <std::string> IDENT
 %token <int> INT_CONST
 
 %token END 0
 
-%type <std::unique_ptr<BaseAST>> FuncDef Block Stmt Number Expr UnaryExpr PrimaryExpr MulExpr AddExpr
+%type <std::unique_ptr<BaseAST>> FuncDef Block Stmt Number Expr UnaryExpr PrimaryExpr MulExpr AddExpr RelExpr EqExpr LAndExpr LOrExpr
 %type <std::unique_ptr<BaseType>> FuncType
 %type <std::string> UnaryOp MulOp AddOp
 
@@ -68,7 +68,7 @@ Stmt : RETURN Expr ';' {
   $$ = std::make_unique<StmtAST>(std::move($2));
 };
 
-Expr : AddExpr {
+Expr : LOrExpr {
   $$ = std::make_unique<ExprAST>(std::move($1));
 };
 
@@ -98,6 +98,38 @@ AddExpr : MulExpr {
   $$ = std::make_unique<AddExprAST>(std::move($1));
 } | AddExpr AddOp MulExpr {
   $$ = std::make_unique<AddExprAST>(std::move($1), $2, std::move($3));
+};
+
+RelExpr : AddExpr {
+  $$ = std::make_unique<RelExprAST>(std::move($1));
+} | RelExpr '<' AddExpr {
+  $$ = std::make_unique<RelExprAST>(std::move($1), RelExprAST::Op::LT, std::move($3));
+} | RelExpr '>' AddExpr {
+  $$ = std::make_unique<RelExprAST>(std::move($1), RelExprAST::Op::GT, std::move($3));
+} | RelExpr LE AddExpr {
+  $$ = std::make_unique<RelExprAST>(std::move($1), RelExprAST::Op::LE, std::move($3));
+} | RelExpr GE AddExpr {
+  $$ = std::make_unique<RelExprAST>(std::move($1), RelExprAST::Op::GE, std::move($3));
+};
+
+EqExpr : RelExpr {
+  $$ = std::make_unique<EqExprAST>(std::move($1));
+} | EqExpr EQ RelExpr {
+  $$ = std::make_unique<EqExprAST>(std::move($1), EqExprAST::Op::EQ, std::move($3));
+} | EqExpr NE RelExpr {
+  $$ = std::make_unique<EqExprAST>(std::move($1), EqExprAST::Op::NE, std::move($3));
+};
+
+LAndExpr : EqExpr {
+  $$ = std::make_unique<LAndExprAST>(std::move($1));
+} | LAndExpr AND EqExpr {
+  $$ = std::make_unique<LAndExprAST>(std::move($1), std::move($3));
+};
+
+LOrExpr : LAndExpr {
+  $$ = std::make_unique<LOrExprAST>(std::move($1));
+} | LOrExpr OR LAndExpr {
+  $$ = std::make_unique<LOrExprAST>(std::move($1), std::move($3));
 };
 
 UnaryOp : '+'  {

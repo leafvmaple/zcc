@@ -36,6 +36,13 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 "int"           { return yy::Parser::make_INT(loc); }
 "return"        { return yy::Parser::make_RETURN(loc); }
 
+"&&"            { return yy::Parser::make_AND(loc); }
+"||"            { return yy::Parser::make_OR(loc); }
+"=="            { return yy::Parser::make_EQ(loc); }
+"!="            { return yy::Parser::make_NE(loc); }
+"<="            { return yy::Parser::make_LE(loc); }
+">="            { return yy::Parser::make_GE(loc); }
+
 {Identifier}    { return yy::Parser::make_IDENT(std::string(yytext), loc); }
 
 {Decimal}       { return yy::Parser::make_INT_CONST(strtol(yytext, nullptr, 0), loc); }

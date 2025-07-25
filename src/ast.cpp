@@ -102,3 +102,69 @@ llvm::Value* AddExprAST::Codegen(LLVMParams* params) {
     }
     return nullptr;  // Should not reach here
 }
+
+llvm::Value* RelExprAST::Codegen(LLVMParams* params) {
+    if (expr2) {
+        auto* leftVal = expr1->Codegen(params);
+        auto* rightVal = expr2->Codegen(params);
+        llvm::Value* res{};
+        
+        switch (op) {
+            case Op::LT:
+                res = params->Builder.CreateICmpSLT(leftVal, rightVal);
+                break;
+            case Op::GT:
+                res = params->Builder.CreateICmpSGT(leftVal, rightVal);
+                break;
+            case Op::LE:
+                res = params->Builder.CreateICmpSLE(leftVal, rightVal);
+                break;
+            case Op::GE:
+                res = params->Builder.CreateICmpSGE(leftVal, rightVal);
+                break;
+        }
+
+        return params->Builder.CreateZExt(res, llvm::Type::getInt32Ty(params->TheContext));
+    }
+    return expr1->Codegen(params);
+}
+
+llvm::Value* EqExprAST::Codegen(LLVMParams* params) {
+    if (expr2) {
+        auto* leftVal = expr1->Codegen(params);
+        auto* rightVal = expr2->Codegen(params);
+        llvm::Value* res{};
+        
+        switch (op) {
+            case Op::EQ:
+                res = params->Builder.CreateICmpEQ(leftVal, rightVal);
+                break;
+            case Op::NE:
+                res = params->Builder.CreateICmpNE(leftVal, rightVal);
+                break;
+        }
+
+        return params->Builder.CreateZExt(res, llvm::Type::getInt32Ty(params->TheContext));
+    }
+    return expr1->Codegen(params);
+}
+
+llvm::Value* LAndExprAST::Codegen(LLVMParams* params) {
+    if (expr2) {
+        auto* leftVal = expr1->Codegen(params);
+        auto* rightVal = expr2->Codegen(params);
+        auto* res = params->Builder.CreateAnd(leftVal, rightVal);
+        return params->Builder.CreateZExt(res, llvm::Type::getInt32Ty(params->TheContext));
+    }
+    return expr1->Codegen(params);
+}
+
+llvm::Value* LOrExprAST::Codegen(LLVMParams* params) {
+    if (expr2) {
+        auto* leftVal = expr1->Codegen(params);
+        auto* rightVal = expr2->Codegen(params);
+        auto* res = params->Builder.CreateOr(leftVal, rightVal);
+        return params->Builder.CreateZExt(res, llvm::Type::getInt32Ty(params->TheContext));
+    }
+    return expr1->Codegen(params);
+}

@@ -158,3 +158,88 @@ private:
     unique_ptr<BaseAST> addExpr;
     string op;
 };
+
+class RelExprAST : public BaseAST {
+public:
+    enum class Op {
+        LT,
+        GT,
+        LE,
+        GE,
+    };
+    RelExprAST(unique_ptr<BaseAST>&& expr) : expr1(std::move(expr)) {}
+    RelExprAST(unique_ptr<BaseAST>&& left, Op op, unique_ptr<BaseAST>&& right)
+        : expr1(std::move(left)), expr2(std::move(right)), op(std::move(op)) {}
+    string ToString() const override {
+        if (expr2) {
+            return "RelExprAST { " + expr1->ToString() + ", " + std::to_string(static_cast<int>(op)) + ", " + expr2->ToString() + " }";
+        } else {
+            return "RelExprAST { " + expr1->ToString() + " }";
+        }
+    }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseAST> expr1;
+    unique_ptr<BaseAST> expr2;
+    Op op;
+};
+
+class EqExprAST : public BaseAST {
+public:
+    enum class Op {
+        EQ,
+        NE,
+    };
+    EqExprAST(unique_ptr<BaseAST>&& expr) : expr1(std::move(expr)) {}
+    EqExprAST(unique_ptr<BaseAST>&& left, Op op, unique_ptr<BaseAST>&& right)
+        : expr1(std::move(left)), expr2(std::move(right)), op(std::move(op)) {}
+    string ToString() const override {
+        if (expr2) {
+            return "EqExprAST { " + expr1->ToString() + ", " + std::to_string(static_cast<int>(op)) + ", " + expr2->ToString() + " }";
+        } else {
+            return "EqExprAST { " + expr1->ToString() + " }";
+        }
+    }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseAST> expr1;
+    unique_ptr<BaseAST> expr2;
+    Op op;
+};
+
+class LAndExprAST : public BaseAST {
+public:
+    LAndExprAST(unique_ptr<BaseAST>&& expr) : expr1(std::move(expr)) {}
+    LAndExprAST(unique_ptr<BaseAST>&& left, unique_ptr<BaseAST>&& right)
+        : expr1(std::move(left)), expr2(std::move(right)) {}
+    string ToString() const override {
+        if (expr2) {
+            return "LAndExprAST { " + expr1->ToString() + ", &&, " + expr2->ToString() + " }";
+        } else {
+            return "LAndExprAST { " + expr1->ToString() + " }";
+        }
+    }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseAST> expr1;
+    unique_ptr<BaseAST> expr2;
+};
+
+class LOrExprAST : public BaseAST {
+public:
+    LOrExprAST(unique_ptr<BaseAST>&& expr) : expr1(std::move(expr)) {}
+    LOrExprAST(unique_ptr<BaseAST>&& left, unique_ptr<BaseAST>&& right)
+        : expr1(std::move(left)), expr2(std::move(right)) {}
+    string ToString() const override {
+        if (expr2) {
+            return "LOrExprAST { " + expr1->ToString() + ", ||, " + expr2->ToString() + " }";
+        } else {
+            return "LOrExprAST { " + expr1->ToString() + " }";
+        }
+    }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseAST> expr1;
+    unique_ptr<BaseAST> expr2;
+};
+
