@@ -119,3 +119,42 @@ private:
     string op;
     unique_ptr<BaseAST> unaryExpr;
 };
+
+class MulExprAST : public BaseAST {
+public:
+    MulExprAST(unique_ptr<BaseAST>&& expr) : unaryExpr(std::move(expr)) {}
+    MulExprAST(unique_ptr<BaseAST>&& left, string op, unique_ptr<BaseAST>&& right)
+        : unaryExpr(std::move(right)), mulExpr(std::move(left)), op(std::move(op)) {}
+    string ToString() const override {
+        if (mulExpr) {
+            return "MulExprAST { " + mulExpr->ToString() + ", " + op + ", " + unaryExpr->ToString() + " }";
+        } else {
+            return "MulExprAST { " + unaryExpr->ToString() + " }";
+        }
+    }
+    llvm::Value* Codegen(LLVMParams* params) override;
+
+private:
+    unique_ptr<BaseAST> unaryExpr;
+    unique_ptr<BaseAST> mulExpr;
+    string op;
+};
+
+class AddExprAST : public BaseAST {
+public:
+    AddExprAST(unique_ptr<BaseAST>&& expr) : mulExpr(std::move(expr)) {}
+    AddExprAST(unique_ptr<BaseAST>&& left, string op, unique_ptr<BaseAST>&& right)
+        : mulExpr(std::move(right)), addExpr(std::move(left)), op(std::move(op))  {}
+    string ToString() const override {
+        if (addExpr) {
+            return "AddExprAST { " + addExpr->ToString() + ", " + op + ", " + mulExpr->ToString() + " }";
+        } else {
+            return "AddExprAST { " + mulExpr->ToString() + " }";
+        }
+    }
+    llvm::Value* Codegen(LLVMParams* params) override; 
+private:
+    unique_ptr<BaseAST> mulExpr;
+    unique_ptr<BaseAST> addExpr;
+    string op;
+};

@@ -68,3 +68,37 @@ llvm::Value* UnaryExprAST::Codegen(LLVMParams* params) {
     }
     return nullptr;  // Should not reach here
 }
+
+llvm::Value* MulExprAST::Codegen(LLVMParams* params) {
+    if (mulExpr) {
+        auto* leftVal = mulExpr->Codegen(params);
+        auto* rightVal = unaryExpr->Codegen(params);
+        
+        if (op == "*") {
+            return params->Builder.CreateMul(leftVal, rightVal);
+        } else if (op == "/") {
+            return params->Builder.CreateSDiv(leftVal, rightVal);
+        } else if (op == "%") {
+            return params->Builder.CreateSRem(leftVal, rightVal);
+        }
+    } else {
+        return unaryExpr->Codegen(params);
+    }
+    return nullptr;  // Should not reach here
+}
+
+llvm::Value* AddExprAST::Codegen(LLVMParams* params) {
+    if (addExpr) {
+        auto* leftVal = addExpr->Codegen(params);
+        auto* rightVal = mulExpr->Codegen(params);
+        
+        if (op == "+") {
+            return params->Builder.CreateAdd(leftVal, rightVal);
+        } else if (op == "-") {
+            return params->Builder.CreateSub(leftVal, rightVal);
+        }
+    } else {
+        return mulExpr->Codegen(params);
+    }
+    return nullptr;  // Should not reach here
+}

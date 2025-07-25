@@ -42,9 +42,9 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %token END 0
 
-%type <std::unique_ptr<BaseAST>> FuncDef Block Stmt Number Expr UnaryExpr PrimaryExpr
+%type <std::unique_ptr<BaseAST>> FuncDef Block Stmt Number Expr UnaryExpr PrimaryExpr MulExpr AddExpr
 %type <std::unique_ptr<BaseType>> FuncType
-%type <std::string> UnaryOp
+%type <std::string> UnaryOp MulOp AddOp
 
 %%
 
@@ -68,7 +68,7 @@ Stmt : RETURN Expr ';' {
   $$ = std::make_unique<StmtAST>(std::move($2));
 };
 
-Expr : UnaryExpr {
+Expr : AddExpr {
   $$ = std::make_unique<ExprAST>(std::move($1));
 };
 
@@ -88,12 +88,38 @@ UnaryExpr : PrimaryExpr {
   $$ = std::make_unique<UnaryExprAST>($1, std::move($2));
 };
 
+MulExpr : UnaryExpr {
+  $$ = std::make_unique<MulExprAST>(std::move($1));
+} | MulExpr MulOp UnaryExpr {
+  $$ = std::make_unique<MulExprAST>(std::move($1), $2, std::move($3));
+};
+
+AddExpr : MulExpr {
+  $$ = std::make_unique<AddExprAST>(std::move($1));
+} | AddExpr AddOp MulExpr {
+  $$ = std::make_unique<AddExprAST>(std::move($1), $2, std::move($3));
+};
+
 UnaryOp : '+'  {
   $$ = "+";
 } | '-' {
   $$ = "-";
 } | '!' {
   $$ = "!";
+};
+
+MulOp : '*' {
+  $$ = "*";
+} | '/' {
+  $$ = "/";
+} | '%' {
+  $$ = "%";
+};
+
+AddOp : '+' {
+  $$ = "+";
+} | '-' {
+  $$ = "-";
 };
 
 %%
