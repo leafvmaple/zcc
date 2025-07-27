@@ -35,6 +35,7 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 
 "int"           { return yy::Parser::make_INT(loc); }
 "return"        { return yy::Parser::make_RETURN(loc); }
+"const"         { return yy::Parser::make_CONST(loc); }
 
 "&&"            { return yy::Parser::make_AND(loc); }
 "||"            { return yy::Parser::make_OR(loc); }

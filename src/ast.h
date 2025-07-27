@@ -9,6 +9,7 @@
 #include "type.h"
 
 using std::unique_ptr;
+using std::vector;
 using std::string;
 
 class LLVMParams;
@@ -18,6 +19,16 @@ public:
     virtual ~BaseAST() = default;
     virtual string ToString() const = 0;
     virtual llvm::Value* Codegen(LLVMParams* params) = 0;
+};
+
+class DefineAST {
+public:
+    DefineAST(string ident) : ident(std::move(ident)) {}
+    DefineAST(string ident, unique_ptr<BaseAST>&& initVal)
+        : ident(std::move(ident)), initVal(std::move(initVal)) {}
+
+    string ident;
+    unique_ptr<BaseAST> initVal;
 };
 
 struct CompUnitAST : public BaseAST {
@@ -45,19 +56,24 @@ protected:
 
 class BlockAST : public BaseAST {
 public:
-    BlockAST(unique_ptr<BaseAST>&& stmts) : stmts(std::move(stmts)) {}
-    string ToString() const override { return "BlockAST { " + stmts->ToString() + " }"; }
+    BlockAST(vector<unique_ptr<BaseAST>>&& blocks) : blocks(std::move(blocks)) {}
+    string ToString() const override {
+        return "BlockAST {  }";
+    }
     llvm::Value* Codegen(LLVMParams* params) override;
 protected:
-    unique_ptr<BaseAST> stmts;
+    vector<unique_ptr<BaseAST>> blocks;
 };
 
 class StmtAST : public BaseAST {
 public:
     StmtAST(unique_ptr<BaseAST>&& expr) : expr(std::move(expr)) {};
+    StmtAST(unique_ptr<BaseAST>&& lval, unique_ptr<BaseAST>&& expr)
+        : lval(std::move(lval)), expr(std::move(expr)) {}
     string ToString() const override { return "StmtAST { " + expr->ToString() + " }"; }
     llvm::Value* Codegen(LLVMParams* params) override;
 protected:
+    unique_ptr<BaseAST> lval;
     unique_ptr<BaseAST> expr;
 };
 
@@ -74,21 +90,20 @@ class PrimaryExprAST : public BaseAST {
 public:
     enum class Type {
         Expr,
+        LVal,
         Number
     };
 
     PrimaryExprAST(Type type, unique_ptr<BaseAST>&& ast) {
-        if (type == Type::Expr)
-            this->expr = std::move(ast);
-        else
-            this->number = std::move(ast);
+        this->type = type;
+        this->ast = std::move(ast);
     }
-    string ToString() const override { return "PrimaryExprAST {" + (expr ? expr->ToString() : number->ToString()) + "}"; }
+    string ToString() const override { return "PrimaryExprAST {" + ast->ToString() + "}"; }
     llvm::Value* Codegen(LLVMParams* params) override;
 
 private:
-    unique_ptr<BaseAST> expr;
-    unique_ptr<BaseAST> number;
+    Type type;
+    unique_ptr<BaseAST> ast;
 };
 
 class NumberAST : public BaseAST {
@@ -243,3 +258,84 @@ private:
     unique_ptr<BaseAST> expr2;
 };
 
+class DeclAST : public BaseAST {
+public:
+    DeclAST(unique_ptr<BaseAST>&& constDecl) : constDecl(std::move(constDecl)) {}
+    string ToString() const override { return "DeclAST { " + constDecl->ToString() + " }"; }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseAST> constDecl;
+};
+
+class ConstDeclAST : public BaseAST {
+public:
+    ConstDeclAST(unique_ptr<BaseType>&& btype, unique_ptr<DefineAST>&& constDef)
+        : btype(std::move(btype)), constDef(std::move(constDef)) {}
+    string ToString() const override {
+        return "ConstDeclAST { " + btype->ToString() + " }";
+    }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseType> btype;
+    unique_ptr<DefineAST> constDef;
+};
+
+class VarDeclAST : public BaseAST {
+public:
+    VarDeclAST(unique_ptr<BaseType>&& btype, unique_ptr<DefineAST>&& localDef)
+        : btype(std::move(btype)), localDef(std::move(localDef)) {}
+    string ToString() const override {
+        return "VarDeclAST { " + btype->ToString() + ", " + localDef->ident + " }";
+    };
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseType> btype;
+    unique_ptr<DefineAST> localDef;
+};
+
+class ConstInitValAST : public BaseAST {
+public:
+    ConstInitValAST(unique_ptr<BaseAST>&& expr) : expr(std::move(expr)) {}
+    string ToString() const override { return "ConstInitValAST { " + expr->ToString() + " }"; }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:    
+    unique_ptr<BaseAST> expr;
+};
+
+class InitValAST : public BaseAST {
+public:
+    InitValAST(unique_ptr<BaseAST>&& expr) : expr(std::move(expr)) {}
+    string ToString() const override { return "InitValAST { " + expr->ToString() + " }"; }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseAST> expr;
+};
+
+class BlockItemAST : public BaseAST {
+public:
+    BlockItemAST(unique_ptr<BaseAST>&& ast) : ast(std::move(ast)) {}
+    string ToString() const override {
+        return "BlockItemAST { " + ast->ToString() + " }";
+    }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseAST> ast;
+};
+
+class LValAST : public BaseAST {
+public:
+    LValAST(string ident) : ident(std::move(ident)) {}
+    string ToString() const override { return "LValAST { " + ident + " }"; }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    string ident;
+};
+
+class ConstExprAST : public BaseAST {
+public:
+    ConstExprAST(unique_ptr<BaseAST>&& expr) : expr(std::move(expr)) {}
+    string ToString() const override { return "ConstExprAST { " + expr->ToString() + " }"; }
+    llvm::Value* Codegen(LLVMParams* params) override;
+private:
+    unique_ptr<BaseAST> expr;
+};

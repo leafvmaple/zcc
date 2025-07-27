@@ -25,12 +25,29 @@ llvm::Value* FuncDefAST::Codegen(LLVMParams* params) {
 }
 
 llvm::Value* BlockAST::Codegen(LLVMParams* params) {
-    return stmts->Codegen(params);
+    params->symtab.EnterScope();
+    for (auto& block : blocks)
+        block->Codegen(params);
+    params->symtab.ExitScope();
+
+    return nullptr;  // Block does not return a value
+}
+
+llvm::Value* BlockItemAST::Codegen(LLVMParams* params) {
+    return ast->Codegen(params);
 }
 
 llvm::Value* StmtAST::Codegen(LLVMParams* params) {
-    auto* val = expr->Codegen(params);
-    return params->Builder.CreateRet(val);
+    if (lval) {
+        auto* lvalVal = lval->Codegen(params);
+        auto* exprVal = expr->Codegen(params);
+        params->Builder.CreateStore(exprVal, lvalVal);
+    }
+    else {
+        params->Builder.CreateRet(expr->Codegen(params));
+    }
+
+    return nullptr;  // Assignment does not return a value
 }
 
 llvm::Value* ExprAST::Codegen(LLVMParams* params) {
@@ -38,10 +55,14 @@ llvm::Value* ExprAST::Codegen(LLVMParams* params) {
 }
 
 llvm::Value* PrimaryExprAST::Codegen(LLVMParams* params) {
-    if (expr) {
-        return expr->Codegen(params);
-    } else if (number) {
-        return number->Codegen(params);
+    if (type == Type::Expr) {
+        return ast->Codegen(params);
+    } else if (type == Type::LVal) {
+        auto* addr = ast->Codegen(params);
+        auto* type = params->symtab.GetSymbolType(addr);
+        return params->Builder.CreateLoad(type, addr);
+    } else if (type == Type::Number) {
+        return ast->Codegen(params);
     }
     return nullptr;  // Should not reach here
 }
@@ -167,4 +188,42 @@ llvm::Value* LOrExprAST::Codegen(LLVMParams* params) {
         return params->Builder.CreateZExt(res, llvm::Type::getInt32Ty(params->TheContext));
     }
     return expr1->Codegen(params);
+}
+
+llvm::Value* DeclAST::Codegen(LLVMParams* params) {
+    return constDecl->Codegen(params);
+}
+
+llvm::Value* ConstDeclAST::Codegen(LLVMParams* params) {
+    auto* type = btype->Codegen(params);
+    auto* constVal = constDef->initVal->Codegen(params);
+    params->symtab.AddSymbol(constDef->ident, type, constVal);
+
+    return nullptr;  // Const declarations do not return a value
+}
+
+llvm::Value* VarDeclAST::Codegen(LLVMParams* params) {
+    auto* type = btype->Codegen(params);
+    auto* varAddr = params->Builder.CreateAlloca(type, nullptr, localDef->ident);
+    if (localDef->initVal)
+        params->Builder.CreateStore(localDef->initVal->Codegen(params), varAddr);
+
+    params->symtab.AddSymbol(localDef->ident,  type, varAddr);
+    return nullptr;  // Const declarations do not return a value
+}
+
+llvm::Value* ConstInitValAST::Codegen(LLVMParams* params) {
+    return expr->Codegen(params);
+}
+
+llvm::Value* InitValAST::Codegen(LLVMParams* params) {
+    return expr->Codegen(params);
+}
+
+llvm::Value* LValAST::Codegen(LLVMParams* params) {
+    return params->symtab.GetSymbolValue(ident);
+}
+
+llvm::Value* ConstExprAST::Codegen(LLVMParams* params) {
+    return expr->Codegen(params);
 }

@@ -25,7 +25,7 @@ int main(int argc, const char *argv[]) {
   
   scanner.parse(file, std::make_unique<CompUnitAST>());
 
-  // cout << "AST: " << scanner.ast->ToString() << endl;
+  cout << "AST: " << scanner.ast->ToString() << endl;
 
 
   std::ofstream outFile(output);
