@@ -38,13 +38,17 @@ llvm::Value* BlockItemAST::Codegen(LLVMParams* params) {
 }
 
 llvm::Value* StmtAST::Codegen(LLVMParams* params) {
-    if (lval) {
-        auto* lvalVal = lval->Codegen(params);
-        auto* exprVal = expr->Codegen(params);
-        params->Builder.CreateStore(exprVal, lvalVal);
-    }
-    else {
-        params->Builder.CreateRet(expr->Codegen(params));
+    if (type == Type::Decl) {
+        auto* lvalVal = expr1->Codegen(params);
+        auto* initVal = expr2->Codegen(params);
+        params->Builder.CreateStore(initVal, lvalVal);
+    } else if (type == Type::Expr) {
+        if (expr1)
+            expr1->Codegen(params);
+    } else if (type == Type::Block) {
+        expr1->Codegen(params);
+    } else if (type == Type::Ret) {
+        params->Builder.CreateRet(expr1->Codegen(params));
     }
 
     return nullptr;  // Assignment does not return a value
