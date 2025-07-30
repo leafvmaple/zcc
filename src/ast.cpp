@@ -38,7 +38,7 @@ llvm::Value* BlockItemAST::Codegen(LLVMParams* params) {
 }
 
 llvm::Value* StmtAST::Codegen(LLVMParams* params) {
-    if (type == Type::Decl) {
+    if (type == Type::Assign) {
         auto* lvalVal = expr1->Codegen(params);
         auto* initVal = expr2->Codegen(params);
         params->Builder.CreateStore(initVal, lvalVal);
@@ -47,6 +47,32 @@ llvm::Value* StmtAST::Codegen(LLVMParams* params) {
             expr1->Codegen(params);
     } else if (type == Type::Block) {
         expr1->Codegen(params);
+    } else if (type == Type::If) {
+        auto* cond = params->Builder.CreateICmpNE(expr1->Codegen(params), params->Builder.getInt32(0));
+
+        auto* func = params->Builder.GetInsertBlock()->getParent();
+        auto* thenBB = llvm::BasicBlock::Create(params->TheContext, "then", func);
+        llvm::BasicBlock* endBB{};
+
+        if (expr3) {
+            auto* elseBB = llvm::BasicBlock::Create(params->TheContext, "else", func);
+            endBB = llvm::BasicBlock::Create(params->TheContext, "end", func);
+            params->Builder.CreateCondBr(cond, thenBB, elseBB);
+
+            params->Builder.SetInsertPoint(elseBB);
+            expr3->Codegen(params);
+            params->Builder.CreateBr(endBB);
+        }
+        else {
+            endBB = llvm::BasicBlock::Create(params->TheContext, "end", func);
+            params->Builder.CreateCondBr(cond, thenBB, endBB);
+        }
+        
+        params->Builder.SetInsertPoint(thenBB);
+        expr2->Codegen(params);
+        params->Builder.CreateBr(endBB);
+
+        params->Builder.SetInsertPoint(endBB);
     } else if (type == Type::Ret) {
         params->Builder.CreateRet(expr1->Codegen(params));
     }

@@ -37,7 +37,7 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %lex-param {void *scanner} {yy::location& loc}
 %parse-param {void *scanner} {yy::location& loc} { class Scanner& ctx }
 
-%token INT RETURN CONST
+%token INT RETURN CONST IF ELSE
 %token AND OR EQ NE LE GE
 %token <std::string> IDENT
 %token <int> INT_CONST
@@ -87,12 +87,16 @@ BlockItems : {
 }
 
 Stmt : LVal '=' Expr ';' {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::Decl, std::move($1), std::move($3));
+  $$ = std::make_unique<StmtAST>(StmtAST::Type::Assign, std::move($1), std::move($3));
 } | OptExpr ';' {
   $$ = $1 ? std::make_unique<StmtAST>(StmtAST::Type::Expr, std::move(*$1))
           : std::make_unique<StmtAST>(StmtAST::Type::Expr);
 } | Block {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Block, std::move($1));
+} | IF '(' Expr ')' Stmt ELSE Stmt {
+  $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5), std::move($7));
+} | IF '(' Expr ')' Stmt {
+  $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5));
 } | RETURN Expr ';' {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Ret, std::move($2));
 };

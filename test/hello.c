@@ -1,8 +1,8 @@
 int main() {
-  int a = 1;
-  {
-    a = 2;
-    int a = 3;
+  int a = 0;
+  int b = 1;
+  if (a || b) {
+    a = a + b;
   }
   return a;
 }

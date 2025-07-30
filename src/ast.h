@@ -68,21 +68,25 @@ protected:
 class StmtAST : public BaseAST {
 public:
     enum class Type {
-        Decl,
+        Assign,
         Expr,
         Block,
+        If,
         Ret,
     };
     StmtAST(Type type) : type(type) {};
     StmtAST(Type type, unique_ptr<BaseAST>&& expr) : type(type), expr1(std::move(expr)) {};
     StmtAST(Type type, unique_ptr<BaseAST>&& expr1, unique_ptr<BaseAST>&& expr2)
         : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)) {}
+    StmtAST(Type type, unique_ptr<BaseAST>&& expr1, unique_ptr<BaseAST>&& expr2, unique_ptr<BaseAST>&& expr3)
+        : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)), expr3(std::move(expr3)) {}
     string ToString() const override { return "StmtAST { " + expr1->ToString() + " }"; }
     llvm::Value* Codegen(LLVMParams* params) override;
 protected:
     Type type;
     unique_ptr<BaseAST> expr1;
     unique_ptr<BaseAST> expr2;
+    unique_ptr<BaseAST> expr3;
 };
 
 class ExprAST : public BaseAST {
