@@ -13,34 +13,38 @@ using namespace std;
 
 int main(int argc, const char *argv[]) {
   assert(argc == 5);
-  auto mode = argv[1];
+  auto mode = std::string(argv[1]);
   auto input = argv[2];
   auto output = argv[4];
 
   Scanner scanner;
-  LLVMParams llvmParams(input);
 
   auto file = fopen(input, "r");
-  assert(file);
-  
   scanner.parse(file, std::make_unique<CompUnitAST>());
 
-  cout << "AST: " << scanner.ast->ToString() << endl;
+  if (mode == "-llvm") {
+    LLVMParams llvmParams(input);
 
+    std::ofstream outFile(output);
+    llvm::raw_os_ostream rawOutFile(outFile);
 
-  std::ofstream outFile(output);
-  llvm::raw_os_ostream rawOutFile(outFile);
+    scanner.ast->Codegen(&llvmParams);
+    llvmParams.TheModule.print(llvm::outs(), nullptr);
+    llvmParams.TheModule.print(rawOutFile, nullptr);
+  }
+  else if(mode == "-koopa") {
+    auto rawProgram = (koopa_raw_program_t*)scanner.ast->Parse();
 
-  scanner.ast->Codegen(&llvmParams);
-  llvmParams.TheModule.print(llvm::outs(), nullptr);
-  llvmParams.TheModule.print(rawOutFile, nullptr);
-
-  koopa_program_t program = nullptr;
-
-  koopa_raw_program_t* raw = (koopa_raw_program_t*)scanner.ast->Parse();
-  auto res = koopa_generate_raw_to_koopa(raw, &program);
-
-  koopa_dump_to_file(program, "./test/test.koopa");
+    koopa_program_t program = nullptr;
+    auto res = koopa_generate_raw_to_koopa(rawProgram, &program);
+    if (res != KOOPA_EC_SUCCESS) {
+      cerr << "Error generating Koopa IR: " << res << endl;
+      return 1;
+    }
+    
+    koopa_dump_to_stdout(program);
+    koopa_dump_to_file(program, output);
+  }
 
   return 0;
 }

@@ -104,8 +104,11 @@ $(BUILD_DIR)/%.tab$(FB_EXT): $(SRC_DIR)/%.y
 clean:
 	-rm -rf $(BUILD_DIR)
 
-test: all
-	$(BUILD_DIR)/$(TARGET_EXEC) -mode test/hello.c -o test/hello.ll
+llvm: all
+	$(BUILD_DIR)/$(TARGET_EXEC) -llvm test/hello.c -o test/hello.ll
+
+koopa: all
+	$(BUILD_DIR)/$(TARGET_EXEC) -koopa test/hello.c -o test/hello.koopa
 
 riscv: test
 	llc -march=riscv32 -filetype=asm -O0 test/hello.ll -o test/hello.s
