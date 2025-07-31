@@ -44,11 +44,10 @@ public:
     string ToString() const override { return "CompUnitAST { }"; }
     llvm::Value* Codegen(LLVMParams* params) override;
     void* Parse() {
-        auto* rawProgram = new koopa_raw_program_t;
-        rawProgram->values = slice(KOOPA_RSIK_VALUE);
-        rawProgram->funcs = slice(KOOPA_RSIK_FUNCTION, funcDef);
-
-        return rawProgram;
+        return new koopa_raw_program_t {
+            .values = slice(KOOPA_RSIK_VALUE),
+            .funcs = slice(KOOPA_RSIK_FUNCTION, funcDef)
+        };
     }
 protected:
     vector<unique_ptr<BaseAST>> funcDef;
@@ -62,19 +61,18 @@ public:
         return "FuncDefAST { " + funcType->ToString() + ", " + ident + ", " + block->ToString() + " }";
     }
     void* Parse() override {
-        auto* rawFuncData = new koopa_raw_function_data_t;
-        rawFuncData->name = "@main";
-        rawFuncData->params = slice(KOOPA_RSIK_VALUE);
-        rawFuncData->bbs = slice(KOOPA_RSIK_BASIC_BLOCK, block);
-        rawFuncData->ty = new koopa_raw_type_kind {
-            KOOPA_RTT_FUNCTION,
-            .data.function = {
-                .params = slice(KOOPA_RSIK_TYPE),
-                .ret = (koopa_raw_type_t)(funcType->Parse())
+        return new koopa_raw_function_data_t {
+            .name = "@main",
+            .params = slice(KOOPA_RSIK_VALUE),
+            .bbs = slice(KOOPA_RSIK_BASIC_BLOCK, block),
+            .ty = new koopa_raw_type_kind {
+                KOOPA_RTT_FUNCTION,
+                .data.function = {
+                    .params = slice(KOOPA_RSIK_TYPE),
+                    .ret = (koopa_raw_type_t)(funcType->Parse())
+                }
             }
         };
-
-        return rawFuncData;
     }
     llvm::Value* Codegen(LLVMParams* params) override;
 protected:
