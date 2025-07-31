@@ -8,6 +8,9 @@
 
 #include "type.h"
 
+#include "../libkoopa/include/koopa.h"
+#include "../libkoopa/include/utils.h"
+
 using std::unique_ptr;
 using std::vector;
 using std::string;
@@ -19,6 +22,10 @@ public:
     virtual ~BaseAST() = default;
     virtual string ToString() const = 0;
     virtual llvm::Value* Codegen(LLVMParams* params) = 0;
+    virtual void* Parse() {
+        // Default implementation does nothing
+        return nullptr;
+    }
 };
 
 class DefineAST {
@@ -34,10 +41,17 @@ public:
 struct CompUnitAST : public BaseAST {
 public:
     void AddFuncDef(unique_ptr<BaseAST>&& funcDef);
-    string ToString() const override { return "CompUnitAST { " + funcDef->ToString() + " }"; }
+    string ToString() const override { return "CompUnitAST { }"; }
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* Parse() {
+        auto* rawProgram = new koopa_raw_program_t;
+        rawProgram->values = slice(KOOPA_RSIK_VALUE);
+        rawProgram->funcs = slice(KOOPA_RSIK_FUNCTION, funcDef);
+
+        return rawProgram;
+    }
 protected:
-    unique_ptr<BaseAST> funcDef;
+    vector<unique_ptr<BaseAST>> funcDef;
 };
 
 class FuncDefAST : public BaseAST {
@@ -46,6 +60,21 @@ public:
         : funcType(std::move(funcType)), ident(std::move(ident)), block(std::move(block)) {}
     string ToString() const override {
         return "FuncDefAST { " + funcType->ToString() + ", " + ident + ", " + block->ToString() + " }";
+    }
+    void* Parse() override {
+        auto* rawFuncData = new koopa_raw_function_data_t;
+        rawFuncData->name = "@main";
+        rawFuncData->params = slice(KOOPA_RSIK_VALUE);
+        rawFuncData->bbs = slice(KOOPA_RSIK_BASIC_BLOCK, block);
+        rawFuncData->ty = new koopa_raw_type_kind {
+            KOOPA_RTT_FUNCTION,
+            .data.function = {
+                .params = slice(KOOPA_RSIK_TYPE),
+                .ret = (koopa_raw_type_t)(funcType->Parse())
+            }
+        };
+
+        return rawFuncData;
     }
     llvm::Value* Codegen(LLVMParams* params) override;
 protected:
@@ -61,6 +90,14 @@ public:
         return "BlockAST {  }";
     }
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* Parse() override {
+        return new koopa_raw_basic_block_data_t {
+            .name = "%entry",  // No name for the block
+            .params = slice(KOOPA_RSIK_VALUE),
+            .used_by = slice(KOOPA_RSIK_VALUE),
+            .insts = slice(KOOPA_RSIK_VALUE, blocks),
+        };
+    }
 protected:
     vector<unique_ptr<BaseAST>> blocks;
 };
@@ -82,6 +119,19 @@ public:
         : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)), expr3(std::move(expr3)) {}
     string ToString() const override { return "StmtAST { " + expr1->ToString() + " }"; }
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* Parse() override {
+        return new koopa_raw_value_data_t {
+            .ty = type_kind(KOOPA_RTT_UNIT),
+            .name = nullptr,
+            .used_by = slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_RETURN,
+                .data.ret = {
+                    .value = (koopa_raw_value_t)expr1->Parse()
+                }
+            }
+        };
+    }
 protected:
     Type type;
     unique_ptr<BaseAST> expr1;
@@ -91,11 +141,15 @@ protected:
 
 class ExprAST : public BaseAST {
 public:
-    ExprAST(unique_ptr<BaseAST>&& expr) : unaryExpr(std::move(expr)) {};
-    string ToString() const override { return "ExprAST { " + unaryExpr->ToString() + " }"; }
+    ExprAST(unique_ptr<BaseAST>&& expr) : expr(std::move(expr)) {};
+    string ToString() const override { return "ExprAST { " + expr->ToString() + " }"; }
     llvm::Value* Codegen(LLVMParams* params) override;
+
+    void* Parse() override {
+        return expr->Parse();
+    }
 private:
-    unique_ptr<BaseAST> unaryExpr;
+    unique_ptr<BaseAST> expr;
 };
 
 class PrimaryExprAST : public BaseAST {
@@ -112,7 +166,9 @@ public:
     }
     string ToString() const override { return "PrimaryExprAST {" + ast->ToString() + "}"; }
     llvm::Value* Codegen(LLVMParams* params) override;
-
+    void* Parse() override {
+        return ast->Parse();
+    }
 private:
     Type type;
     unique_ptr<BaseAST> ast;
@@ -123,6 +179,19 @@ public:
     NumberAST(int value) : value(value) {}
     string ToString() const override { return "NumberAST {" + std::to_string(value); + "}"; }
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* Parse() override {
+        return new koopa_raw_value_data_t {
+            .ty = type_kind(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_INTEGER,
+                .data.integer = {
+                    .value = value
+                }
+            }
+        };
+    }
 protected:
     int value;
 };
@@ -141,6 +210,9 @@ public:
         return "UnaryExprAST { " + content + " }";
     }
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* Parse() override {
+        return primaryExpr->Parse();
+    }
 private:
     unique_ptr<BaseAST> primaryExpr;
     string op;
@@ -160,7 +232,9 @@ public:
         }
     }
     llvm::Value* Codegen(LLVMParams* params) override;
-
+    void* Parse() override {
+        return unaryExpr->Parse();
+    }
 private:
     unique_ptr<BaseAST> unaryExpr;
     unique_ptr<BaseAST> mulExpr;
@@ -178,6 +252,9 @@ public:
         } else {
             return "AddExprAST { " + mulExpr->ToString() + " }";
         }
+    }
+    void* Parse() override {
+        return mulExpr->Parse();
     }
     llvm::Value* Codegen(LLVMParams* params) override; 
 private:
@@ -205,6 +282,9 @@ public:
         }
     }
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* Parse() override {
+        return expr1->Parse();
+    }
 private:
     unique_ptr<BaseAST> expr1;
     unique_ptr<BaseAST> expr2;
@@ -227,6 +307,9 @@ public:
             return "EqExprAST { " + expr1->ToString() + " }";
         }
     }
+    void* Parse() override {
+        return expr1->Parse();
+    }
     llvm::Value* Codegen(LLVMParams* params) override;
 private:
     unique_ptr<BaseAST> expr1;
@@ -246,6 +329,9 @@ public:
             return "LAndExprAST { " + expr1->ToString() + " }";
         }
     }
+    void* Parse() override {
+        return expr1->Parse();
+    }
     llvm::Value* Codegen(LLVMParams* params) override;
 private:
     unique_ptr<BaseAST> expr1;
@@ -263,6 +349,9 @@ public:
         } else {
             return "LOrExprAST { " + expr1->ToString() + " }";
         }
+    }
+    void* Parse() override {
+        return expr1->Parse();
     }
     llvm::Value* Codegen(LLVMParams* params) override;
 private:
@@ -328,6 +417,9 @@ public:
     BlockItemAST(unique_ptr<BaseAST>&& ast) : ast(std::move(ast)) {}
     string ToString() const override {
         return "BlockItemAST { " + ast->ToString() + " }";
+    }
+    void *Parse() override {
+        return ast->Parse();
     }
     llvm::Value* Codegen(LLVMParams* params) override;
 private:

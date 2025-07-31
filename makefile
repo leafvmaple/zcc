@@ -42,8 +42,9 @@ LIB_DIR ?= $(CDE_LIBRARY_PATH)/native
 INC_DIR ?= $(CDE_INCLUDE_PATH)
 # CFLAGS += -I$(INC_DIR)
 # CXXFLAGS += -I$(INC_DIR)
-LDFLAGS += -L$(LIB_DIR) # -lkoopa
+LDFLAGS += -L$(LIB_DIR)
 LLVM_LDFLAGS := $(shell llvm-config --ldflags --system-libs --libs core)
+KP_LDFLAGS := -L./libkoopa
 
 # Source files & target files
 FB_SRCS := $(patsubst $(SRC_DIR)/%.l, $(BUILD_DIR)/%.lex$(FB_EXT), $(shell find $(SRC_DIR) -name "*.l"))
@@ -67,7 +68,7 @@ LLVM_CXXFLAGS := $(shell llvm-config --cxxflags)
 # Main target
 all: $(BUILD_DIR)/$(TARGET_EXEC)
 $(BUILD_DIR)/$(TARGET_EXEC): $(FB_SRCS) $(OBJS)
-	$(CXX) $(OBJS) $(LDFLAGS) $(LLVM_LDFLAGS) -DYYDEBUG=1 -lpthread -ldl  -o $@
+	$(CXX) $(OBJS) $(LDFLAGS) $(LLVM_LDFLAGS) $(KP_LDFLAGS) -DYYDEBUG=1 -lkoopa -lpthread -ldl  -o $@
 
 # C source
 define c_recipe

@@ -33,5 +33,6 @@
 
 *.ll
 *.s
+*.koopa
 
 build/

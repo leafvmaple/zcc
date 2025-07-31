@@ -2,11 +2,15 @@
 #include "llvmir.h"
 
 void CompUnitAST::AddFuncDef(unique_ptr<BaseAST>&& funcDef) {
-    this->funcDef = std::move(funcDef);
+    this->funcDef.emplace_back(std::move(funcDef));
 }
 
 llvm::Value* CompUnitAST::Codegen(LLVMParams* params) {
-    return funcDef->Codegen(params);
+    for (auto& func : funcDef) {
+        func->Codegen(params);
+    }
+
+    return nullptr;
 }
 
 llvm::Value* FuncDefAST::Codegen(LLVMParams* params) {
@@ -81,7 +85,7 @@ llvm::Value* StmtAST::Codegen(LLVMParams* params) {
 }
 
 llvm::Value* ExprAST::Codegen(LLVMParams* params) {
-    return unaryExpr->Codegen(params);
+    return expr->Codegen(params);
 }
 
 llvm::Value* PrimaryExprAST::Codegen(LLVMParams* params) {

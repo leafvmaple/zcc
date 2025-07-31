@@ -34,5 +34,13 @@ int main(int argc, const char *argv[]) {
   scanner.ast->Codegen(&llvmParams);
   llvmParams.TheModule.print(llvm::outs(), nullptr);
   llvmParams.TheModule.print(rawOutFile, nullptr);
+
+  koopa_program_t program = nullptr;
+
+  koopa_raw_program_t* raw = (koopa_raw_program_t*)scanner.ast->Parse();
+  auto res = koopa_generate_raw_to_koopa(raw, &program);
+
+  koopa_dump_to_file(program, "./test/test.koopa");
+
   return 0;
 }
