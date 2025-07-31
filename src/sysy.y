@@ -27,7 +27,6 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <optional>
 
 int yylex();
 void yyerror(std::unique_ptr<std::string> &ast, const char *s);
@@ -45,7 +44,7 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %token END 0
 
 %type <std::vector<std::unique_ptr<BaseAST>>> BlockItems
-%type <std::optional<std::unique_ptr<BaseAST>>> OptExpr
+%type <std::unique_ptr<BaseAST>> OptExpr
 
 %type <std::unique_ptr<BaseAST>> FuncDef Block BlockItem Stmt Number LVal
 %type <std::unique_ptr<BaseAST>> Expr UnaryExpr PrimaryExpr MulExpr AddExpr RelExpr EqExpr LAndExpr LOrExpr ConstExpr
@@ -89,8 +88,7 @@ BlockItems : {
 Stmt : LVal '=' Expr ';' {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Assign, std::move($1), std::move($3));
 } | OptExpr ';' {
-  $$ = $1 ? std::make_unique<StmtAST>(StmtAST::Type::Expr, std::move(*$1))
-          : std::make_unique<StmtAST>(StmtAST::Type::Expr);
+  $$ = std::make_unique<StmtAST>(StmtAST::Type::Expr, std::move($1));
 } | Block {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Block, std::move($1));
 } | IF '(' Expr ')' Stmt ELSE Stmt {
@@ -102,9 +100,9 @@ Stmt : LVal '=' Expr ';' {
 };
 
 OptExpr : Expr {
-  $$ = std::make_optional<std::unique_ptr<BaseAST>>(std::move($1));
+  $$ = std::unique_ptr<BaseAST>(std::move($1));
 } | {
-  $$ = std::nullopt;
+  $$ = std::unique_ptr<BaseAST>();
 };
 
 Expr : LOrExpr {

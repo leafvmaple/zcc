@@ -7,6 +7,8 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
+#include <map>
+
 class SymbolTable {
 public:
     SymbolTable() = default;
@@ -47,9 +49,12 @@ public:
     }
 
 private:
-    std::vector<std::unordered_map<std::string, llvm::Value*>> locals;
-    std::unordered_map<std::string, llvm::Value*> globals;  // Global symbols
-    std::unordered_map<llvm::Value*, llvm::Type*> typeMap;  // Maps values to their types
+    std::vector<std::map<std::string, llvm::Value*>> locals;
+    std::map<std::string, llvm::Value*> globals;
+    std::map<llvm::Value*, llvm::Type*> typeMap;
+    // std::vector<std::unordered_map<std::string, llvm::Value*>> locals;
+    // std::unordered_map<std::string, llvm::Value*> globals;  // Global symbols
+    // std::unordered_map<llvm::Value*, llvm::Type*> typeMap;  // Maps values to their types
 };
 
 class LLVMParams {
