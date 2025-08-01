@@ -20,7 +20,7 @@ class LLVMParams;
 struct BaseAST {
 public:
     virtual ~BaseAST() = default;
-    virtual string ToString() const = 0;
+    virtual string ToString() const { return ""; };
     virtual llvm::Value* Codegen(LLVMParams* params) = 0;
     virtual void* Parse() {
         // Default implementation does nothing
@@ -41,7 +41,7 @@ public:
 struct CompUnitAST : public BaseAST {
 public:
     void AddFuncDef(unique_ptr<BaseAST>&& funcDef);
-    string ToString() const override { return "CompUnitAST { }"; }
+
     llvm::Value* Codegen(LLVMParams* params) override;
     void* Parse() {
         return new koopa_raw_program_t {
@@ -57,9 +57,8 @@ class FuncDefAST : public BaseAST {
 public:
     FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, unique_ptr<BaseAST>&& block)
         : funcType(std::move(funcType)), ident(std::move(ident)), block(std::move(block)) {}
-    string ToString() const override {
-        return "FuncDefAST { " + funcType->ToString() + ", " + ident + ", " + block->ToString() + " }";
-    }
+        
+    llvm::Value* Codegen(LLVMParams* params) override;
     void* Parse() override {
         return new koopa_raw_function_data_t {
             .name = "@main",
@@ -74,7 +73,6 @@ public:
             }
         };
     }
-    llvm::Value* Codegen(LLVMParams* params) override;
 protected:
     unique_ptr<BaseType> funcType;
     string ident;
@@ -83,10 +81,9 @@ protected:
 
 class BlockAST : public BaseAST {
 public:
-    BlockAST(vector<unique_ptr<BaseAST>>&& blocks) : blocks(std::move(blocks)) {}
-    string ToString() const override {
-        return "BlockAST {  }";
-    }
+    BlockAST(vector<unique_ptr<BaseAST>>&& blocks)
+        : blocks(std::move(blocks)) {}
+
     llvm::Value* Codegen(LLVMParams* params) override;
     void* Parse() override {
         return new koopa_raw_basic_block_data_t {
@@ -109,13 +106,15 @@ public:
         If,
         Ret,
     };
-    StmtAST(Type type) : type(type) {};
-    StmtAST(Type type, unique_ptr<BaseAST>&& expr) : type(type), expr1(std::move(expr)) {};
+    StmtAST(Type type)
+        : type(type) {};
+    StmtAST(Type type, unique_ptr<BaseAST>&& expr1)
+        : type(type), expr1(std::move(expr1)) {};
     StmtAST(Type type, unique_ptr<BaseAST>&& expr1, unique_ptr<BaseAST>&& expr2)
         : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)) {}
     StmtAST(Type type, unique_ptr<BaseAST>&& expr1, unique_ptr<BaseAST>&& expr2, unique_ptr<BaseAST>&& expr3)
         : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)), expr3(std::move(expr3)) {}
-    string ToString() const override { return "StmtAST { " + expr1->ToString() + " }"; }
+
     llvm::Value* Codegen(LLVMParams* params) override;
     void* Parse() override {
         return new koopa_raw_value_data_t {
@@ -139,10 +138,9 @@ protected:
 
 class ExprAST : public BaseAST {
 public:
-    ExprAST(unique_ptr<BaseAST>&& expr) : expr(std::move(expr)) {};
-    string ToString() const override { return "ExprAST { " + expr->ToString() + " }"; }
+    ExprAST(unique_ptr<BaseAST>&& expr)
+        : expr(std::move(expr)) {};
     llvm::Value* Codegen(LLVMParams* params) override;
-
     void* Parse() override {
         return expr->Parse();
     }
