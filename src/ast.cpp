@@ -59,11 +59,11 @@ llvm::Value* BlockAST::Codegen(LLVMParams* params) {
 }
 
 void* BlockAST::ToKoopa(KoopaEnv* env) {
-    env->EnterScope();
+    env->enter_scope();
     for (auto& item : items) {
         item->ToKoopa(env);
     }
-    return (void*)env->ExitScope();
+    return (void*)env->exit_scope();
 }
 
 llvm::Value* BlockItemAST::Codegen(LLVMParams* params) {
@@ -126,7 +126,7 @@ void* StmtAST::ToKoopa(KoopaEnv* env) {
     } else if (type == Type::If) {
         return nullptr;
     } else if (type == Type::Ret) {
-        return env->CreateValue(new koopa_raw_value_data_t {
+        return env->create_inst(new koopa_raw_value_data_t {
             .ty = koopa_type(KOOPA_RTT_UNIT),
             .name = nullptr,
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -216,7 +216,7 @@ void* UnaryExprAST::ToKoopa(KoopaEnv* env) {
         if (op == "+") {
             return expr->ToKoopa(env);
         } else if (op == "-") {
-            return env->CreateValue(new koopa_raw_value_data_t {
+            return env->create_inst(new koopa_raw_value_data_t {
                 .ty = koopa_type(KOOPA_RTT_INT32),
                 .name = nullptr,
                 .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -230,7 +230,7 @@ void* UnaryExprAST::ToKoopa(KoopaEnv* env) {
                 }
             });
         } else if (op == "!") {
-            return env->CreateValue(new koopa_raw_value_data_t {
+            return env->create_inst(new koopa_raw_value_data_t {
                 .ty = koopa_type(KOOPA_RTT_INT32),
                 .name = nullptr,
                 .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -268,7 +268,7 @@ llvm::Value* MulExprAST::Codegen(LLVMParams* params) {
 
 void* MulExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        return env->CreateValue(new koopa_raw_value_data_t {
+        return env->create_inst(new koopa_raw_value_data_t {
             .ty = koopa_type(KOOPA_RTT_INT32),
             .name = nullptr,
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -305,7 +305,7 @@ llvm::Value* AddExprAST::Codegen(LLVMParams* params) {
 
 void* AddExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        return env->CreateValue(new koopa_raw_value_data_t {
+        return env->create_inst(new koopa_raw_value_data_t {
             .ty = koopa_type(KOOPA_RTT_INT32),
             .name = nullptr,
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -351,7 +351,7 @@ llvm::Value* RelExprAST::Codegen(LLVMParams* params) {
 
 void* RelExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        return env->CreateValue(new koopa_raw_value_data_t {
+        return env->create_inst(new koopa_raw_value_data_t {
             .ty = koopa_type(KOOPA_RTT_INT32),
             .name = nullptr,
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -393,7 +393,7 @@ llvm::Value* EqExprAST::Codegen(LLVMParams* params) {
 
 void* EqExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        return env->CreateValue(new koopa_raw_value_data_t {
+        return env->create_inst(new koopa_raw_value_data_t {
             .ty = koopa_type(KOOPA_RTT_INT32),
             .name = nullptr,
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -423,9 +423,9 @@ llvm::Value* LAndExprAST::Codegen(LLVMParams* params) {
 
 void* LAndExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        auto lg1 = env->CreateValue(int2logic((koopa_raw_value_t)expr1->ToKoopa(env)));
-        auto lg2 = env->CreateValue(int2logic((koopa_raw_value_t)expr2->ToKoopa(env)));
-        return env->CreateValue(new koopa_raw_value_data_t {
+        auto lg1 = env->create_inst(int2logic((koopa_raw_value_t)expr1->ToKoopa(env)));
+        auto lg2 = env->create_inst(int2logic((koopa_raw_value_t)expr2->ToKoopa(env)));
+        return env->create_inst(new koopa_raw_value_data_t {
             .ty = koopa_type(KOOPA_RTT_INT32),
             .name = nullptr,
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -454,9 +454,9 @@ llvm::Value* LOrExprAST::Codegen(LLVMParams* params) {
 
 void* LOrExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        auto lg1 = env->CreateValue(int2logic((koopa_raw_value_t)expr1->ToKoopa(env)));
-        auto lg2 = env->CreateValue(int2logic((koopa_raw_value_t)expr2->ToKoopa(env)));
-        return env->CreateValue(new koopa_raw_value_data_t {
+        auto lg1 = env->create_inst(int2logic((koopa_raw_value_t)expr1->ToKoopa(env)));
+        auto lg2 = env->create_inst(int2logic((koopa_raw_value_t)expr2->ToKoopa(env)));
+        return env->create_inst(new koopa_raw_value_data_t {
             .ty = koopa_type(KOOPA_RTT_INT32),
             .name = nullptr,
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -477,12 +477,19 @@ llvm::Value* DeclAST::Codegen(LLVMParams* params) {
     return constDecl->Codegen(params);
 }
 
+void* DeclAST::ToKoopa(KoopaEnv* env) {
+    return constDecl->ToKoopa(env);
+}
+
 llvm::Value* ConstDeclAST::Codegen(LLVMParams* params) {
-    auto* type = btype->Codegen(params);
-    auto* constVal = constDef->initVal->Codegen(params);
-    params->symtab.AddSymbol(constDef->ident, type, constVal);
+    params->symtab.AddSymbol(constDef->ident, btype->Codegen(params), constDef->initVal->Codegen(params));
 
     return nullptr;  // Const declarations do not return a value
+}
+
+void* ConstDeclAST::ToKoopa(KoopaEnv* env) {
+    env->add_symbol(constDef->ident, (koopa_raw_value_t)constDef->initVal->ToKoopa(env));
+    return nullptr;
 }
 
 llvm::Value* VarDeclAST::Codegen(LLVMParams* params) {
@@ -495,18 +502,35 @@ llvm::Value* VarDeclAST::Codegen(LLVMParams* params) {
     return nullptr;  // Const declarations do not return a value
 }
 
+// TODO ToValue
 llvm::Value* ConstInitValAST::Codegen(LLVMParams* params) {
     return expr->Codegen(params);
+}
+
+void* ConstInitValAST::ToKoopa(KoopaEnv* env) {
+    return expr->ToKoopa(env);
 }
 
 llvm::Value* InitValAST::Codegen(LLVMParams* params) {
     return expr->Codegen(params);
 }
 
+void* InitValAST::ToKoopa(KoopaEnv* env) {
+    return expr->ToKoopa(env);
+}
+
 llvm::Value* LValAST::Codegen(LLVMParams* params) {
     return params->symtab.GetSymbolValue(ident);
 }
 
+void* LValAST::ToKoopa(KoopaEnv* env) {
+    return (void*)env->get_symbol(ident);
+}
+
 llvm::Value* ConstExprAST::Codegen(LLVMParams* params) {
     return expr->Codegen(params);
+}
+
+void* ConstExprAST::ToKoopa(KoopaEnv* env) {
+    return expr->ToKoopa(env);
 }

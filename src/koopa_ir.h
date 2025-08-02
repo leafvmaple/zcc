@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <map>
 
 #include "../libkoopa/include/koopa.h"
 
@@ -67,16 +68,18 @@ const char* to_string(int value);
 class KoopaEnv {
 public:
 
-    void EnterScope() {
+    void enter_scope() {
+        locals.push_back({});
         values.clear();
     }
 
-    void* CreateValue(koopa_raw_value_t value) {
+    void* create_inst(koopa_raw_value_t value) {
         values.push_back(value);
         return (void*)value;
     }
 
-    koopa_raw_basic_block_t ExitScope() {
+    koopa_raw_basic_block_t exit_scope() {
+        locals.pop_back();
         koopa_raw_value_t* buffer = new koopa_raw_value_t[values.size()];
         std::copy(values.begin(), values.end(), buffer);
 
@@ -92,6 +95,25 @@ public:
         };
     }
 
+    void add_symbol(std::string name, koopa_raw_value_t value) {
+        if (!locals.empty()) {
+            locals.back()[name] = value;
+        } else {
+            globals[name] = value;  // Add to global scope if no local scope exists
+        }
+    }
+
+    koopa_raw_value_t get_symbol(std::string name) {
+        if (!locals.empty() && locals.back().count(name)) {
+            return locals.back()[name];
+        } else if (globals.count(name)) {
+            return globals[name];
+        }
+        return nullptr;  // Symbol not found
+    }
+
 private:
     std::vector<koopa_raw_value_t> values;
+    std::vector<std::map<std::string, koopa_raw_value_t>> locals;
+    std::map<std::string, koopa_raw_value_t> globals;
 };

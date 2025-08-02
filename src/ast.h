@@ -250,7 +250,9 @@ class DeclAST : public BaseAST {
 public:
     DeclAST(unique_ptr<BaseAST>&& constDecl)
         : constDecl(std::move(constDecl)) {}
+
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> constDecl;
 };
@@ -261,6 +263,7 @@ public:
         : btype(std::move(btype)), constDef(std::move(constDef)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseType> btype;
     unique_ptr<DefineAST> constDef;
@@ -279,18 +282,22 @@ private:
 
 class ConstInitValAST : public BaseAST {
 public:
-    ConstInitValAST(unique_ptr<BaseAST>&& expr) : expr(std::move(expr)) {}
+    ConstInitValAST(unique_ptr<BaseAST>&& expr)
+        : expr(std::move(expr)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-private:    
+    void* ToKoopa(KoopaEnv* env) override;
+private:
     unique_ptr<BaseAST> expr;
 };
 
 class InitValAST : public BaseAST {
 public:
-    InitValAST(unique_ptr<BaseAST>&& expr) : expr(std::move(expr)) {}
+    InitValAST(unique_ptr<BaseAST>&& expr)
+        : expr(std::move(expr)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> expr;
 };
@@ -310,6 +317,7 @@ public:
     LValAST(string ident) : ident(std::move(ident)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     string ident;
 };
@@ -319,6 +327,7 @@ public:
     ConstExprAST(unique_ptr<BaseAST>&& expr) : expr(std::move(expr)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> expr;
 };
