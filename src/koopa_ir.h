@@ -7,19 +7,19 @@
 
 class KoopaEnv;
 
-koopa_raw_slice_t inline slice(koopa_raw_slice_item_kind_t kind) {
+koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind) {
     return {nullptr, 0, kind};
 }
 
 template<typename T>
-koopa_raw_slice_t inline slice(koopa_raw_slice_item_kind_t kind, const T& vec, KoopaEnv* env) {
+koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const T& vec, KoopaEnv* env) {
     auto* buffer = new const void*[1];
     buffer[0] = vec->ToKoopa(env);
     return {buffer, 1, kind};
 }
 
 template<typename T>
-koopa_raw_slice_t inline slice(koopa_raw_slice_item_kind_t kind, const std::vector<T>& vec, KoopaEnv* env) {
+koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std::vector<T>& vec, KoopaEnv* env) {
     auto* buffer = new const void*[vec.size()];
     for (size_t i = 0; i < vec.size(); ++i) {
         buffer[i] = vec[i]->ToKoopa(env);
@@ -27,15 +27,15 @@ koopa_raw_slice_t inline slice(koopa_raw_slice_item_kind_t kind, const std::vect
     return {buffer, static_cast<uint32_t>(vec.size()), kind};
 }
 
-koopa_raw_type_t inline type_kind(koopa_raw_type_tag_t tag) {
+koopa_raw_type_t inline koopa_type(koopa_raw_type_tag_t tag) {
     return new koopa_raw_type_kind_t { tag };
 }
 
-koopa_raw_value_t inline to_integer(int value) {
+koopa_raw_value_t inline koopa_int(int value) {
     return new koopa_raw_value_data_t {
-        .ty = type_kind(KOOPA_RTT_INT32),
+        .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
-        .used_by = slice(KOOPA_RSIK_VALUE),
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_INTEGER,
             .data.integer = {
@@ -45,24 +45,24 @@ koopa_raw_value_t inline to_integer(int value) {
     };
 }
 
-koopa_raw_value_t inline to_logic(koopa_raw_value_t value) {
+koopa_raw_value_t inline int2logic(koopa_raw_value_t value) {
     return new koopa_raw_value_data_t {
-        .ty = type_kind(KOOPA_RTT_INT32),
+        .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
-        .used_by = slice(KOOPA_RSIK_VALUE),
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_NOT_EQ,
                 .lhs = value,
-                .rhs = to_integer(0)
+                .rhs = koopa_int(0)
             }
         }
     };
 }
 
-const char* c_string(std::string name);
-const char* c_string(int value);
+const char* to_string(std::string name);
+const char* to_string(int value);
 
 class KoopaEnv {
 public:
@@ -82,8 +82,8 @@ public:
 
         return new koopa_raw_basic_block_data_t {
             .name = "%entry",
-            .params = slice(KOOPA_RSIK_VALUE),
-            .used_by = slice(KOOPA_RSIK_VALUE),
+            .params = koopa_slice(KOOPA_RSIK_VALUE),
+            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
             .insts = {
                 .buffer = (const void**)buffer,
                 .len = static_cast<uint32_t>(values.size()),
