@@ -37,6 +37,7 @@ BISON := bison
 TOP_DIR := $(shell pwd)
 TARGET_EXEC := compiler
 SRC_DIR := $(TOP_DIR)/src
+FB_DIR := $(TOP_DIR)/parser
 BUILD_DIR ?= $(TOP_DIR)/build
 LIB_DIR ?= $(CDE_LIBRARY_PATH)/native
 INC_DIR ?= $(CDE_INCLUDE_PATH)
@@ -47,8 +48,8 @@ LLVM_LDFLAGS := $(shell llvm-config --ldflags --system-libs --libs core)
 KP_LDFLAGS := -L./libkoopa
 
 # Source files & target files
-FB_SRCS := $(patsubst $(SRC_DIR)/%.l, $(BUILD_DIR)/%.lex$(FB_EXT), $(shell find $(SRC_DIR) -name "*.l"))
-FB_SRCS += $(patsubst $(SRC_DIR)/%.y, $(BUILD_DIR)/%.tab$(FB_EXT), $(shell find $(SRC_DIR) -name "*.y"))
+FB_SRCS := $(patsubst $(FB_DIR)/%.l, $(BUILD_DIR)/%.lex$(FB_EXT), $(shell find $(FB_DIR) -name "*.l"))
+FB_SRCS += $(patsubst $(FB_DIR)/%.y, $(BUILD_DIR)/%.tab$(FB_EXT), $(shell find $(FB_DIR) -name "*.y"))
 SRCS := $(FB_SRCS) $(shell find $(SRC_DIR) -name "*.c" -or -name "*.cpp" -or -name "*.cc")
 OBJS := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.c.o, $(SRCS))
 OBJS := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.cpp.o, $(OBJS))
@@ -88,12 +89,12 @@ $(BUILD_DIR)/%.cpp.o: $(BUILD_DIR)/%.cpp; $(cxx_recipe)
 $(BUILD_DIR)/%.cc.o: $(SRC_DIR)/%.cc; $(cxx_recipe)
 
 # Flex
-$(BUILD_DIR)/%.lex$(FB_EXT): $(SRC_DIR)/%.l
+$(BUILD_DIR)/%.lex$(FB_EXT): $(FB_DIR)/%.l
 	mkdir -p $(dir $@)
 	$(FLEX) $(FFLAGS) --header-file=$(BUILD_DIR)/$*.lex.hpp -o $@ $<
 
 # Bison
-$(BUILD_DIR)/%.tab$(FB_EXT): $(SRC_DIR)/%.y
+$(BUILD_DIR)/%.tab$(FB_EXT): $(FB_DIR)/%.y
 	mkdir -p $(dir $@)
 	$(BISON) $(BFLAGS) -o $@ $<
 

@@ -7,7 +7,8 @@
 using namespace std;
 
 #include "Scanner.h"
-#include "llvmir.h"
+#include "llvm_ir.h"
+#include "koopa_ir.h"
 
 #include "llvm/Support/raw_os_ostream.h"
 
@@ -33,7 +34,8 @@ int main(int argc, const char *argv[]) {
     llvmParams.TheModule.print(rawOutFile, nullptr);
   }
   else if(mode == "-koopa") {
-    auto rawProgram = (koopa_raw_program_t*)scanner.ast->Parse();
+    KoopaEnv env;
+    auto rawProgram = (koopa_raw_program_t*)scanner.ast->Parse(&env);
 
     koopa_program_t program = nullptr;
     auto res = koopa_generate_raw_to_koopa(rawProgram, &program);

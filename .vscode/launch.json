@@ -6,7 +6,7 @@
       "type": "lldb",
       "request": "launch",
       "program": "${workspaceFolder}/build/compiler",
-      "args": [ "-mode", "test/hello.c", "-o", "hello.koopa"],
+      "args": [ "-koopa", "test/hello.c", "-o", "hello.koopa"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],

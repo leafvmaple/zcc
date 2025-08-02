@@ -122,9 +122,9 @@ Number : INT_CONST {
 };
 
 UnaryExpr : PrimaryExpr {
-  $$ = std::make_unique<UnaryExprAST>(std::move($1));
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Primary, std::move($1));
 } | UnaryOp UnaryExpr {
-  $$ = std::make_unique<UnaryExprAST>($1, std::move($2));
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Unary, $1, std::move($2));
 };
 
 MulExpr : UnaryExpr {
