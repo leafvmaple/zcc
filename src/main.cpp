@@ -35,7 +35,7 @@ int main(int argc, const char *argv[]) {
   }
   else if(mode == "-koopa") {
     KoopaEnv env;
-    auto rawProgram = (koopa_raw_program_t*)scanner.ast->Parse(&env);
+    auto rawProgram = (koopa_raw_program_t*)scanner.ast->ToKoopa(&env);
 
     koopa_program_t program = nullptr;
     auto res = koopa_generate_raw_to_koopa(rawProgram, &program);

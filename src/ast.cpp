@@ -12,7 +12,7 @@ llvm::Value* CompUnitAST::Codegen(LLVMParams* params) {
     return nullptr;
 }
 
-void* CompUnitAST::Parse(KoopaEnv* env) {
+void* CompUnitAST::ToKoopa(KoopaEnv* env) {
     return new koopa_raw_program_t {
         .values = slice(KOOPA_RSIK_VALUE),
         .funcs = slice(KOOPA_RSIK_FUNCTION, funcDef, env)
@@ -34,13 +34,13 @@ llvm::Value* FuncDefAST::Codegen(LLVMParams* params) {
     return Func;
 }
 
-void* FuncDefAST::Parse(KoopaEnv* env)  {
+void* FuncDefAST::ToKoopa(KoopaEnv* env)  {
     return new koopa_raw_function_data_t {
-        .ty = new koopa_raw_type_kind {
+        .ty = new koopa_raw_type_kind_t {
             KOOPA_RTT_FUNCTION,
             .data.function = {
                 .params = slice(KOOPA_RSIK_TYPE),
-                .ret = (koopa_raw_type_t)(funcType->Parse(env))
+                .ret = (koopa_raw_type_t)(funcType->ToKoopa(env))
             }
         },
         .name = c_string("@" + ident),
@@ -58,21 +58,20 @@ llvm::Value* BlockAST::Codegen(LLVMParams* params) {
     return nullptr;  // Block does not return a value
 }
 
-void* BlockAST::Parse(KoopaEnv* env) {
-    return new koopa_raw_basic_block_data_t {
-        .name = "%entry",
-        .params = slice(KOOPA_RSIK_VALUE),
-        .used_by = slice(KOOPA_RSIK_VALUE),
-        .insts = slice(KOOPA_RSIK_VALUE, items, env),
-    };
+void* BlockAST::ToKoopa(KoopaEnv* env) {
+    env->EnterScope();
+    for (auto& item : items) {
+        item->ToKoopa(env);
+    }
+    return (void*)env->ExitScope();
 }
 
 llvm::Value* BlockItemAST::Codegen(LLVMParams* params) {
     return ast->Codegen(params);
 }
 
-void* BlockItemAST::Parse(KoopaEnv* env) {
-    return ast->Parse(env);
+void* BlockItemAST::ToKoopa(KoopaEnv* env) {
+    return ast->ToKoopa(env);
 }
 
 llvm::Value* StmtAST::Codegen(LLVMParams* params) {
@@ -87,7 +86,6 @@ llvm::Value* StmtAST::Codegen(LLVMParams* params) {
         expr1->Codegen(params);
     } else if (type == Type::If) {
         auto* cond = params->Builder.CreateICmpNE(expr1->Codegen(params), params->Builder.getInt32(0));
-
         auto* func = params->Builder.GetInsertBlock()->getParent();
         auto* thenBB = llvm::BasicBlock::Create(params->TheContext, "then", func);
         llvm::BasicBlock* endBB{};
@@ -118,29 +116,28 @@ llvm::Value* StmtAST::Codegen(LLVMParams* params) {
     return nullptr;  // Assignment does not return a value
 }
 
-void* StmtAST::Parse(KoopaEnv* env) {
+void* StmtAST::ToKoopa(KoopaEnv* env) {
     if (type == Type::Assign) {
         return nullptr;
     } else if (type == Type::Expr) {
-        return expr1->Parse(env);
+        return expr1->ToKoopa(env);
     } else if (type == Type::Block) {
-        return expr1->Parse(env);
+        return expr1->ToKoopa(env);
     } else if (type == Type::If) {
         return nullptr;
     } else if (type == Type::Ret) {
-        return new koopa_raw_value_data_t {
+        return env->CreateValue(new koopa_raw_value_data_t {
             .ty = type_kind(KOOPA_RTT_UNIT),
             .name = nullptr,
             .used_by = slice(KOOPA_RSIK_VALUE),
             .kind = {
                 .tag = KOOPA_RVT_RETURN,
                 .data.ret = {
-                    .value = (koopa_raw_value_t)expr1->Parse(env)
+                    .value = (koopa_raw_value_t)expr1->ToKoopa(env)
                 }
             }
-        };
+        });
     }
-    assert(false);
     return nullptr;
 }
 
@@ -148,8 +145,8 @@ llvm::Value* ExprAST::Codegen(LLVMParams* params) {
     return expr->Codegen(params);
 }
 
-void* ExprAST::Parse(KoopaEnv* env) {
-    return expr->Parse(env);
+void* ExprAST::ToKoopa(KoopaEnv* env) {
+    return expr->ToKoopa(env);
 }
 
 llvm::Value* PrimaryExprAST::Codegen(LLVMParams* params) {
@@ -165,13 +162,13 @@ llvm::Value* PrimaryExprAST::Codegen(LLVMParams* params) {
     return nullptr;  // Should not reach here
 }
 
-void* PrimaryExprAST::Parse(KoopaEnv* env) {
+void* PrimaryExprAST::ToKoopa(KoopaEnv* env) {
     if (type == Type::Expr) {
-        return ast->Parse(env);
+        return ast->ToKoopa(env);
     } else if (type == Type::LVal) {
-        return ast->Parse(env);
+        return ast->ToKoopa(env);
     } else if (type == Type::Number) {
-        return ast->Parse(env);
+        return ast->ToKoopa(env);
     }
     return nullptr;  // Should not reach here
 }
@@ -180,7 +177,7 @@ llvm::Value* NumberAST::Codegen(LLVMParams* params) {
     return llvm::ConstantInt::get(params->TheContext, llvm::APInt(32, value, true));
 }
 
-void* NumberAST::Parse(KoopaEnv* env)  {
+void* NumberAST::ToKoopa(KoopaEnv* env)  {
     return new koopa_raw_value_data_t {
         .ty = type_kind(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -212,15 +209,14 @@ llvm::Value* UnaryExprAST::Codegen(LLVMParams* params) {
     return nullptr;  // Should not reach here
 }
 
-void* UnaryExprAST::Parse(KoopaEnv* env) {
+void* UnaryExprAST::ToKoopa(KoopaEnv* env) {
     if (type == Type::Primary) {
-        return expr->Parse(env);
+        return expr->ToKoopa(env);
     } else if (type == Type::Unary) {
         if (op == "+") {
-            return expr->Parse(env);
+            return expr->ToKoopa(env);
         } else if (op == "-") {
-            #if 0
-            return new koopa_raw_value_data_t {
+            return env->CreateValue(new koopa_raw_value_data_t {
                 .ty = type_kind(KOOPA_RTT_INT32),
                 .name = nullptr,
                 .used_by = slice(KOOPA_RSIK_VALUE),
@@ -228,26 +224,13 @@ void* UnaryExprAST::Parse(KoopaEnv* env) {
                     .tag = KOOPA_RVT_BINARY,
                     .data.binary = {
                         .op = KOOPA_RBO_SUB,
-                        .lhs = (koopa_raw_value_t)NumberAST(0).Parse(env),
-                        .rhs = (koopa_raw_value_t)expr->Parse(env)
+                        .lhs = (koopa_raw_value_t)NumberAST(0).ToKoopa(env),
+                        .rhs = (koopa_raw_value_t)expr->ToKoopa(env)
                     }
                 }
-            };
-            #endif
-            return new koopa_raw_value_data_t {
-                .ty = type_kind(KOOPA_RTT_INT32),
-                .name = nullptr,
-                .used_by = slice(KOOPA_RSIK_VALUE),
-                .kind = {
-                    .tag = KOOPA_RVT_INTEGER,
-                    .data.integer = {
-                        .value = -(((const koopa_raw_value_data*)expr->Parse(env))->kind.data.integer.value)
-                    }
-                }
-            };
+            });
         } else if (op == "!") {
-            #if 0
-            return new koopa_raw_value_data_t {
+            return env->CreateValue(new koopa_raw_value_data_t {
                 .ty = type_kind(KOOPA_RTT_INT32),
                 .name = nullptr,
                 .used_by = slice(KOOPA_RSIK_VALUE),
@@ -255,23 +238,11 @@ void* UnaryExprAST::Parse(KoopaEnv* env) {
                     .tag = KOOPA_RVT_BINARY,
                     .data.binary = {
                         .op = KOOPA_RBO_EQ,
-                        .lhs = (koopa_raw_value_t)expr->Parse(env),
-                        .rhs = (koopa_raw_value_t)NumberAST(0).Parse(env)
+                        .lhs = (koopa_raw_value_t)expr->ToKoopa(env),
+                        .rhs = (koopa_raw_value_t)NumberAST(0).ToKoopa(env)
                     }
                 }
-            };
-            #endif
-            return new koopa_raw_value_data_t {
-                .ty = type_kind(KOOPA_RTT_INT32),
-                .name = nullptr,
-                .used_by = slice(KOOPA_RSIK_VALUE),
-                .kind = {
-                    .tag = KOOPA_RVT_INTEGER,
-                    .data.integer = {
-                        .value = !(((const koopa_raw_value_data*)expr->Parse(env))->kind.data.integer.value)
-                    }
-                }
-            };
+            });
         }
     }
     return nullptr;  // Should not reach here
@@ -295,11 +266,24 @@ llvm::Value* MulExprAST::Codegen(LLVMParams* params) {
     return nullptr;  // Should not reach here
 }
 
-void* MulExprAST::Parse(KoopaEnv* env) {
+void* MulExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        return nullptr;
+        return env->CreateValue(new koopa_raw_value_data_t {
+            .ty = type_kind(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_BINARY,
+                .data.binary = {
+                    .op = (op == "*") ? KOOPA_RBO_MUL :
+                          (op == "/") ? KOOPA_RBO_DIV : KOOPA_RBO_MOD,
+                    .lhs = (koopa_raw_value_t)expr1->ToKoopa(env),
+                    .rhs = (koopa_raw_value_t)expr2->ToKoopa(env)
+                }
+            }
+        });
     } else {
-        return expr1->Parse(env);
+        return expr1->ToKoopa(env);
     }
 }
 
@@ -319,11 +303,23 @@ llvm::Value* AddExprAST::Codegen(LLVMParams* params) {
     return nullptr;  // Should not reach here
 }
 
-void* AddExprAST::Parse(KoopaEnv* env) {
+void* AddExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        return nullptr;
+        return env->CreateValue(new koopa_raw_value_data_t {
+            .ty = type_kind(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_BINARY,
+                .data.binary = {
+                    .op = (op == "+") ? KOOPA_RBO_ADD : KOOPA_RBO_SUB,
+                    .lhs = (koopa_raw_value_t)expr1->ToKoopa(env),
+                    .rhs = (koopa_raw_value_t)expr2->ToKoopa(env)
+                }
+            }
+        });
     } else {
-        return expr1->Parse(env);
+        return expr1->ToKoopa(env);
     }
 }
 
@@ -353,11 +349,25 @@ llvm::Value* RelExprAST::Codegen(LLVMParams* params) {
     return expr1->Codegen(params);
 }
 
-void* RelExprAST::Parse(KoopaEnv* env) {
+void* RelExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        return nullptr;
+        return env->CreateValue(new koopa_raw_value_data_t {
+            .ty = type_kind(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_BINARY,
+                .data.binary = {
+                    .op = (op == Op::LT) ? KOOPA_RBO_LT :
+                          (op == Op::GT) ? KOOPA_RBO_GT :
+                          (op == Op::LE) ? KOOPA_RBO_LE : KOOPA_RBO_GE,
+                    .lhs = (koopa_raw_value_t)expr1->ToKoopa(env),
+                    .rhs = (koopa_raw_value_t)expr2->ToKoopa(env)
+                }
+            }
+        });
     } else {
-        return expr1->Parse(env);
+        return expr1->ToKoopa(env);
     }
 }
 
@@ -381,11 +391,23 @@ llvm::Value* EqExprAST::Codegen(LLVMParams* params) {
     return expr1->Codegen(params);
 }
 
-void* EqExprAST::Parse(KoopaEnv* env) {
+void* EqExprAST::ToKoopa(KoopaEnv* env) {
     if (expr2) {
-        return nullptr;
+        return env->CreateValue(new koopa_raw_value_data_t {
+            .ty = type_kind(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_BINARY,
+                .data.binary = {
+                    .op = (op == Op::EQ) ? KOOPA_RBO_EQ : KOOPA_RBO_NOT_EQ,
+                    .lhs = (koopa_raw_value_t)expr1->ToKoopa(env),
+                    .rhs = (koopa_raw_value_t)expr2->ToKoopa(env)
+                }
+            }
+        });
     } else {
-        return expr1->Parse(env);
+        return expr1->ToKoopa(env);
     }
 }
 
@@ -399,8 +421,25 @@ llvm::Value* LAndExprAST::Codegen(LLVMParams* params) {
     return expr1->Codegen(params);
 }
 
-void* LAndExprAST::Parse(KoopaEnv* env) {
-    return expr1->Parse(env);
+void* LAndExprAST::ToKoopa(KoopaEnv* env) {
+    if (expr2) {
+        auto lg1 = env->CreateValue(to_logic((koopa_raw_value_t)expr1->ToKoopa(env)));
+        auto lg2 = env->CreateValue(to_logic((koopa_raw_value_t)expr2->ToKoopa(env)));
+        return env->CreateValue(new koopa_raw_value_data_t {
+            .ty = type_kind(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_BINARY,
+                .data.binary = {
+                    .op = KOOPA_RBO_AND,
+                    .lhs = (koopa_raw_value_t)lg1,
+                    .rhs = (koopa_raw_value_t)lg2
+                }
+            }
+        });
+    }
+    return expr1->ToKoopa(env);
 }
 
 llvm::Value* LOrExprAST::Codegen(LLVMParams* params) {
@@ -413,8 +452,25 @@ llvm::Value* LOrExprAST::Codegen(LLVMParams* params) {
     return expr1->Codegen(params);
 }
 
-void* LOrExprAST::Parse(KoopaEnv* env) {
-    return expr1->Parse(env);
+void* LOrExprAST::ToKoopa(KoopaEnv* env) {
+    if (expr2) {
+        auto lg1 = env->CreateValue(to_logic((koopa_raw_value_t)expr1->ToKoopa(env)));
+        auto lg2 = env->CreateValue(to_logic((koopa_raw_value_t)expr2->ToKoopa(env)));
+        return env->CreateValue(new koopa_raw_value_data_t {
+            .ty = type_kind(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_BINARY,
+                .data.binary = {
+                    .op = KOOPA_RBO_OR,
+                    .lhs = (koopa_raw_value_t)lg1,
+                    .rhs = (koopa_raw_value_t)lg2
+                }
+            }
+        });
+    }
+    return expr1->ToKoopa(env);
 }
 
 llvm::Value* DeclAST::Codegen(LLVMParams* params) {
