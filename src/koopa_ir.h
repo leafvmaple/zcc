@@ -6,6 +6,11 @@
 
 #include "../libkoopa/include/koopa.h"
 
+enum class SYMBOL {
+    CONST,
+    VAR,
+};
+
 class KoopaEnv;
 
 koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind) {
@@ -30,6 +35,15 @@ koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std
 
 koopa_raw_type_t inline koopa_type(koopa_raw_type_tag_t tag) {
     return new koopa_raw_type_kind_t { tag };
+}
+
+koopa_raw_type_t inline koopa_pointer(koopa_raw_type_tag_t tag) {
+    return new koopa_raw_type_kind_t {
+        .tag = KOOPA_RTT_POINTER,
+        .data.pointer = {
+            .base = koopa_type(tag)
+        }
+    };
 }
 
 koopa_raw_value_t inline koopa_int(int value) {
@@ -67,53 +81,71 @@ const char* to_string(int value);
 
 class KoopaEnv {
 public:
+    KoopaEnv() {
+        locals.push_back({});  // global scope
+        types.push_back({});
+    }
 
     void enter_scope() {
         locals.push_back({});
-        values.clear();
+        types.push_back({});
+        insts.clear();
     }
 
     void* create_inst(koopa_raw_value_t value) {
-        values.push_back(value);
+        insts.push_back(value);
         return (void*)value;
     }
 
     koopa_raw_basic_block_t exit_scope() {
         locals.pop_back();
-        koopa_raw_value_t* buffer = new koopa_raw_value_t[values.size()];
-        std::copy(values.begin(), values.end(), buffer);
+        types.pop_back();
+        uint32_t size = static_cast<uint32_t>(insts.size());
+        koopa_raw_value_t* buffer = new koopa_raw_value_t[size];
+        std::copy(insts.begin(), insts.end(), buffer);
 
+        insts.clear();
         return new koopa_raw_basic_block_data_t {
             .name = "%entry",
             .params = koopa_slice(KOOPA_RSIK_VALUE),
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
             .insts = {
                 .buffer = (const void**)buffer,
-                .len = static_cast<uint32_t>(values.size()),
+                .len = size,
                 .kind = KOOPA_RSIK_VALUE
             }
         };
     }
 
-    void add_symbol(std::string name, koopa_raw_value_t value) {
-        if (!locals.empty()) {
-            locals.back()[name] = value;
-        } else {
-            globals[name] = value;  // Add to global scope if no local scope exists
-        }
+    void add_symbol(std::string name, SYMBOL type, koopa_raw_value_t value) {
+        locals.back()[name] = value;
+        types.back()[value] = type;
     }
 
-    koopa_raw_value_t get_symbol(std::string name) {
-        if (!locals.empty() && locals.back().count(name)) {
-            return locals.back()[name];
-        } else if (globals.count(name)) {
-            return globals[name];
+    koopa_raw_value_t get_symbol_value(std::string name) {
+        for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
+            auto found = it->find(name);
+            if (found != it->end()) {
+                return found->second;  // Return the value if found in the current scope
+            }
         }
+
         return nullptr;  // Symbol not found
     }
 
+    SYMBOL get_symbol_type(koopa_raw_value_t value) {
+        for (auto it = types.rbegin(); it != types.rend(); ++it) {
+            auto found = it->find(value);
+            if (found != it->end()) {
+                return found->second;
+            }
+        }
+
+        return SYMBOL::VAR;
+    }
+
 private:
-    std::vector<koopa_raw_value_t> values;
+    std::vector<koopa_raw_value_t> insts;
     std::vector<std::map<std::string, koopa_raw_value_t>> locals;
-    std::map<std::string, koopa_raw_value_t> globals;
+    std::vector<std::map<koopa_raw_value_t, SYMBOL>> types;
 };

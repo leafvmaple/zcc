@@ -40,7 +40,7 @@ void* FuncDefAST::ToKoopa(KoopaEnv* env)  {
             KOOPA_RTT_FUNCTION,
             .data.function = {
                 .params = koopa_slice(KOOPA_RSIK_TYPE),
-                .ret = (koopa_raw_type_t)(funcType->ToKoopa(env))
+                .ret = funcType->ToKoopa(env)
             }
         },
         .name = to_string("@" + ident),
@@ -118,7 +118,18 @@ llvm::Value* StmtAST::Codegen(LLVMParams* params) {
 
 void* StmtAST::ToKoopa(KoopaEnv* env) {
     if (type == Type::Assign) {
-        return nullptr;
+        return env->create_inst(new koopa_raw_value_data_t {
+            .ty = koopa_type(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_STORE,
+                .data.store = {
+                    .value = (koopa_raw_value_t)expr2->ToKoopa(env),
+                    .dest = (koopa_raw_value_t)expr1->ToKoopa(env),
+                }
+            }
+        });
     } else if (type == Type::Expr) {
         return expr1->ToKoopa(env);
     } else if (type == Type::Block) {
@@ -127,7 +138,7 @@ void* StmtAST::ToKoopa(KoopaEnv* env) {
         return nullptr;
     } else if (type == Type::Ret) {
         return env->create_inst(new koopa_raw_value_data_t {
-            .ty = koopa_type(KOOPA_RTT_UNIT),
+            .ty = koopa_type(KOOPA_RTT_INT32),
             .name = nullptr,
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
             .kind = {
@@ -166,7 +177,24 @@ void* PrimaryExprAST::ToKoopa(KoopaEnv* env) {
     if (type == Type::Expr) {
         return ast->ToKoopa(env);
     } else if (type == Type::LVal) {
-        return ast->ToKoopa(env);
+        auto* val = (koopa_raw_value_t)ast->ToKoopa(env);
+        auto symbol_type = env->get_symbol_type(val);
+        if (symbol_type == SYMBOL::VAR) {
+            return env->create_inst(new koopa_raw_value_data_t {
+                .ty = koopa_type(KOOPA_RTT_INT32),
+                .name = nullptr,
+                .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+                .kind = {
+                    .tag = KOOPA_RVT_LOAD,
+                    .data.load = {
+                        .src = val
+                    }
+                }
+            });
+        } else if (symbol_type == SYMBOL::CONST) {
+            return (void*)val;
+        }
+        
     } else if (type == Type::Number) {
         return ast->ToKoopa(env);
     }
@@ -488,7 +516,7 @@ llvm::Value* ConstDeclAST::Codegen(LLVMParams* params) {
 }
 
 void* ConstDeclAST::ToKoopa(KoopaEnv* env) {
-    env->add_symbol(constDef->ident, (koopa_raw_value_t)constDef->initVal->ToKoopa(env));
+    env->add_symbol(constDef->ident, SYMBOL::CONST, (koopa_raw_value_t)constDef->initVal->ToKoopa(env));
     return nullptr;
 }
 
@@ -500,6 +528,36 @@ llvm::Value* VarDeclAST::Codegen(LLVMParams* params) {
 
     params->symtab.AddSymbol(localDef->ident,  type, varAddr);
     return nullptr;  // Const declarations do not return a value
+}
+
+void* VarDeclAST::ToKoopa(KoopaEnv* env) {
+    auto* varAddr = env->create_inst(new koopa_raw_value_data_t {
+        .ty = btype->ToKoopa(env),
+        .name = to_string("@" + localDef->ident),
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+        .kind = {
+            .tag = KOOPA_RVT_ALLOC,
+        }
+    });
+
+    if (localDef->initVal) {
+        env->create_inst(new koopa_raw_value_data_t {
+            .ty = btype->ToKoopa(env),
+            .name = nullptr,
+            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_STORE,
+                .data.store = {
+                    .value = (koopa_raw_value_t)localDef->initVal->ToKoopa(env),
+                    .dest = (koopa_raw_value_t)varAddr
+                }
+            }
+        });
+    }
+
+    env->add_symbol(localDef->ident, SYMBOL::VAR, (koopa_raw_value_t)varAddr);
+
+    return nullptr;
 }
 
 // TODO ToValue
@@ -524,7 +582,7 @@ llvm::Value* LValAST::Codegen(LLVMParams* params) {
 }
 
 void* LValAST::ToKoopa(KoopaEnv* env) {
-    return (void*)env->get_symbol(ident);
+    return (void*)env->get_symbol_value(ident);
 }
 
 llvm::Value* ConstExprAST::Codegen(LLVMParams* params) {
