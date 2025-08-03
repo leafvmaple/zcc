@@ -92,9 +92,9 @@ public:
         insts.clear();
     }
 
-    void* create_inst(koopa_raw_value_t value) {
+    koopa_raw_value_t create_inst(koopa_raw_value_t value) {
         insts.push_back(value);
-        return (void*)value;
+        return value;
     }
 
     koopa_raw_basic_block_t exit_scope() {

@@ -47,7 +47,9 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %type <std::vector<std::unique_ptr<DefineAST>>> ConstDefs VarDefs
 %type <std::unique_ptr<BaseAST>> OptExpr
 
-%type <std::unique_ptr<BaseAST>> FuncDef Block BlockItem Stmt Number LVal
+%type <std::unique_ptr<FuncDefAST>> FuncDef
+
+%type <std::unique_ptr<BaseAST>> Block BlockItem Stmt Number LVal
 %type <std::unique_ptr<BaseAST>> Expr UnaryExpr PrimaryExpr MulExpr AddExpr RelExpr EqExpr LAndExpr LOrExpr ConstExpr
 %type <std::unique_ptr<BaseAST>> Decl ConstDecl VarDecl
 %type <std::unique_ptr<BaseAST>> ConstInitVal InitVal
