@@ -44,6 +44,7 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %token END 0
 
 %type <std::vector<std::unique_ptr<BaseAST>>> BlockItems
+%type <std::vector<std::unique_ptr<DefineAST>>> ConstDefs VarDefs
 %type <std::unique_ptr<BaseAST>> OptExpr
 
 %type <std::unique_ptr<BaseAST>> FuncDef Block BlockItem Stmt Number LVal
@@ -177,16 +178,32 @@ Decl : ConstDecl {
   $$ = std::make_unique<DeclAST>(std::move($1));
 }
 
-ConstDecl : CONST BType ConstDef ';' {
+ConstDecl : CONST BType ConstDefs ';' {
   $$ = std::make_unique<ConstDeclAST>(std::move($2), std::move($3));
 }
 
-VarDecl : BType VarDef ';' {
+VarDecl : BType VarDefs ';' {
   $$ = std::make_unique<VarDeclAST>(std::move($1), std::move($2));
+}
+
+ConstDefs : ConstDef {
+  $$ = std::vector<std::unique_ptr<DefineAST>>();
+  $$.emplace_back(std::move($1));
+} | ConstDefs ',' ConstDef {
+  $1.emplace_back(std::move($3));
+  $$ = std::move($1);
 }
 
 ConstDef : IDENT '=' ConstInitVal {
   $$ = std::make_unique<DefineAST>($1, std::move($3));
+}
+
+VarDefs : VarDef {
+  $$ = std::vector<std::unique_ptr<DefineAST>>();
+  $$.emplace_back(std::move($1));
+} | VarDefs ',' VarDef {
+  $1.emplace_back(std::move($3));
+  $$ = std::move($1);
 }
 
 VarDef : IDENT {

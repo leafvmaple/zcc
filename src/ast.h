@@ -264,26 +264,26 @@ private:
 
 class ConstDeclAST : public BaseAST {
 public:
-    ConstDeclAST(unique_ptr<BaseType>&& btype, unique_ptr<DefineAST>&& constDef)
+    ConstDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<DefineAST>>&& constDef)
         : btype(std::move(btype)), constDef(std::move(constDef)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
     void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseType> btype;
-    unique_ptr<DefineAST> constDef;
+    vector<unique_ptr<DefineAST>> constDef;
 };
 
 class VarDeclAST : public BaseAST {
 public:
-    VarDeclAST(unique_ptr<BaseType>&& btype, unique_ptr<DefineAST>&& localDef)
+    VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<DefineAST>>&& localDef)
         : btype(std::move(btype)), localDef(std::move(localDef)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
     void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseType> btype;
-    unique_ptr<DefineAST> localDef;
+    vector<unique_ptr<DefineAST>> localDef;
 };
 
 class ConstInitValAST : public BaseAST {

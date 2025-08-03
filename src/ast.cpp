@@ -510,52 +510,59 @@ void* DeclAST::ToKoopa(KoopaEnv* env) {
 }
 
 llvm::Value* ConstDeclAST::Codegen(LLVMParams* params) {
-    params->symtab.AddSymbol(constDef->ident, btype->Codegen(params), constDef->initVal->Codegen(params));
-
+    for (const auto& def : constDef) {
+        params->symtab.AddSymbol(def->ident, btype->Codegen(params), def->initVal->Codegen(params));
+    }
     return nullptr;  // Const declarations do not return a value
 }
 
 void* ConstDeclAST::ToKoopa(KoopaEnv* env) {
-    env->add_symbol(constDef->ident, SYMBOL::CONST, (koopa_raw_value_t)constDef->initVal->ToKoopa(env));
+    for (const auto& def : constDef) {
+        env->add_symbol(def->ident, SYMBOL::CONST, (koopa_raw_value_t)def->initVal->ToKoopa(env));
+    }
     return nullptr;
 }
 
 llvm::Value* VarDeclAST::Codegen(LLVMParams* params) {
     auto* type = btype->Codegen(params);
-    auto* varAddr = params->Builder.CreateAlloca(type, nullptr, localDef->ident);
-    if (localDef->initVal)
-        params->Builder.CreateStore(localDef->initVal->Codegen(params), varAddr);
+    for (const auto& def : localDef) {
+        auto* varAddr = params->Builder.CreateAlloca(type, nullptr, def->ident);
+        if (def->initVal)
+            params->Builder.CreateStore(def->initVal->Codegen(params), varAddr);
 
-    params->symtab.AddSymbol(localDef->ident,  type, varAddr);
+        params->symtab.AddSymbol(def->ident, type, varAddr);
+    }
     return nullptr;  // Const declarations do not return a value
 }
 
 void* VarDeclAST::ToKoopa(KoopaEnv* env) {
-    auto* varAddr = env->create_inst(new koopa_raw_value_data_t {
-        .ty = btype->ToKoopa(env),
-        .name = to_string("@" + localDef->ident),
-        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-        .kind = {
-            .tag = KOOPA_RVT_ALLOC,
-        }
-    });
-
-    if (localDef->initVal) {
-        env->create_inst(new koopa_raw_value_data_t {
+    for (const auto& def : localDef) {
+        auto* varAddr = env->create_inst(new koopa_raw_value_data_t {
             .ty = btype->ToKoopa(env),
-            .name = nullptr,
+            .name = to_string("@" + def->ident),
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
             .kind = {
-                .tag = KOOPA_RVT_STORE,
-                .data.store = {
-                    .value = (koopa_raw_value_t)localDef->initVal->ToKoopa(env),
-                    .dest = (koopa_raw_value_t)varAddr
-                }
+                .tag = KOOPA_RVT_ALLOC,
             }
         });
-    }
 
-    env->add_symbol(localDef->ident, SYMBOL::VAR, (koopa_raw_value_t)varAddr);
+        if (def->initVal) {
+            env->create_inst(new koopa_raw_value_data_t {
+                .ty = btype->ToKoopa(env),
+                .name = nullptr,
+                .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+                .kind = {
+                    .tag = KOOPA_RVT_STORE,
+                    .data.store = {
+                        .value = (koopa_raw_value_t)def->initVal->ToKoopa(env),
+                        .dest = (koopa_raw_value_t)varAddr
+                    }
+                }
+            });
+        }
+
+        env->add_symbol(def->ident, SYMBOL::VAR, (koopa_raw_value_t)varAddr);
+    }
 
     return nullptr;
 }
