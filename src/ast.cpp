@@ -60,9 +60,8 @@ llvm::Value* BlockAST::Codegen(LLVMParams* params) {
 
 koopa_raw_value_t BlockAST::ToKoopa(KoopaEnv* env) {
     env->enter_scope();
-    for (auto& item : items) {
+    for (auto& item : items)
         item->ToKoopa(env);
-    }
     return (koopa_raw_value_t)env->exit_scope();
 }
 

@@ -49,6 +49,7 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %type <std::unique_ptr<FuncDefAST>> FuncDef
 
+%type <std::unique_ptr<BaseAST>> MatchedStmt UnmatchedStmt
 %type <std::unique_ptr<BaseAST>> Block BlockItem Stmt Number LVal
 %type <std::unique_ptr<BaseAST>> Expr UnaryExpr PrimaryExpr MulExpr AddExpr RelExpr EqExpr LAndExpr LOrExpr ConstExpr
 %type <std::unique_ptr<BaseAST>> Decl ConstDecl VarDecl
@@ -88,18 +89,29 @@ BlockItems : {
   $$ = std::move($1);
 }
 
-Stmt : LVal '=' Expr ';' {
+Stmt : MatchedStmt {
+  $$ = std::move($1);
+} | UnmatchedStmt {
+  $$ = std::move($1);
+};
+
+MatchedStmt :
+    LVal '=' Expr ';'{
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Assign, std::move($1), std::move($3));
 } | OptExpr ';' {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Expr, std::move($1));
 } | Block {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Block, std::move($1));
-} | IF '(' Expr ')' Stmt ELSE Stmt {
+} | IF '(' Expr ')' MatchedStmt ELSE MatchedStmt {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5), std::move($7));
-} | IF '(' Expr ')' Stmt {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5));
 } | RETURN Expr ';' {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Ret, std::move($2));
+}
+
+UnmatchedStmt: IF '(' Expr ')' Stmt {
+  $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5));
+} | IF '(' Expr ')' MatchedStmt ELSE UnmatchedStmt {
+  $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5), std::move($7));
 };
 
 OptExpr : Expr {
