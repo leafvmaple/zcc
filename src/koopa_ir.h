@@ -80,6 +80,9 @@ class KoopaEnv : public Env {
 public:
     KoopaEnv();
 
+    void EnterScope();
+    void ExitScope();
+
     void _save_basic_block();
     void _save_function();
     int _save_program();
@@ -112,9 +115,6 @@ public:
     void* CreateICmpGT(void* lhs, void* rhs);
     void* CreateICmpLE(void* lhs, void* rhs);
     void* CreateICmpGE(void* lhs, void* rhs);
-
-    void EnterScope();
-    void ExitScope();
 
     void AddSymbol(const std::string& name, VAR_TYPE type, void* value);
     void* GetSymbolValue(const std::string& name);

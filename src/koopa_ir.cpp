@@ -14,8 +14,7 @@ const char* to_string(int value) {
 }
 
 KoopaEnv::KoopaEnv() {
-    locals.push_back({});  // 初始化全局作用域
-    types.push_back({});
+    EnterScope();
 }
 
 void KoopaEnv::_save_basic_block() {
@@ -60,6 +59,21 @@ int KoopaEnv::_save_program() {
         }
     }
     return 1;
+}
+
+void KoopaEnv::EnterScope() {
+    locals.push_back({});
+    types.push_back({});
+}
+
+void KoopaEnv::ExitScope() {
+    locals.pop_back();
+    types.pop_back();
+}
+
+void* KoopaEnv::_CreateInst(koopa_raw_value_t value) {
+    insts.push_back(value);
+    return (void*)value;
 }
 
 void KoopaEnv::Print() {
@@ -356,21 +370,6 @@ void* KoopaEnv::CreateICmpGE(void* lhs, void* rhs) {
             }
         }
     });
-}
-
-void KoopaEnv::EnterScope() {
-    locals.push_back({});
-    types.push_back({});
-}
-
-void* KoopaEnv::_CreateInst(koopa_raw_value_t value) {
-    insts.push_back(value);
-    return (void*)value;
-}
-
-void KoopaEnv::ExitScope() {
-    locals.pop_back();
-    types.pop_back();
 }
 
 void KoopaEnv::AddSymbol(const std::string& name, VAR_TYPE type, void* value) {

@@ -24,7 +24,7 @@ int main(int argc, const char *argv[]) {
   scanner.parse(file, std::make_unique<CompUnitAST>());
 
   if (mode == "-llvm") {
-    LLVMParams llvmParams(input);
+    LLVMEnv llvmParams(input);
 
     std::ofstream outFile(output);
     llvm::raw_os_ostream rawOutFile(outFile);

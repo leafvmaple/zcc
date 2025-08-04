@@ -5,7 +5,7 @@ void CompUnitAST::AddFuncDef(unique_ptr<FuncDefAST>&& funcDef) {
     this->funcDef.emplace_back(std::move(funcDef));
 }
 
-llvm::Value* CompUnitAST::Codegen(LLVMParams* params) {
+llvm::Value* CompUnitAST::Codegen(LLVMEnv* params) {
     for (auto& func : funcDef) {
         func->Codegen(params);
     }
@@ -18,7 +18,7 @@ void CompUnitAST::ToKoopa(KoopaEnv* env) {
     }
 }
 
-llvm::Value* FuncDefAST::Codegen(LLVMParams* params) {
+llvm::Value* FuncDefAST::Codegen(LLVMEnv* params) {
     auto* FuncType = llvm::FunctionType::get(funcType->Codegen(params), {}, false);
     auto* Func = llvm::Function::Create(FuncType, llvm::Function::ExternalLinkage, ident, &params->TheModule);
     auto* BB = llvm::BasicBlock::Create(params->TheContext, "entry", Func);
@@ -40,7 +40,7 @@ koopa_raw_function_t FuncDefAST::ToKoopa(KoopaEnv* env)  {
     return nullptr;
 }
 
-llvm::Value* BlockAST::Codegen(LLVMParams* params) {
+llvm::Value* BlockAST::Codegen(LLVMEnv* params) {
     params->symtab.EnterScope();
     for (auto& block : items)
         block->Codegen(params);
@@ -58,7 +58,7 @@ void* BlockAST::ToKoopa(KoopaEnv* env) {
     return nullptr;  // Block does not return a value
 }
 
-llvm::Value* BlockItemAST::Codegen(LLVMParams* params) {
+llvm::Value* BlockItemAST::Codegen(LLVMEnv* params) {
     return ast->Codegen(params);
 }
 
@@ -66,7 +66,7 @@ void* BlockItemAST::ToKoopa(KoopaEnv* env) {
     return ast->ToKoopa(env);
 }
 
-llvm::Value* StmtAST::Codegen(LLVMParams* params) {
+llvm::Value* StmtAST::Codegen(LLVMEnv* params) {
     if (type == Type::Assign) {
         params->Builder.CreateStore(expr2->Codegen(params), expr1->Codegen(params));
     } else if (type == Type::Expr) {
@@ -121,7 +121,7 @@ void* StmtAST::ToKoopa(KoopaEnv* env) {
     return nullptr;
 }
 
-llvm::Value* ExprAST::Codegen(LLVMParams* params) {
+llvm::Value* ExprAST::Codegen(LLVMEnv* params) {
     return expr->Codegen(params);
 }
 
@@ -129,7 +129,7 @@ void* ExprAST::ToKoopa(KoopaEnv* env) {
     return expr->ToKoopa(env);
 }
 
-llvm::Value* PrimaryExprAST::Codegen(LLVMParams* params) {
+llvm::Value* PrimaryExprAST::Codegen(LLVMEnv* params) {
     if (type == Type::Expr) {
         return ast->Codegen(params);
     } else if (type == Type::LVal) {
@@ -159,7 +159,7 @@ void* PrimaryExprAST::ToKoopa(KoopaEnv* env) {
     return nullptr;  // Should not reach here
 }
 
-llvm::Value* NumberAST::Codegen(LLVMParams* params) {
+llvm::Value* NumberAST::Codegen(LLVMEnv* params) {
     return llvm::ConstantInt::get(params->TheContext, llvm::APInt(32, value, true));
 }
 
@@ -177,7 +177,7 @@ void* NumberAST::ToKoopa(KoopaEnv* env)  {
     };
 }
 
-llvm::Value* UnaryExprAST::Codegen(LLVMParams* params) {
+llvm::Value* UnaryExprAST::Codegen(LLVMEnv* params) {
     if (type == Type::Primary) {
         return expr->Codegen(params);
     } else if (type == Type::Unary) {
@@ -210,7 +210,7 @@ void* UnaryExprAST::ToKoopa(KoopaEnv* env) {
     return nullptr;  // Should not reach here
 }
 
-llvm::Value* MulExprAST::Codegen(LLVMParams* params) {
+llvm::Value* MulExprAST::Codegen(LLVMEnv* params) {
     if (expr2) {
         auto* leftVal = expr1->Codegen(params);
         auto* rightVal = expr2->Codegen(params);
@@ -243,7 +243,7 @@ void* MulExprAST::ToKoopa(KoopaEnv* env) {
     return nullptr;
 }
 
-llvm::Value* AddExprAST::Codegen(LLVMParams* params) {
+llvm::Value* AddExprAST::Codegen(LLVMEnv* params) {
     if (expr2) {
         auto* leftVal = expr1->Codegen(params);
         auto* rightVal = expr2->Codegen(params);
@@ -272,7 +272,7 @@ void* AddExprAST::ToKoopa(KoopaEnv* env) {
     return nullptr;
 }
 
-llvm::Value* RelExprAST::Codegen(LLVMParams* params) {
+llvm::Value* RelExprAST::Codegen(LLVMEnv* params) {
     if (expr2) {
         auto* leftVal = expr1->Codegen(params);
         auto* rightVal = expr2->Codegen(params);
@@ -315,7 +315,7 @@ void* RelExprAST::ToKoopa(KoopaEnv* env) {
     return nullptr;  // Should not reach here
 }
 
-llvm::Value* EqExprAST::Codegen(LLVMParams* params) {
+llvm::Value* EqExprAST::Codegen(LLVMEnv* params) {
     if (expr2) {
         auto* leftVal = expr1->Codegen(params);
         auto* rightVal = expr2->Codegen(params);
@@ -346,7 +346,7 @@ void* EqExprAST::ToKoopa(KoopaEnv* env) {
     return expr1->ToKoopa(env);
 }
 
-llvm::Value* LAndExprAST::Codegen(LLVMParams* params) {
+llvm::Value* LAndExprAST::Codegen(LLVMEnv* params) {
     if (expr2) {
         auto* leftVal = expr1->Codegen(params);
         auto* rightVal = expr2->Codegen(params);
@@ -365,7 +365,7 @@ void* LAndExprAST::ToKoopa(KoopaEnv* env) {
     return expr1->ToKoopa(env);
 }
 
-llvm::Value* LOrExprAST::Codegen(LLVMParams* params) {
+llvm::Value* LOrExprAST::Codegen(LLVMEnv* params) {
     if (expr2) {
         auto* leftVal = expr1->Codegen(params);
         auto* rightVal = expr2->Codegen(params);
@@ -384,7 +384,7 @@ void* LOrExprAST::ToKoopa(KoopaEnv* env) {
     return expr1->ToKoopa(env);
 }
 
-llvm::Value* DeclAST::Codegen(LLVMParams* params) {
+llvm::Value* DeclAST::Codegen(LLVMEnv* params) {
     return constDecl->Codegen(params);
 }
 
@@ -392,7 +392,7 @@ void* DeclAST::ToKoopa(KoopaEnv* env) {
     return constDecl->ToKoopa(env);
 }
 
-llvm::Value* ConstDeclAST::Codegen(LLVMParams* params) {
+llvm::Value* ConstDeclAST::Codegen(LLVMEnv* params) {
     for (const auto& def : constDef) {
         params->symtab.AddSymbol(def->ident, btype->Codegen(params), def->initVal->Codegen(params));
     }
@@ -406,7 +406,7 @@ void* ConstDeclAST::ToKoopa(KoopaEnv* env) {
     return nullptr;
 }
 
-llvm::Value* VarDeclAST::Codegen(LLVMParams* params) {
+llvm::Value* VarDeclAST::Codegen(LLVMEnv* params) {
     auto* type = btype->Codegen(params);
     for (const auto& def : localDef) {
         auto* varAddr = params->Builder.CreateAlloca(type, nullptr, def->ident);
@@ -433,7 +433,7 @@ void* VarDeclAST::ToKoopa(KoopaEnv* env) {
 }
 
 // TODO ToValue
-llvm::Value* ConstInitValAST::Codegen(LLVMParams* params) {
+llvm::Value* ConstInitValAST::Codegen(LLVMEnv* params) {
     return expr->Codegen(params);
 }
 
@@ -441,7 +441,7 @@ void* ConstInitValAST::ToKoopa(KoopaEnv* env) {
     return expr->ToKoopa(env);
 }
 
-llvm::Value* InitValAST::Codegen(LLVMParams* params) {
+llvm::Value* InitValAST::Codegen(LLVMEnv* params) {
     return expr->Codegen(params);
 }
 
@@ -449,7 +449,7 @@ void* InitValAST::ToKoopa(KoopaEnv* env) {
     return expr->ToKoopa(env);
 }
 
-llvm::Value* LValAST::Codegen(LLVMParams* params) {
+llvm::Value* LValAST::Codegen(LLVMEnv* params) {
     return params->symtab.GetSymbolValue(ident);
 }
 
@@ -457,7 +457,7 @@ void* LValAST::ToKoopa(KoopaEnv* env) {
     return env->GetSymbolValue(ident);
 }
 
-llvm::Value* ConstExprAST::Codegen(LLVMParams* params) {
+llvm::Value* ConstExprAST::Codegen(LLVMEnv* params) {
     return expr->Codegen(params);
 }
 
