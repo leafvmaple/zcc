@@ -5,7 +5,7 @@
 
 LLVMEnv::LLVMEnv(std::string moduleName)
     : TheModule(std::forward<std::string>(moduleName), TheContext), Builder(TheContext) {
-    symtab.EnterScope();
+    EnterScope();
 }
 
 void LLVMEnv::EnterScope() {
@@ -38,9 +38,12 @@ void* LLVMEnv::CreateFuncType(void* retType) {
     return llvm::FunctionType::get((llvm::Type*)retType, false);
 }
 
-void LLVMEnv::CreateFunction(void* funcType, const std::string& name) {
-    auto* func = llvm::Function::Create((llvm::FunctionType*)funcType, llvm::Function::ExternalLinkage, name, &TheModule);
-    Builder.SetInsertPoint(llvm::BasicBlock::Create(TheContext, "entry", func));
+void* LLVMEnv::CreateFunction(void* funcType, const std::string& name) {
+    return llvm::Function::Create((llvm::FunctionType*)funcType, llvm::Function::ExternalLinkage, name, &TheModule);
+}
+
+void* LLVMEnv::CreateBasicBlock(const std::string& name, void* func) {
+    return llvm::BasicBlock::Create(TheContext, name, (llvm::Function*)func);
 }
 
 void LLVMEnv::CreateStore(void* value, void* dest) {
@@ -50,6 +53,72 @@ void LLVMEnv::CreateStore(void* value, void* dest) {
 void* LLVMEnv::CreateLoad(void* src) {
     // TODO
     return Builder.CreateLoad(llvm::Type::getInt32Ty(TheContext), (llvm::Value*)src);
+}
+
+void* LLVMEnv::CreateAlloca(void* type, const std::string& name) {
+    return Builder.CreateAlloca((llvm::Type*)type, nullptr, name);
+}
+
+void* LLVMEnv::CreateAnd(void* lhs, void* rhs) {
+    return Builder.CreateAnd((llvm::Value*)lhs, (llvm::Value*)rhs);
+}
+
+void* LLVMEnv::CreateOr(void* lhs, void* rhs) {
+    return Builder.CreateOr((llvm::Value*)lhs, (llvm::Value*)rhs);
+}
+
+void* LLVMEnv::CreateAdd(void* lhs, void* rhs) {
+    return Builder.CreateAdd((llvm::Value*)lhs, (llvm::Value*)rhs);
+}
+
+void* LLVMEnv::CreateSub(void* lhs, void* rhs) {
+    return Builder.CreateSub((llvm::Value*)lhs, (llvm::Value*)rhs);
+}
+
+void* LLVMEnv::CreateMul(void* lhs, void* rhs) {
+    return Builder.CreateMul((llvm::Value*)lhs, (llvm::Value*)rhs);
+}
+
+void* LLVMEnv::CreateDiv(void* lhs, void* rhs) {
+    return Builder.CreateSDiv((llvm::Value*)lhs, (llvm::Value*)rhs);
+}
+
+void* LLVMEnv::CreateMod(void* lhs, void* rhs) {
+    return Builder.CreateSRem((llvm::Value*)lhs, (llvm::Value*)rhs);
+}
+
+void* LLVMEnv::CreateICmpNE(void* lhs, void* rhs) {
+    auto* res = Builder.CreateICmpNE((llvm::Value*)lhs, (llvm::Value*)rhs);
+    return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
+}
+
+void* LLVMEnv::CreateICmpEQ(void* lhs, void* rhs) {
+    auto* res = Builder.CreateICmpEQ((llvm::Value*)lhs, (llvm::Value*)rhs);
+    return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
+}
+
+void* LLVMEnv::CreateICmpLT(void* lhs, void* rhs) {
+    auto* res = Builder.CreateICmpSLT((llvm::Value*)lhs, (llvm::Value*)rhs);
+    return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
+}
+
+void* LLVMEnv::CreateICmpGT(void* lhs, void* rhs) {
+    auto* res = Builder.CreateICmpSGT((llvm::Value*)lhs, (llvm::Value*)rhs);
+    return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
+}
+
+void* LLVMEnv::CreateICmpLE(void* lhs, void* rhs) {
+    auto* res = Builder.CreateICmpSLE((llvm::Value*)lhs, (llvm::Value*)rhs);
+    return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
+}
+
+void* LLVMEnv::CreateICmpGE(void* lhs, void* rhs) {
+    auto* res = Builder.CreateICmpSGE((llvm::Value*)lhs, (llvm::Value*)rhs);
+    return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
+}
+
+void LLVMEnv::SetInserPointer(void* ptr) {
+    Builder.SetInsertPoint((llvm::BasicBlock*)ptr);
 }
 
 void LLVMEnv::CreateRet(void* value) {

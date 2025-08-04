@@ -107,6 +107,14 @@ void* KoopaEnv::CreateFunction(void* funcType, const std::string& name) {
     return (void*)&funcs.back();
 }
 
+void* KoopaEnv::CreateBasicBlock(const std::string& name, void* func) {
+    auto* function = (zcc_function_data_t*)func;
+    function->bbs.push_back({
+        .name = "%" + name
+    });
+    return (void*)&function->bbs.back();
+}
+
 void KoopaEnv::CreateStore(void* value, void* dest) {
     _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
@@ -148,14 +156,6 @@ void KoopaEnv::CreateRet(void* value) {
             }
         }
     });
-}
-
-void* KoopaEnv::CreateBasicBlock(const std::string& name, void* func) {
-    auto* function = (zcc_function_data_t*)func;
-    function->bbs.push_back({
-        .name = "%" + name
-    });
-    return (void*)&function->bbs.back();
 }
 
 void* KoopaEnv::CreateAnd(void* lhs, void* rhs) {
@@ -375,6 +375,11 @@ void* KoopaEnv::CreateICmpGE(void* lhs, void* rhs) {
             }
         }
     });
+}
+
+void KoopaEnv::SetInserPointer(void* ptr) {
+    auto* bb = (zcc_basic_block_data_t*)ptr;
+    insert_ptr = &bb->insts;
 }
 
 void KoopaEnv::AddSymbol(const std::string& name, VAR_TYPE type, void* value) {

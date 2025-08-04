@@ -129,10 +129,7 @@ public:
     void* CreateICmpLE(void* lhs, void* rhs);
     void* CreateICmpGE(void* lhs, void* rhs);
 
-    void SetInserPointer(void* ptr) {
-        auto* bb = (zcc_basic_block_data_t*)ptr;
-        insert_ptr = &bb->insts;
-    }
+    void SetInserPointer(void* ptr);
 
     void AddSymbol(const std::string& name, VAR_TYPE type, void* value);
     void* GetSymbolValue(const std::string& name);
