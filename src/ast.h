@@ -21,7 +21,7 @@ public:
     virtual ~BaseAST() = default;
     virtual string ToString() const { return ""; };
     virtual llvm::Value* Codegen(LLVMParams* params) = 0;
-    virtual koopa_raw_value_t ToKoopa(KoopaEnv* env) {
+    virtual void* ToKoopa(KoopaEnv* env) {
         // Default implementation does nothing
         return nullptr;
     }
@@ -43,7 +43,7 @@ public:
     void AddFuncDef(unique_ptr<FuncDefAST>&& funcDef);
 
     llvm::Value* Codegen(LLVMParams* params);
-    koopa_raw_program_t ToKoopa(KoopaEnv* env);
+    void ToKoopa(KoopaEnv* env);
 protected:
     vector<unique_ptr<FuncDefAST>> funcDef;
 };
@@ -67,7 +67,7 @@ public:
         : items(std::move(blocks)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 protected:
     vector<unique_ptr<BaseAST>> items;
 };
@@ -91,7 +91,7 @@ public:
         : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)), expr3(std::move(expr3)) {}
  
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 protected:
     Type type;
     unique_ptr<BaseAST> expr1;
@@ -105,7 +105,7 @@ public:
         : expr(std::move(expr)) {};
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> expr;
 };
@@ -122,7 +122,7 @@ public:
         : type(type), ast(std::move(ast)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     Type type;
     unique_ptr<BaseAST> ast;
@@ -134,7 +134,7 @@ public:
         : value(value) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 protected:
     int value;
 };
@@ -151,7 +151,7 @@ public:
         : type(type), op(std::move(op)), expr(std::move(expr)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     Type type;
     string op;
@@ -165,7 +165,7 @@ public:
     MulExprAST(unique_ptr<BaseAST>&& left, string op, unique_ptr<BaseAST>&& right)
         : op(std::move(op)), expr1(std::move(left)), expr2(std::move(right)) {}
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     string op;
     unique_ptr<BaseAST> expr1;
@@ -180,7 +180,7 @@ public:
         : op(std::move(op)), expr1(std::move(left)), expr2(std::move(right)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     string op;
     unique_ptr<BaseAST> expr1;
@@ -201,7 +201,7 @@ public:
         : op(std::move(op)), expr1(std::move(left)), expr2(std::move(right)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     Op op;
     unique_ptr<BaseAST> expr1;
@@ -220,7 +220,7 @@ public:
         : op(std::move(op)), expr1(std::move(left)), expr2(std::move(right)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     Op op;
     unique_ptr<BaseAST> expr1;
@@ -234,7 +234,7 @@ public:
         : expr1(std::move(left)), expr2(std::move(right)) {}
     
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> expr1;
     unique_ptr<BaseAST> expr2;
@@ -248,7 +248,7 @@ public:
         : expr1(std::move(left)), expr2(std::move(right)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> expr1;
     unique_ptr<BaseAST> expr2;
@@ -260,7 +260,7 @@ public:
         : constDecl(std::move(constDecl)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> constDecl;
 };
@@ -271,7 +271,7 @@ public:
         : btype(std::move(btype)), constDef(std::move(constDef)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseType> btype;
     vector<unique_ptr<DefineAST>> constDef;
@@ -283,7 +283,7 @@ public:
         : btype(std::move(btype)), localDef(std::move(localDef)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseType> btype;
     vector<unique_ptr<DefineAST>> localDef;
@@ -295,7 +295,7 @@ public:
         : expr(std::move(expr)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> expr;
 };
@@ -306,7 +306,7 @@ public:
         : expr(std::move(expr)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> expr;
 };
@@ -317,7 +317,7 @@ public:
         : ast(std::move(ast)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> ast;
 };
@@ -328,7 +328,7 @@ public:
         : ident(std::move(ident)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     string ident;
 };
@@ -339,7 +339,7 @@ public:
         : expr(std::move(expr)) {}
 
     llvm::Value* Codegen(LLVMParams* params) override;
-    koopa_raw_value_t ToKoopa(KoopaEnv* env) override;
+    void* ToKoopa(KoopaEnv* env) override;
 private:
     unique_ptr<BaseAST> expr;
 };

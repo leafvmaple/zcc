@@ -35,17 +35,10 @@ int main(int argc, const char *argv[]) {
   }
   else if(mode == "-koopa") {
     KoopaEnv env;
-    auto rawProgram = scanner.ast->ToKoopa(&env);
+    scanner.ast->ToKoopa(&env);
 
-    koopa_program_t program = nullptr;
-    auto res = koopa_generate_raw_to_koopa(&rawProgram, &program);
-    if (res != KOOPA_EC_SUCCESS) {
-      cerr << "Error generating Koopa IR: " << res << endl;
-      return 1;
-    }
-    
-    koopa_dump_to_stdout(program);
-    koopa_dump_to_file(program, output);
+    env.Dump(output);
+    env.Print();
   }
 
   return 0;
