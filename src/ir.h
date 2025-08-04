@@ -26,6 +26,12 @@ public:
     virtual void* CreateAnd(void* lhs, void* rhs) = 0;
     virtual void* CreateOr(void* lhs, void* rhs) = 0;
 
+    virtual void* CreateAdd(void* lhs, void* rhs) = 0;
+    virtual void* CreateSub(void* lhs, void* rhs) = 0;
+    virtual void* CreateMul(void* lhs, void* rhs) = 0;
+    virtual void* CreateDiv(void* lhs, void* rhs) = 0;
+    virtual void* CreateMod(void* lhs, void* rhs) = 0;
+
     virtual void* CreateAlloca(void* type, const std::string& name) = 0;
 
     virtual void* CreateICmpNE(void* lhs, void* rhs) = 0;
