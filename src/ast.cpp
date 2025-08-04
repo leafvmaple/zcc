@@ -35,18 +35,12 @@ llvm::Value* FuncDefAST::Codegen(LLVMParams* params) {
 }
 
 koopa_raw_function_t FuncDefAST::ToKoopa(KoopaEnv* env)  {
-    return new koopa_raw_function_data_t {
-        .ty = new koopa_raw_type_kind_t {
-            KOOPA_RTT_FUNCTION,
-            .data.function = {
-                .params = koopa_slice(KOOPA_RSIK_TYPE),
-                .ret = funcType->ToKoopa(env)
-            }
-        },
-        .name = to_string("@" + ident),
-        .params = koopa_slice(KOOPA_RSIK_VALUE),
-        .bbs = koopa_slice(KOOPA_RSIK_BASIC_BLOCK, block, env)
-    };
+    env->create_function(funcType->ToKoopa(env), "@" + ident);
+    env->create_basic_block("%entry");
+
+    block->ToKoopa(env);
+
+    return env->get_function();
 }
 
 llvm::Value* BlockAST::Codegen(LLVMParams* params) {
@@ -62,7 +56,9 @@ koopa_raw_value_t BlockAST::ToKoopa(KoopaEnv* env) {
     env->enter_scope();
     for (auto& item : items)
         item->ToKoopa(env);
-    return (koopa_raw_value_t)env->exit_scope();
+    env->exit_scope();
+    
+    return nullptr;  // Block does not return a value
 }
 
 llvm::Value* BlockItemAST::Codegen(LLVMParams* params) {

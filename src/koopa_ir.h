@@ -33,6 +33,15 @@ koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std
     return {buffer, static_cast<uint32_t>(vec.size()), kind};
 }
 
+template<typename T>
+koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std::vector<T>& vec) {
+    auto* buffer = new const void*[vec.size()];
+    for (size_t i = 0; i < vec.size(); ++i) {
+        buffer[i] = vec[i];
+    }
+    return {buffer, static_cast<uint32_t>(vec.size()), kind};
+}
+
 koopa_raw_type_t inline koopa_type(koopa_raw_type_tag_t tag) {
     return new koopa_raw_type_kind_t { tag };
 }
@@ -81,15 +90,57 @@ const char* to_string(int value);
 
 class KoopaEnv {
 public:
+
     KoopaEnv() {
         locals.push_back({});  // global scope
         types.push_back({});
     }
 
+    void _save_basic_block() {
+        if (!insts.empty()) {
+            bbs.emplace_back(new koopa_raw_basic_block_data_t {
+                .name = bb_name != "" ? to_string(bb_name) : nullptr,
+                .params = koopa_slice(KOOPA_RSIK_VALUE),
+                .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+                .insts = koopa_slice(KOOPA_RSIK_VALUE, insts)
+            });
+            insts.clear();
+        }
+    }
+
+    void create_function(koopa_raw_type_t retType, const std::string& name) {
+        bbs.clear();
+
+        func_name = name;
+        func_type = new koopa_raw_type_kind_t {
+            KOOPA_RTT_FUNCTION,
+            .data.function = {
+                .params = koopa_slice(KOOPA_RSIK_TYPE),
+                .ret = retType
+            }
+        };
+    }
+
+    koopa_raw_function_t get_function() {
+        _save_basic_block();
+
+        return new koopa_raw_function_data_t {
+            .ty = func_type,
+            .name = to_string(func_name),
+            .params = koopa_slice(KOOPA_RSIK_VALUE),
+            .bbs = koopa_slice(KOOPA_RSIK_BASIC_BLOCK, bbs)
+        };
+    }
+
+    void create_basic_block(const std::string& name) {
+        _save_basic_block();
+
+        bb_name = name;
+    }
+
     void enter_scope() {
         locals.push_back({});
         types.push_back({});
-        insts.clear();
     }
 
     koopa_raw_value_t create_inst(koopa_raw_value_t value) {
@@ -97,24 +148,9 @@ public:
         return value;
     }
 
-    koopa_raw_basic_block_t exit_scope() {
+    void exit_scope() {
         locals.pop_back();
         types.pop_back();
-        uint32_t size = static_cast<uint32_t>(insts.size());
-        koopa_raw_value_t* buffer = new koopa_raw_value_t[size];
-        std::copy(insts.begin(), insts.end(), buffer);
-
-        insts.clear();
-        return new koopa_raw_basic_block_data_t {
-            .name = "%entry",
-            .params = koopa_slice(KOOPA_RSIK_VALUE),
-            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-            .insts = {
-                .buffer = (const void**)buffer,
-                .len = size,
-                .kind = KOOPA_RSIK_VALUE
-            }
-        };
     }
 
     void add_symbol(std::string name, SYMBOL type, koopa_raw_value_t value) {
@@ -148,4 +184,10 @@ private:
     std::vector<koopa_raw_value_t> insts;
     std::vector<std::map<std::string, koopa_raw_value_t>> locals;
     std::vector<std::map<koopa_raw_value_t, SYMBOL>> types;
+
+    std::string func_name;
+    koopa_raw_type_t func_type;
+
+    std::string bb_name;
+    std::vector<koopa_raw_basic_block_data_t*> bbs;
 };
