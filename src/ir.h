@@ -16,8 +16,8 @@ public:
 
     virtual void* CreateFuncType(void* retType) = 0;
 
-    virtual void CreateFunction(void* funcType, const std::string& name) = 0;
-    virtual void CreateBasicBlock(const std::string& name) = 0;
+    virtual void* CreateFunction(void* funcType, const std::string& name) = 0;
+    virtual void* CreateBasicBlock(const std::string& name, void* func) = 0;
 
     virtual void CreateStore(void* value, void* dest) = 0;
     virtual void* CreateLoad(void* src) = 0;

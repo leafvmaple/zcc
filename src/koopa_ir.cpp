@@ -15,39 +15,40 @@ const char* to_string(int value) {
 
 KoopaEnv::KoopaEnv() {
     EnterScope();
+    funcs.reserve(256);
 }
 
-void KoopaEnv::_save_basic_block() {
-    if (!insts.empty()) {
-        bbs.emplace_back(new koopa_raw_basic_block_data_t {
-            .name = bb_name != "" ? to_string(bb_name) : nullptr,
-            .params = koopa_slice(KOOPA_RSIK_VALUE),
-            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-            .insts = koopa_slice(KOOPA_RSIK_VALUE, insts)
-        });
-        insts.clear();
+koopa_raw_basic_block_t KoopaEnv::_ParseBasicBlock(const zcc_basic_block_data_t& bbs) {
+    return new koopa_raw_basic_block_data_t {
+        .name = to_string(bbs.name),
+        .params = koopa_slice(KOOPA_RSIK_VALUE),
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+        .insts = koopa_slice(KOOPA_RSIK_VALUE, bbs.insts)
+    };
+}
+
+koopa_raw_function_t KoopaEnv::_ParseFunction(const zcc_function_data_t& funcs) {
+    std::vector<koopa_raw_basic_block_t> bbs;
+    for (const auto& bb : funcs.bbs) {
+        bbs.push_back(_ParseBasicBlock(bb));
     }
+    return new koopa_raw_function_data_t {
+        .ty = funcs.type,
+        .name = to_string(funcs.name),
+        .params = koopa_slice(KOOPA_RSIK_VALUE),
+        .bbs = koopa_slice(KOOPA_RSIK_BASIC_BLOCK, bbs)
+    };
 }
 
-void KoopaEnv::_save_function() {
-    _save_basic_block();
-    if (!bbs.empty()) {
-        funcs.emplace_back(new koopa_raw_function_data_t {
-            .ty = func_type,
-            .name = to_string(func_name),
-            .params = koopa_slice(KOOPA_RSIK_VALUE),
-            .bbs = koopa_slice(KOOPA_RSIK_BASIC_BLOCK, bbs)
-        });
-        bbs.clear();
-    }
-}
-
-int KoopaEnv::_save_program() {
-    _save_function();
+int KoopaEnv::_ParseProgram() {
     if (!funcs.empty()) {
+        std::vector<koopa_raw_function_t> func_vec;
+        for (const auto& func : funcs) {
+            func_vec.push_back(_ParseFunction(func));
+        }
         raw_program = new koopa_raw_program_t {
             .values = koopa_slice(KOOPA_RSIK_VALUE),
-            .funcs = koopa_slice(KOOPA_RSIK_FUNCTION, funcs)
+            .funcs = koopa_slice(KOOPA_RSIK_FUNCTION, func_vec)
         };
         funcs.clear();
     }
@@ -72,18 +73,18 @@ void KoopaEnv::ExitScope() {
 }
 
 void* KoopaEnv::_CreateInst(koopa_raw_value_t value) {
-    insts.push_back(value);
+    insert_ptr->push_back(value);
     return (void*)value;
 }
 
 void KoopaEnv::Print() {
-    if (_save_program()) {
+    if (_ParseProgram()) {
         koopa_dump_to_stdout(program);
     }
 }
 
 void KoopaEnv::Dump(const std::string& outfile) {
-    if (_save_program()) {
+    if (_ParseProgram()) {
         koopa_dump_to_file(program, outfile.c_str());
     }
 }
@@ -98,15 +99,16 @@ void* KoopaEnv::CreateFuncType(void* retType) {
     };
 }
 
-void KoopaEnv::CreateFunction(void* funcType, const std::string& name) {
-    _save_function();
-
-    func_name = name;
-    func_type = (koopa_raw_type_t)funcType;
+void* KoopaEnv::CreateFunction(void* funcType, const std::string& name) {
+    funcs.push_back({
+        .name = "@" + name,
+        .type = (koopa_raw_type_t)funcType
+    });
+    return (void*)&funcs.back();
 }
 
 void KoopaEnv::CreateStore(void* value, void* dest) {
-    insts.push_back(new koopa_raw_value_data_t {
+    _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -135,7 +137,7 @@ void* KoopaEnv::CreateLoad(void* src) {
 }
 
 void KoopaEnv::CreateRet(void* value) {
-    insts.push_back(new koopa_raw_value_data_t {
+    _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -148,9 +150,12 @@ void KoopaEnv::CreateRet(void* value) {
     });
 }
 
-void KoopaEnv::CreateBasicBlock(const std::string& name) {
-    _save_basic_block();
-    bb_name = name;
+void* KoopaEnv::CreateBasicBlock(const std::string& name, void* func) {
+    auto* function = (zcc_function_data_t*)func;
+    function->bbs.push_back({
+        .name = "%" + name
+    });
+    return (void*)&function->bbs.back();
 }
 
 void* KoopaEnv::CreateAnd(void* lhs, void* rhs) {
@@ -268,7 +273,7 @@ void* KoopaEnv::CreateMod(void* lhs, void* rhs) {
 void* KoopaEnv::CreateAlloca(void* type, const std::string& name) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = to_string(name),
+        .name = to_string("@" + name),
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_ALLOC,

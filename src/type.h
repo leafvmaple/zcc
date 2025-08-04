@@ -15,9 +15,8 @@ class KoopaEnv;
 
 struct BaseType {
     virtual ~BaseType() = default;
-    virtual string ToString() const = 0;
-    virtual llvm::Type* Codegen(LLVMEnv* params) = 0;
 
+    virtual llvm::Type* Codegen(LLVMEnv* params) = 0;
     virtual void* ToKoopa(KoopaEnv* env) = 0;
     virtual void* ToPointer(KoopaEnv* env) = 0;
 };

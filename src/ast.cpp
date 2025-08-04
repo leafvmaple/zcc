@@ -32,8 +32,10 @@ llvm::Value* FuncDefAST::Codegen(LLVMEnv* params) {
 
 koopa_raw_function_t FuncDefAST::ToKoopa(KoopaEnv* env)  {
     auto* type = env->CreateFuncType(funcType->ToKoopa(env));
-    env->CreateFunction(type, "@" + ident);
-    env->CreateBasicBlock("%entry");
+    auto* func = env->CreateFunction(type, ident);
+    auto* bb = env->CreateBasicBlock("entry", func);
+
+    env->SetInserPointer(bb);
 
     block->ToKoopa(env);
 
@@ -134,7 +136,7 @@ llvm::Value* PrimaryExprAST::Codegen(LLVMEnv* params) {
         return ast->Codegen(params);
     } else if (type == Type::LVal) {
         auto* addr = ast->Codegen(params);
-        auto* type = params->symtab.GetSymbolType(addr);
+        // auto* type = params->symtab.GetSymbolType(addr);
         return (llvm::Value*)params->CreateLoad(addr);
     } else if (type == Type::Number) {
         return ast->Codegen(params);
@@ -420,7 +422,7 @@ llvm::Value* VarDeclAST::Codegen(LLVMEnv* params) {
 
 void* VarDeclAST::ToKoopa(KoopaEnv* env) {
     for (const auto& def : localDef) {
-        auto* varAddr = env->CreateAlloca(btype->ToKoopa(env), "@" + def->ident);
+        auto* varAddr = env->CreateAlloca(btype->ToKoopa(env), def->ident);
 
         if (def->initVal) {
             env->CreateStore(def->initVal->ToKoopa(env), varAddr);

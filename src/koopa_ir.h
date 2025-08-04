@@ -15,6 +15,19 @@ enum class SYMBOL {
     VAR,
 };
 
+typedef std::vector<koopa_raw_value_t> zcc_value_vec_t;
+struct zcc_basic_block_data_t {
+    std::string name;
+    zcc_value_vec_t insts;
+};
+typedef std::vector<zcc_basic_block_data_t> zcc_basic_block_vec_t;
+struct zcc_function_data_t {
+    std::string name;
+    koopa_raw_type_t type;
+    zcc_basic_block_vec_t bbs;
+};
+typedef std::vector<zcc_function_data_t> zcc_function_vec_t;
+
 class KoopaEnv;
 
 koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind) {
@@ -83,21 +96,21 @@ public:
     void EnterScope();
     void ExitScope();
 
-    void _save_basic_block();
-    void _save_function();
-    int _save_program();
+    koopa_raw_basic_block_t _ParseBasicBlock(const zcc_basic_block_data_t& bbs);
+    koopa_raw_function_t _ParseFunction(const zcc_function_data_t& funcs);
+    int _ParseProgram();
 
     void Print();
     void Dump(const std::string& outfile);
 
     void* CreateFuncType(void* retType);
-    void CreateFunction(void* funcType, const std::string& name);
+    void* CreateFunction(void* funcType, const std::string& name);
+    void* CreateBasicBlock(const std::string& name, void* func);
 
     void CreateStore(void* value, void* dest);
     void* CreateLoad(void* src);
 
     void CreateRet(void* value);
-    void CreateBasicBlock(const std::string& name);
 
     void* CreateAnd(void* lhs, void* rhs);
     void* CreateOr(void* lhs, void* rhs);
@@ -116,6 +129,11 @@ public:
     void* CreateICmpLE(void* lhs, void* rhs);
     void* CreateICmpGE(void* lhs, void* rhs);
 
+    void SetInserPointer(void* ptr) {
+        auto* bb = (zcc_basic_block_data_t*)ptr;
+        insert_ptr = &bb->insts;
+    }
+
     void AddSymbol(const std::string& name, VAR_TYPE type, void* value);
     void* GetSymbolValue(const std::string& name);
     VAR_TYPE GetSymbolType(void* value);
@@ -123,17 +141,20 @@ public:
 private:
     void* _CreateInst(koopa_raw_value_t value);
 
-    std::vector<koopa_raw_value_t> insts;
+    zcc_function_vec_t funcs;
+
     std::vector<std::map<std::string, koopa_raw_value_t>> locals;
     std::vector<std::map<koopa_raw_value_t, VAR_TYPE>> types;
 
     koopa_raw_program_t* raw_program = nullptr;
     koopa_program_t program = nullptr;
 
-    std::string func_name;
-    koopa_raw_type_t func_type;
-    std::vector<koopa_raw_function_data_t*> funcs;
+    zcc_value_vec_t* insert_ptr = nullptr;
 
-    std::string bb_name;
-    std::vector<koopa_raw_basic_block_data_t*> bbs;
+    // std::string func_name;
+    // koopa_raw_type_t func_type;
+    // std::vector<koopa_raw_function_data_t*> funcs;
+
+    // std::string bb_name;
+    // std::vector<koopa_raw_basic_block_data_t*> bbs;
 };
