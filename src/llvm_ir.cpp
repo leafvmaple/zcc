@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "type.h"
 #include "ir.h"
 #include "llvm_ir.h"
 
@@ -40,6 +41,19 @@ void* LLVMEnv::CreateFuncType(void* retType) {
 void LLVMEnv::CreateFunction(void* funcType, const std::string& name) {
     auto* func = llvm::Function::Create((llvm::FunctionType*)funcType, llvm::Function::ExternalLinkage, name, &TheModule);
     Builder.SetInsertPoint(llvm::BasicBlock::Create(TheContext, "entry", func));
+}
+
+void LLVMEnv::CreateStore(void* value, void* dest) {
+    Builder.CreateStore((llvm::Value*)value, (llvm::Value*)dest);
+}
+
+void* LLVMEnv::CreateLoad(void* src) {
+    // TODO
+    return Builder.CreateLoad(llvm::Type::getInt32Ty(TheContext), (llvm::Value*)src);
+}
+
+void LLVMEnv::CreateRet(void* value) {
+    Builder.CreateRet((llvm::Value*)value);
 }
 
 VAR_TYPE LLVMEnv::GetSymbolType(void* value) {

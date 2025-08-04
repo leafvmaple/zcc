@@ -68,7 +68,7 @@ void* BlockItemAST::ToKoopa(KoopaEnv* env) {
 
 llvm::Value* StmtAST::Codegen(LLVMEnv* params) {
     if (type == Type::Assign) {
-        params->Builder.CreateStore(expr2->Codegen(params), expr1->Codegen(params));
+        params->CreateStore(expr2->Codegen(params), expr1->Codegen(params));
     } else if (type == Type::Expr) {
         if (expr1)
             expr1->Codegen(params);
@@ -135,7 +135,7 @@ llvm::Value* PrimaryExprAST::Codegen(LLVMEnv* params) {
     } else if (type == Type::LVal) {
         auto* addr = ast->Codegen(params);
         auto* type = params->symtab.GetSymbolType(addr);
-        return params->Builder.CreateLoad(type, addr);
+        return (llvm::Value*)params->CreateLoad(addr);
     } else if (type == Type::Number) {
         return ast->Codegen(params);
     }

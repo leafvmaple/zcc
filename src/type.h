@@ -23,7 +23,6 @@ struct BaseType {
 };
 
 struct IntType : public BaseType {
-    string ToString() const override { return "int"; }
     llvm::Type* Codegen(LLVMEnv* params) override;
 
     void* ToKoopa(KoopaEnv* env) override {
