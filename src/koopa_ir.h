@@ -121,6 +121,49 @@ public:
         };
     }
 
+    void create_store(koopa_raw_value_t value, koopa_raw_value_t dest) {
+        insts.push_back(new koopa_raw_value_data_t {
+            .ty = koopa_type(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_STORE,
+                .data.store = {
+                    .value = value,
+                    .dest = dest,
+                }
+            }
+        });
+    }
+
+    koopa_raw_value_t create_load(koopa_raw_value_t src) {
+        return create_inst(new koopa_raw_value_data_t {
+            .ty = koopa_type(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_LOAD,
+                .data.load = {
+                    .src = src
+                }
+            }
+        });
+    }
+
+    void create_ret(koopa_raw_value_t value) {
+        insts.push_back(new koopa_raw_value_data_t {
+            .ty = koopa_type(KOOPA_RTT_INT32),
+            .name = nullptr,
+            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_RETURN,
+                .data.ret = {
+                    .value = value
+                }
+            }
+        });
+    }
+
     koopa_raw_function_t get_function() {
         _save_basic_block();
 

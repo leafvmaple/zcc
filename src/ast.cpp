@@ -71,9 +71,7 @@ koopa_raw_value_t BlockItemAST::ToKoopa(KoopaEnv* env) {
 
 llvm::Value* StmtAST::Codegen(LLVMParams* params) {
     if (type == Type::Assign) {
-        auto* lvalVal = expr1->Codegen(params);
-        auto* initVal = expr2->Codegen(params);
-        params->Builder.CreateStore(initVal, lvalVal);
+        params->Builder.CreateStore(expr2->Codegen(params), expr1->Codegen(params));
     } else if (type == Type::Expr) {
         if (expr1)
             expr1->Codegen(params);
@@ -113,18 +111,7 @@ llvm::Value* StmtAST::Codegen(LLVMParams* params) {
 
 koopa_raw_value_t StmtAST::ToKoopa(KoopaEnv* env) {
     if (type == Type::Assign) {
-        return env->create_inst(new koopa_raw_value_data_t {
-            .ty = koopa_type(KOOPA_RTT_INT32),
-            .name = nullptr,
-            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-            .kind = {
-                .tag = KOOPA_RVT_STORE,
-                .data.store = {
-                    .value = expr2->ToKoopa(env),
-                    .dest = expr1->ToKoopa(env),
-                }
-            }
-        });
+        env->create_store(expr2->ToKoopa(env), expr1->ToKoopa(env));
     } else if (type == Type::Expr) {
         return expr1->ToKoopa(env);
     } else if (type == Type::Block) {
@@ -132,17 +119,7 @@ koopa_raw_value_t StmtAST::ToKoopa(KoopaEnv* env) {
     } else if (type == Type::If) {
         return nullptr;
     } else if (type == Type::Ret) {
-        return env->create_inst(new koopa_raw_value_data_t {
-            .ty = koopa_type(KOOPA_RTT_INT32),
-            .name = nullptr,
-            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-            .kind = {
-                .tag = KOOPA_RVT_RETURN,
-                .data.ret = {
-                    .value = expr1->ToKoopa(env)
-                }
-            }
-        });
+        env->create_ret(expr1->ToKoopa(env));
     }
     return nullptr;
 }
@@ -175,21 +152,10 @@ koopa_raw_value_t PrimaryExprAST::ToKoopa(KoopaEnv* env) {
         auto* val = ast->ToKoopa(env);
         auto symbol_type = env->get_symbol_type(val);
         if (symbol_type == SYMBOL::VAR) {
-            return env->create_inst(new koopa_raw_value_data_t {
-                .ty = koopa_type(KOOPA_RTT_INT32),
-                .name = nullptr,
-                .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-                .kind = {
-                    .tag = KOOPA_RVT_LOAD,
-                    .data.load = {
-                        .src = val
-                    }
-                }
-            });
+            return env->create_load(val);
         } else if (symbol_type == SYMBOL::CONST) {
             return val;
         }
-        
     } else if (type == Type::Number) {
         return ast->ToKoopa(env);
     }
