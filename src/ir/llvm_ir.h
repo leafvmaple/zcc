@@ -56,6 +56,8 @@ public:
 
     void* GetInt32(int value);
 
+    bool EndWithTerminator(void* bb);
+
     void AddSymbol(const std::string& name, VAR_TYPE type, void* value);
     void* GetSymbolValue(const std::string& name);
     VAR_TYPE GetSymbolType(void* value);

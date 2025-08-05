@@ -140,6 +140,8 @@ public:
 
     void* GetInt32(int value);
 
+    bool EndWithTerminator(void* bb);
+
     void AddSymbol(const std::string& name, VAR_TYPE type, void* value);
     void* GetSymbolValue(const std::string& name);
     VAR_TYPE GetSymbolType(void* value);
@@ -163,4 +165,6 @@ private:
 
     // std::string bb_name;
     // std::vector<koopa_raw_basic_block_data_t*> bbs;
+
+    void* end_basic_block = nullptr;
 };

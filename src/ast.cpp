@@ -54,7 +54,9 @@ void* StmtAST::Codegen(Env* env) {
 
             env->SetInserPointer(elseBB);
             expr3->Codegen(env);
-            env->CreateBr(endBB);
+            if (!env->EndWithTerminator(elseBB)) {
+                env->CreateBr(endBB);
+            }
         } else {
             endBB = env->CreateBasicBlock("end", func);
             env->CreateCondBr(cond, thenBB, endBB);
@@ -62,7 +64,9 @@ void* StmtAST::Codegen(Env* env) {
         
         env->SetInserPointer(thenBB);
         expr2->Codegen(env);
-        env->CreateBr(endBB);
+        if (!env->EndWithTerminator(thenBB)) {
+            env->CreateBr(endBB);
+        }
 
         env->SetInserPointer(endBB);
 

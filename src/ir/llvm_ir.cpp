@@ -140,6 +140,12 @@ void* LLVMEnv::GetInt32(int value) {
     return llvm::ConstantInt::get((llvm::IntegerType*)GetInt32Type(), value);
 }
 
+bool LLVMEnv::EndWithTerminator(void* bb) {
+    auto* basic_block = (llvm::BasicBlock*)bb;
+    return !basic_block->empty() && 
+           (basic_block->back().isTerminator());
+}
+
 void LLVMEnv::CreateRet(void* value) {
     Builder.CreateRet((llvm::Value*)value);
 }

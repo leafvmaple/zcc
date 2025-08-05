@@ -446,6 +446,14 @@ void* KoopaEnv::GetInt32(int value) {
     };
 }
 
+bool KoopaEnv::EndWithTerminator(void* bb) {
+    auto* basic_block = (zcc_basic_block_data_t*)bb;
+    return !basic_block->insts.empty() && 
+           (basic_block->insts.back()->kind.tag == KOOPA_RVT_BRANCH || 
+            basic_block->insts.back()->kind.tag == KOOPA_RVT_JUMP ||
+            basic_block->insts.back()->kind.tag == KOOPA_RVT_RETURN);
+}
+
 void KoopaEnv::AddSymbol(const std::string& name, VAR_TYPE type, void* value) {
     auto value_t = (koopa_raw_value_t)value;
     locals.back()[name] = value_t;

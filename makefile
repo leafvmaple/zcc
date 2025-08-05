@@ -14,7 +14,7 @@ endif
 CFLAGS := -Wall -std=c11
 CXXFLAGS := -Wall -Wno-register -std=c++17 -gdwarf-4 -Wno-c99-designator -Wno-unused-but-set-variable
 FFLAGS :=
-BFLAGS := -d -Wcounterexamples
+BFLAGS := -d
 LDFLAGS :=
 
 # Debug flags
