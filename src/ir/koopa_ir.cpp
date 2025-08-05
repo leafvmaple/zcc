@@ -21,7 +21,19 @@ KoopaEnv::KoopaEnv() {
 }
 
 koopa_raw_basic_block_t KoopaEnv::_ParseBasicBlock(const zcc_basic_block_data_t& bbs) {
-    bbs.ptr->insts = koopa_slice(KOOPA_RSIK_VALUE, bbs.insts);
+    std::vector<koopa_raw_value_t> insts;
+    bool isTerminator = false;
+    for (const auto& inst : bbs.insts) {
+        if (!isTerminator) {
+            insts.push_back(inst);
+        }
+        if (inst->kind.tag == KOOPA_RVT_RETURN
+            || inst->kind.tag == KOOPA_RVT_BRANCH
+            || inst->kind.tag == KOOPA_RVT_JUMP) {
+            isTerminator = true;
+        }
+    }
+    bbs.ptr->insts = koopa_slice(KOOPA_RSIK_VALUE, insts);
     return bbs.ptr;
 }
 

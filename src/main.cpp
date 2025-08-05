@@ -30,6 +30,7 @@ int main(int argc, const char *argv[]) {
     llvm::raw_os_ostream rawOutFile(outFile);
 
     scanner.ast->Codegen(&llvmParams);
+    llvmParams.CleanUp();
     llvmParams.TheModule.print(llvm::outs(), nullptr);
     llvmParams.TheModule.print(rawOutFile, nullptr);
   }

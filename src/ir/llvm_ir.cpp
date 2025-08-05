@@ -1,9 +1,39 @@
 #include "ir.h"
 #include "llvm_ir.h"
 
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/Scalar/DCE.h"
+#include "llvm/Transforms/Scalar/SimplifyCFG.h"
+#include "llvm/Transforms/Scalar/ADCE.h"
+
 LLVMEnv::LLVMEnv(std::string moduleName)
     : TheModule(std::forward<std::string>(moduleName), TheContext), Builder(TheContext) {
     EnterScope();
+}
+
+void LLVMEnv::CleanUp() {
+#if LLVM_VERSION_MAJOR >= 18
+    llvm::PassBuilder pb;
+    llvm::FunctionAnalysisManager fam;
+    llvm::ModuleAnalysisManager mam;
+    llvm::CGSCCAnalysisManager cgam;
+    llvm::LoopAnalysisManager lam;
+
+    pb.registerModuleAnalyses(mam);
+    pb.registerFunctionAnalyses(fam);
+    pb.registerCGSCCAnalyses(cgam);
+    pb.registerLoopAnalyses(lam);
+    pb.crossRegisterProxies(lam, fam, cgam, mam);
+
+    llvm::FunctionPassManager fpm;
+    fpm.addPass(llvm::ADCEPass());
+    fpm.addPass(llvm::SimplifyCFGPass());
+
+    llvm::ModulePassManager mpm;
+    mpm.addPass(llvm::createModuleToFunctionPassAdaptor(std::move(fpm)));
+
+    mpm.run(TheModule, mam);
+#endif
 }
 
 void LLVMEnv::EnterScope() {

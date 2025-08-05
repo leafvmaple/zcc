@@ -158,13 +158,4 @@ private:
     koopa_program_t program = nullptr;
 
     zcc_value_vec_t* insert_ptr = nullptr;
-
-    // std::string func_name;
-    // koopa_raw_type_t func_type;
-    // std::vector<koopa_raw_function_data_t*> funcs;
-
-    // std::string bb_name;
-    // std::vector<koopa_raw_basic_block_data_t*> bbs;
-
-    void* end_basic_block = nullptr;
 };

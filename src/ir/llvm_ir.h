@@ -15,6 +15,8 @@
 class LLVMEnv : public Env {
 public:
     LLVMEnv(std::string moduleName);
+
+    void CleanUp();
     
     void EnterScope();
     void ExitScope();
