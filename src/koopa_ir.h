@@ -17,8 +17,8 @@ enum class SYMBOL {
 
 typedef std::vector<koopa_raw_value_t> zcc_value_vec_t;
 struct zcc_basic_block_data_t {
-    std::string name;
     zcc_value_vec_t insts;
+    koopa_raw_basic_block_data_t* ptr;
 };
 typedef std::vector<zcc_basic_block_data_t> zcc_basic_block_vec_t;
 struct zcc_function_data_t {
@@ -107,6 +107,9 @@ public:
     void* CreateFunction(void* funcType, const std::string& name);
     void* CreateBasicBlock(const std::string& name, void* func);
 
+    void CreateCondBr(void* cond, void* trueBB, void* falseBB);
+    void CreateBr(void* desc);
+
     void CreateStore(void* value, void* dest);
     void* CreateLoad(void* src);
 
@@ -130,6 +133,12 @@ public:
     void* CreateICmpGE(void* lhs, void* rhs);
 
     void SetInserPointer(void* ptr);
+
+    void* GetFunction();
+
+    void* GetInt32Type();
+
+    void* GetInt32(int value);
 
     void AddSymbol(const std::string& name, VAR_TYPE type, void* value);
     void* GetSymbolValue(const std::string& name);

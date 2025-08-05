@@ -1,7 +1,7 @@
 #include "type.h"
 
-#include "llvm_ir.h"
+#include "ir.h"
 
-llvm::Type* IntType::Codegen(LLVMEnv* params) {
-    return llvm::Type::getInt32Ty(params->TheContext);
+void* IntType::Codegen(Env* env) {
+    return env->GetInt32Type();
 }

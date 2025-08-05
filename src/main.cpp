@@ -35,7 +35,7 @@ int main(int argc, const char *argv[]) {
   }
   else if(mode == "-koopa") {
     KoopaEnv env;
-    scanner.ast->ToKoopa(&env);
+    scanner.ast->Codegen(&env);
 
     env.Dump(output);
     env.Print();

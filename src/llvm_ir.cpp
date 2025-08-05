@@ -46,6 +46,15 @@ void* LLVMEnv::CreateBasicBlock(const std::string& name, void* func) {
     return llvm::BasicBlock::Create(TheContext, name, (llvm::Function*)func);
 }
 
+void LLVMEnv::CreateCondBr(void* cond, void* trueBB, void* falseBB) {
+    auto* logic_cond = CreateICmpNE((llvm::Value*)cond, GetInt32(0));
+    Builder.CreateCondBr((llvm::Value*)logic_cond, (llvm::BasicBlock*)trueBB, (llvm::BasicBlock*)falseBB);
+}
+
+void LLVMEnv::CreateBr(void* desc) {
+    Builder.CreateBr((llvm::BasicBlock*)desc);
+}
+
 void LLVMEnv::CreateStore(void* value, void* dest) {
     Builder.CreateStore((llvm::Value*)value, (llvm::Value*)dest);
 }
@@ -119,6 +128,18 @@ void* LLVMEnv::CreateICmpGE(void* lhs, void* rhs) {
 
 void LLVMEnv::SetInserPointer(void* ptr) {
     Builder.SetInsertPoint((llvm::BasicBlock*)ptr);
+}
+
+void* LLVMEnv::GetFunction() {
+    return Builder.GetInsertBlock()->getParent();
+}
+
+void* LLVMEnv::GetInt32Type() {
+    return llvm::Type::getInt32Ty(TheContext);
+}
+
+void* LLVMEnv::GetInt32(int value) {
+    return llvm::ConstantInt::get((llvm::IntegerType*)GetInt32Type(), value);
 }
 
 void LLVMEnv::CreateRet(void* value) {

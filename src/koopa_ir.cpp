@@ -1,5 +1,7 @@
 #include "koopa_ir.h"
 
+const int VEC_RESERVE_SIZE = 256;
+
 const char* to_string(std::string name) {
     auto* str = new char[name.size() + 1];
     std::copy(name.begin(), name.end(), str);
@@ -15,16 +17,12 @@ const char* to_string(int value) {
 
 KoopaEnv::KoopaEnv() {
     EnterScope();
-    funcs.reserve(256);
+    funcs.reserve(VEC_RESERVE_SIZE);
 }
 
 koopa_raw_basic_block_t KoopaEnv::_ParseBasicBlock(const zcc_basic_block_data_t& bbs) {
-    return new koopa_raw_basic_block_data_t {
-        .name = to_string(bbs.name),
-        .params = koopa_slice(KOOPA_RSIK_VALUE),
-        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-        .insts = koopa_slice(KOOPA_RSIK_VALUE, bbs.insts)
-    };
+    bbs.ptr->insts = koopa_slice(KOOPA_RSIK_VALUE, bbs.insts);
+    return bbs.ptr;
 }
 
 koopa_raw_function_t KoopaEnv::_ParseFunction(const zcc_function_data_t& funcs) {
@@ -104,15 +102,59 @@ void* KoopaEnv::CreateFunction(void* funcType, const std::string& name) {
         .name = "@" + name,
         .type = (koopa_raw_type_t)funcType
     });
+    funcs.back().bbs.reserve(VEC_RESERVE_SIZE);
     return (void*)&funcs.back();
 }
 
 void* KoopaEnv::CreateBasicBlock(const std::string& name, void* func) {
     auto* function = (zcc_function_data_t*)func;
     function->bbs.push_back({
-        .name = "%" + name
+        .ptr = new koopa_raw_basic_block_data_t {
+            .name = to_string("%" + name),
+            .params = koopa_slice(KOOPA_RSIK_VALUE),
+            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+            .insts = koopa_slice(KOOPA_RSIK_VALUE)
+        }
     });
+    function->bbs.back().insts.reserve(VEC_RESERVE_SIZE);
     return (void*)&function->bbs.back();
+}
+
+void KoopaEnv::CreateCondBr(void* cond, void* trueBB, void* falseBB) {
+    auto* true_block = (zcc_basic_block_data_t*)trueBB;
+    auto* false_block = (zcc_basic_block_data_t*)falseBB;
+
+    _CreateInst(new koopa_raw_value_data_t {
+        .ty = koopa_type(KOOPA_RTT_UNIT),
+        .name = nullptr,
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+        .kind = {
+            .tag = KOOPA_RVT_BRANCH,
+            .data.branch = {
+                .cond = (koopa_raw_value_t)cond,
+                .true_bb = true_block->ptr,
+                .false_bb = false_block->ptr,
+                .true_args = koopa_slice(KOOPA_RSIK_VALUE),
+                .false_args = koopa_slice(KOOPA_RSIK_VALUE)
+            }
+        }
+    });
+}
+
+void KoopaEnv::CreateBr(void* desc) {
+    auto* bb = (zcc_basic_block_data_t*)desc;
+    _CreateInst(new koopa_raw_value_data_t {
+        .ty = koopa_type(KOOPA_RTT_UNIT),
+        .name = nullptr,
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+        .kind = {
+            .tag = KOOPA_RVT_JUMP,
+            .data.jump = {
+                .target = bb->ptr,
+                .args = koopa_slice(KOOPA_RSIK_VALUE)
+            }
+        }
+    });
 }
 
 void KoopaEnv::CreateStore(void* value, void* dest) {
@@ -380,6 +422,28 @@ void* KoopaEnv::CreateICmpGE(void* lhs, void* rhs) {
 void KoopaEnv::SetInserPointer(void* ptr) {
     auto* bb = (zcc_basic_block_data_t*)ptr;
     insert_ptr = &bb->insts;
+}
+
+void* KoopaEnv::GetFunction() {
+    return (void*)&funcs.back();
+}
+
+void* KoopaEnv::GetInt32Type() {
+    return (void*)koopa_type(KOOPA_RTT_INT32);
+}
+
+void* KoopaEnv::GetInt32(int value) {
+    return new koopa_raw_value_data_t {
+        .ty = koopa_type(KOOPA_RTT_INT32),
+        .name = nullptr,
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+        .kind = {
+            .tag = KOOPA_RVT_INTEGER,
+            .data.integer = {
+                .value = value
+            }
+        }
+    };
 }
 
 void KoopaEnv::AddSymbol(const std::string& name, VAR_TYPE type, void* value) {

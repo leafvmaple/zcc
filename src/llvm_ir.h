@@ -20,11 +20,13 @@ public:
     void* CreateFunction(void* funcType, const std::string& name);
     void* CreateBasicBlock(const std::string& name, void* func);
 
+    void CreateCondBr(void* cond, void* thenBB, void* elseBB);
+    void CreateBr(void* desc);
+
     void CreateStore(void* value, void* dest);
     void* CreateLoad(void* src);
 
     void CreateRet(void* value);
-    void CreateBasicBlock(const std::string& name);
     
     void* CreateAlloca(void* type, const std::string& name);
 
@@ -44,6 +46,12 @@ public:
     void* CreateICmpGE(void* lhs, void* rhs);
 
     void SetInserPointer(void* ptr);
+
+    void* GetFunction();
+
+    void* GetInt32Type();
+
+    void* GetInt32(int value);
 
     void AddSymbol(const std::string& name, VAR_TYPE type, void* value);
     void* GetSymbolValue(const std::string& name);
