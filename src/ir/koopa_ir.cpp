@@ -446,12 +446,14 @@ void* KoopaEnv::GetInt32(int value) {
     };
 }
 
-bool KoopaEnv::EndWithTerminator(void* bb) {
-    auto* basic_block = (zcc_basic_block_data_t*)bb;
-    return !basic_block->insts.empty() && 
-           (basic_block->insts.back()->kind.tag == KOOPA_RVT_BRANCH || 
-            basic_block->insts.back()->kind.tag == KOOPA_RVT_JUMP ||
-            basic_block->insts.back()->kind.tag == KOOPA_RVT_RETURN);
+bool KoopaEnv::EndWithTerminator() {
+    auto* basic_block = (zcc_value_vec_t*)insert_ptr;
+    if (basic_block->empty()) {
+        return false;
+    }
+    return (basic_block->back()->kind.tag == KOOPA_RVT_BRANCH || 
+            basic_block->back()->kind.tag == KOOPA_RVT_JUMP ||
+            basic_block->back()->kind.tag == KOOPA_RVT_RETURN);
 }
 
 void KoopaEnv::AddSymbol(const std::string& name, VAR_TYPE type, void* value) {

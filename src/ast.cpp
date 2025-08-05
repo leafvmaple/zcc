@@ -54,7 +54,7 @@ void* StmtAST::Codegen(Env* env) {
 
             env->SetInserPointer(elseBB);
             expr3->Codegen(env);
-            if (!env->EndWithTerminator(elseBB)) {
+            if (!env->EndWithTerminator()) {
                 env->CreateBr(endBB);
             }
         } else {
@@ -64,7 +64,7 @@ void* StmtAST::Codegen(Env* env) {
         
         env->SetInserPointer(thenBB);
         expr2->Codegen(env);
-        if (!env->EndWithTerminator(thenBB)) {
+        if (!env->EndWithTerminator()) {
             env->CreateBr(endBB);
         }
 

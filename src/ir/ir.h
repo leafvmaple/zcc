@@ -53,7 +53,7 @@ public:
 
     virtual void* GetInt32(int value) = 0;
 
-    virtual bool EndWithTerminator(void* bb) = 0;
+    virtual bool EndWithTerminator() = 0;
 
     virtual void AddSymbol(const std::string& name, VAR_TYPE type, void* value) = 0;
     virtual void* GetSymbolValue(const std::string& name) = 0;

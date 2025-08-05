@@ -140,7 +140,7 @@ public:
 
     void* GetInt32(int value);
 
-    bool EndWithTerminator(void* bb);
+    bool EndWithTerminator();
 
     void AddSymbol(const std::string& name, VAR_TYPE type, void* value);
     void* GetSymbolValue(const std::string& name);
