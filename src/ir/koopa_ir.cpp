@@ -15,6 +15,12 @@ const char* to_string(int value) {
     return str;
 }
 
+bool _IsTerminator(const koopa_raw_value_t value) {
+    return value->kind.tag == KOOPA_RVT_RETURN
+        || value->kind.tag == KOOPA_RVT_BRANCH
+        || value->kind.tag == KOOPA_RVT_JUMP;
+}
+
 KoopaEnv::KoopaEnv() {
     EnterScope();
     funcs.reserve(VEC_RESERVE_SIZE);
@@ -27,9 +33,7 @@ koopa_raw_basic_block_t KoopaEnv::_ParseBasicBlock(const zcc_basic_block_data_t&
         if (!isTerminator) {
             insts.push_back(inst);
         }
-        if (inst->kind.tag == KOOPA_RVT_RETURN
-            || inst->kind.tag == KOOPA_RVT_BRANCH
-            || inst->kind.tag == KOOPA_RVT_JUMP) {
+        if (_IsTerminator(inst)) {
             isTerminator = true;
         }
     }
@@ -460,12 +464,7 @@ void* KoopaEnv::GetInt32(int value) {
 
 bool KoopaEnv::EndWithTerminator() {
     auto* basic_block = (zcc_value_vec_t*)insert_ptr;
-    if (basic_block->empty()) {
-        return false;
-    }
-    return (basic_block->back()->kind.tag == KOOPA_RVT_BRANCH || 
-            basic_block->back()->kind.tag == KOOPA_RVT_JUMP ||
-            basic_block->back()->kind.tag == KOOPA_RVT_RETURN);
+    return (!basic_block->empty() && _IsTerminator(basic_block->back()));
 }
 
 void KoopaEnv::AddSymbol(const std::string& name, VAR_TYPE type, void* value) {
