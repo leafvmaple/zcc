@@ -7,8 +7,8 @@
 using namespace std;
 
 #include "Scanner.h"
-#include "llvm_ir.h"
-#include "koopa_ir.h"
+#include "ir/llvm_ir.h"
+#include "ir/koopa_ir.h"
 
 #include "llvm/Support/raw_os_ostream.h"
 

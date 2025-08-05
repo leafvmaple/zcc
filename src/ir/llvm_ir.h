@@ -9,6 +9,9 @@
 
 #include <map>
 
+#include "ir.h"
+
+
 class LLVMEnv : public Env {
 public:
     LLVMEnv(std::string moduleName);

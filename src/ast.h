@@ -7,7 +7,6 @@
 #include "llvm/IR/Function.h"
 
 #include "type.h"
-#include "koopa_ir.h"
 
 using std::unique_ptr;
 using std::vector;

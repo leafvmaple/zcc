@@ -1,5 +1,5 @@
 #include "ast.h"
-#include "llvm_ir.h"
+#include "ir/ir.h"
 
 void CompUnitAST::AddFuncDef(unique_ptr<FuncDefAST>&& funcDef) {
     this->funcDef.emplace_back(std::move(funcDef));

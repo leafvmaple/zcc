@@ -1,5 +1,3 @@
-#include "ast.h"
-#include "type.h"
 #include "ir.h"
 #include "llvm_ir.h"
 
