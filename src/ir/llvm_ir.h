@@ -37,9 +37,8 @@ public:
     void Print() override;
     void Dump(const char* output) override;
 
-    void* CreateFuncType(void* retType) override;
     void* CreateFuncType(void* retType, std::vector<void*> params) override;
-    void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> params) override;
+    void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> names) override;
     void* CreateBasicBlock(const std::string& name, void* func) override;
 
     void CreateCondBr(void* cond, void* thenBB, void* elseBB) override;
@@ -70,7 +69,7 @@ public:
     void SetInserPointer(void* ptr) override;
 
     void* GetFunction() override;
-    void* GetFunctionArg(int index) override { return nullptr;};
+    void* GetFunctionArg(int index) override;
 
     void* GetInt32Type() override;
     void* GetVoidType() override;

@@ -16,7 +16,8 @@ LLVMEnv::LLVMEnv(std::string moduleName)
 }
 
 void LLVMEnv::Pass() {
-#if LLVM_VERSION_MAJOR >= 18
+// #if LLVM_VERSION_MAJOR >= 18
+#if 0
     llvm::PassBuilder pb;
     llvm::FunctionAnalysisManager fam;
     llvm::ModuleAnalysisManager mam;
@@ -76,10 +77,6 @@ void LLVMEnv::Dump(const char* output) {
     TheModule.print(rawOutFile, nullptr);
 }
 
-void* LLVMEnv::CreateFuncType(void* retType) {
-    return llvm::FunctionType::get((llvm::Type*)retType, false);
-}
-
 void* LLVMEnv::CreateFuncType(void* retType, std::vector<void*> params) {
     auto paramTypes = std::vector<llvm::Type*>();
     for (auto& param : params) {
@@ -88,8 +85,14 @@ void* LLVMEnv::CreateFuncType(void* retType, std::vector<void*> params) {
     return llvm::FunctionType::get((llvm::Type*)retType, paramTypes, false);
 }
 
-void* LLVMEnv::CreateFunction(void* funcType, const std::string& name, std::vector<std::string> params) {
-    return llvm::Function::Create((llvm::FunctionType*)funcType, llvm::Function::ExternalLinkage, name, &TheModule);
+void* LLVMEnv::CreateFunction(void* funcType, const std::string& name, std::vector<std::string> names) {
+    auto func = llvm::Function::Create((llvm::FunctionType*)funcType, llvm::Function::ExternalLinkage, name, &TheModule);
+    auto args = func->arg_begin();
+    for (size_t i = 0; i < names.size(); ++i) {
+        args->setName(names[i]);
+        ++args;
+    }
+    return func;
 }
 
 void* LLVMEnv::CreateBasicBlock(const std::string& name, void* func) {
@@ -182,6 +185,14 @@ void LLVMEnv::SetInserPointer(void* ptr) {
 
 void* LLVMEnv::GetFunction() {
     return Builder.GetInsertBlock()->getParent();
+}
+
+void* LLVMEnv::GetFunctionArg(int index) {
+    auto* func = (llvm::Function*)GetFunction();
+    auto argIt = func->arg_begin();
+    std::advance(argIt, index);
+
+    return (void*)&(*argIt);
 }
 
 void* LLVMEnv::GetInt32Type() {

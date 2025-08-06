@@ -24,9 +24,8 @@ public:
     virtual void* GetWhileEntry() = 0;
     virtual void* GetWhileEnd() = 0;
 
-    virtual void* CreateFuncType(void* retType) = 0;
     virtual void* CreateFuncType(void* retType, std::vector<void*> params) = 0;
-    virtual void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> params) = 0;
+    virtual void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> names) = 0;
     virtual void* CreateBasicBlock(const std::string& name, void* func) = 0;
 
     virtual void CreateCondBr(void* cond, void* trueBB, void* falseBB) = 0;

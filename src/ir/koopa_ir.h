@@ -104,7 +104,6 @@ public:
     void Print() override;
     void Dump(const char* output) override;
 
-    void* CreateFuncType(void* retType) override;
     void* CreateFuncType(void* retType, std::vector<void*> params) override;
     void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> params) override;
     void* CreateBasicBlock(const std::string& name, void* func) override;

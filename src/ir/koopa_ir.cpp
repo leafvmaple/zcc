@@ -78,16 +78,6 @@ void KoopaEnv::Pass() {
     }
 }
 
-void* KoopaEnv::CreateFuncType(void* retType) {
-    return new koopa_raw_type_kind_t {
-        KOOPA_RTT_FUNCTION,
-        .data.function = {
-            .params = koopa_slice(KOOPA_RSIK_TYPE),
-            .ret = (koopa_raw_type_t)retType
-        }
-    };
-}
-
 void* KoopaEnv::CreateFuncType(void* retType, std::vector<void*> params) {
     std::vector<koopa_raw_value_data_t*> byte;
     for (size_t i = 0; i < params.size(); ++i) {
