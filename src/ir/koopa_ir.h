@@ -144,16 +144,16 @@ public:
     VAR_TYPE GetSymbolType(void* value) override;
 
 private:
-    typedef std::vector<koopa_raw_value_t> zcc_value_vec_t;
+    typedef std::vector<koopa_raw_value_t> koopa_inst_vec_t;
     struct zcc_basic_block_data_t {
-        zcc_value_vec_t insts;
+        koopa_inst_vec_t insts;
         koopa_raw_basic_block_data_t* ptr;
     };
     typedef std::vector<zcc_basic_block_data_t> zcc_basic_block_vec_t;
     struct zcc_function_data_t {
         std::string name;
-        koopa_raw_type_t type;
         zcc_basic_block_vec_t bbs;
+        koopa_raw_function_data_t* ptr;
     };
     typedef std::vector<zcc_function_data_t> zcc_function_vec_t;
 
@@ -170,7 +170,7 @@ private:
 
     koopa_raw_program_t* raw_program{};
     koopa_program_t program{};
-    zcc_value_vec_t* insert_ptr{};
+    koopa_inst_vec_t* insert_ptr{};
 
     void* _CreateInst(koopa_raw_value_t value);
     koopa_raw_basic_block_t _ParseBasicBlock(const zcc_basic_block_data_t& bbs);
