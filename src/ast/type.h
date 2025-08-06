@@ -2,10 +2,6 @@
 
 #include <string>
 
-#include "llvm/IR/Function.h"
-
-#include "../libkoopa/include/koopa.h"
-
 using std::string;
 
 class Env;
