@@ -46,16 +46,19 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %type <std::vector<std::unique_ptr<BaseAST>>> BlockItems
 %type <std::vector<std::unique_ptr<DefineAST>>> ConstDefs VarDefs
+%type <std::vector<std::unique_ptr<FuncParamAST>>> FuncParams
+
 %type <std::unique_ptr<BaseAST>> OptExpr
 
 %type <std::unique_ptr<FuncDefAST>> FuncDef
+%type <std::unique_ptr<FuncParamAST>> FuncParam
 
 %type <std::unique_ptr<BaseAST>> MatchedStmt UnmatchedStmt
 %type <std::unique_ptr<BaseAST>> Block BlockItem Stmt Number LVal
 %type <std::unique_ptr<BaseAST>> Expr UnaryExpr PrimaryExpr MulExpr AddExpr RelExpr EqExpr LAndExpr LOrExpr ConstExpr
 %type <std::unique_ptr<BaseAST>> Decl ConstDecl VarDecl
 %type <std::unique_ptr<BaseAST>> ConstInitVal InitVal
-%type <std::unique_ptr<BaseType>> BType
+%type <std::unique_ptr<BaseType>> BasicType
 %type <std::unique_ptr<DefineAST>> ConstDef VarDef
 %type <std::string> UnaryOp MulOp AddOp
 
@@ -65,14 +68,28 @@ CompUnit : | CompUnit FuncDef {
   ctx.ast.AddFuncDef(std::move($2));
 };
 
-FuncDef : BType IDENT '(' ')' Block {
+FuncDef : BasicType IDENT '(' FuncParams ')' Block {
+  $$ = std::make_unique<FuncDefAST>(std::move($1), $2, std::move($4), std::move($6));
+} | BasicType IDENT '(' ')' Block {
   $$ = std::make_unique<FuncDefAST>(std::move($1), $2, std::move($5));
 };
 
-BType : INT {
+BasicType : INT {
   $$ = std::make_unique<IntType>();
 } | VOID {
   $$ = std::make_unique<VoidType>();
+};
+
+FuncParams : FuncParam {
+  $$ = std::vector<std::unique_ptr<FuncParamAST>>();
+  $$.emplace_back(std::move($1));
+} | FuncParams ',' FuncParam {
+  $1.emplace_back(std::move($3));
+  $$ = std::move($1);
+};
+
+FuncParam : BasicType IDENT {
+  $$ = std::make_unique<FuncParamAST>(std::move($1), $2);
 };
 
 Block : '{' BlockItems '}' {
@@ -201,11 +218,11 @@ Decl : ConstDecl {
   $$ = std::make_unique<DeclAST>(std::move($1));
 }
 
-ConstDecl : CONST BType ConstDefs ';' {
+ConstDecl : CONST BasicType ConstDefs ';' {
   $$ = std::make_unique<ConstDeclAST>(std::move($2), std::move($3));
 }
 
-VarDecl : BType VarDefs ';' {
+VarDecl : BasicType VarDefs ';' {
   $$ = std::make_unique<VarDeclAST>(std::move($1), std::move($2));
 }
 

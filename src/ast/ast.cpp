@@ -12,11 +12,26 @@ void CompUnitAST::Codegen(Env* env) {
 }
 
 void FuncDefAST::Codegen(Env* env) {
-    auto* type = env->CreateFuncType(funcType->Codegen(env));
-    auto* func = env->CreateFunction(type, ident);
+    std::vector<void*> paramTypes;
+    std::vector<std::string> paramNames;
+    
+    for (auto& param : params) {
+        paramTypes.push_back(param->btype->Codegen(env));
+        paramNames.push_back(param->ident);
+    }
+
+    auto* type = env->CreateFuncType(funcType->Codegen(env), paramTypes);
+    auto* func = env->CreateFunction(type, ident, paramNames);
     auto* bb = env->CreateBasicBlock("entry", func);
 
     env->SetInserPointer(bb);
+
+    for (size_t i = 0; i < params.size(); ++i) {
+        auto* paramValue = env->GetFunctionArg(i);
+        auto* addr = env->CreateAlloca(params[i]->btype->Codegen(env), params[i]->ident);
+        env->CreateStore(paramValue, addr);
+        env->AddSymbol(params[i]->ident, VAR_TYPE::VAR, addr);
+    }
 
     block->Codegen(env);
 }
@@ -249,4 +264,11 @@ void* LValAST::Codegen(Env* env) {
 
 void* ConstExprAST::Codegen(Env* env) {
     return expr->Codegen(env);
+}
+
+void* FuncParamAST::Codegen(Env* env) {
+    auto* type = btype->Codegen(env);
+    auto* alloca = env->CreateAlloca(type, ident);
+    env->AddSymbol(ident, VAR_TYPE::VAR, alloca);
+    return alloca;  // Return the address of the parameter
 }

@@ -38,7 +38,8 @@ public:
     void Dump(const char* output) override;
 
     void* CreateFuncType(void* retType) override;
-    void* CreateFunction(void* funcType, const std::string& name) override;
+    void* CreateFuncType(void* retType, std::vector<void*> params) override;
+    void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> params) override;
     void* CreateBasicBlock(const std::string& name, void* func) override;
 
     void CreateCondBr(void* cond, void* thenBB, void* elseBB) override;
@@ -69,7 +70,11 @@ public:
     void SetInserPointer(void* ptr) override;
 
     void* GetFunction() override;
+    void* GetFunctionArg(int index) override { return nullptr;};
+
     void* GetInt32Type() override;
+    void* GetVoidType() override;
+
     void* GetInt32(int value) override;
 
     bool EndWithTerminator() override;

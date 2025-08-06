@@ -14,6 +14,7 @@ using std::string;
 
 class Env;
 class FuncDefAST;
+class FuncParamAST;
 
 struct BaseAST {
 public:
@@ -45,11 +46,15 @@ class FuncDefAST {
 public:
     FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, unique_ptr<BaseAST>&& block)
         : funcType(std::move(funcType)), ident(std::move(ident)), block(std::move(block)) {}
+
+    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncParamAST>>&& params, unique_ptr<BaseAST>&& block)
+        : funcType(std::move(funcType)), ident(std::move(ident)), params(std::move(params)), block(std::move(block)) {}
         
     void Codegen(Env* params);
 private:
     unique_ptr<BaseType> funcType;
     string ident;
+    vector<unique_ptr<FuncParamAST>> params;
     unique_ptr<BaseAST> block;
 };
 
@@ -318,4 +323,15 @@ public:
     void* Codegen(Env* params) override;
 private:
     unique_ptr<BaseAST> expr;
+};
+
+class FuncParamAST : public BaseAST {
+public:
+    FuncParamAST(unique_ptr<BaseType>&& btype, string ident)
+        : btype(std::move(btype)), ident(std::move(ident)) {}
+
+    void* Codegen(Env* params) override;
+
+    unique_ptr<BaseType> btype;
+    string ident;
 };

@@ -80,7 +80,15 @@ void* LLVMEnv::CreateFuncType(void* retType) {
     return llvm::FunctionType::get((llvm::Type*)retType, false);
 }
 
-void* LLVMEnv::CreateFunction(void* funcType, const std::string& name) {
+void* LLVMEnv::CreateFuncType(void* retType, std::vector<void*> params) {
+    auto paramTypes = std::vector<llvm::Type*>();
+    for (auto& param : params) {
+        paramTypes.push_back((llvm::Type*)param);
+    }
+    return llvm::FunctionType::get((llvm::Type*)retType, paramTypes, false);
+}
+
+void* LLVMEnv::CreateFunction(void* funcType, const std::string& name, std::vector<std::string> params) {
     return llvm::Function::Create((llvm::FunctionType*)funcType, llvm::Function::ExternalLinkage, name, &TheModule);
 }
 
@@ -178,6 +186,10 @@ void* LLVMEnv::GetFunction() {
 
 void* LLVMEnv::GetInt32Type() {
     return llvm::Type::getInt32Ty(TheContext);
+}
+
+void* LLVMEnv::GetVoidType() {
+    return llvm::Type::getVoidTy(TheContext);
 }
 
 void* LLVMEnv::GetInt32(int value) {

@@ -24,7 +24,8 @@ public:
     virtual void* GetWhileEnd() = 0;
 
     virtual void* CreateFuncType(void* retType) = 0;
-    virtual void* CreateFunction(void* funcType, const std::string& name) = 0;
+    virtual void* CreateFuncType(void* retType, std::vector<void*> params) = 0;
+    virtual void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> params) = 0;
     virtual void* CreateBasicBlock(const std::string& name, void* func) = 0;
 
     virtual void CreateCondBr(void* cond, void* trueBB, void* falseBB) = 0;
@@ -56,7 +57,11 @@ public:
     virtual void SetInserPointer(void* ptr) = 0;
 
     virtual void* GetFunction() = 0;
+    virtual void* GetFunctionArg(int index) = 0;
+
     virtual void* GetInt32Type() = 0;
+    virtual void* GetVoidType() = 0;
+
     virtual void* GetInt32(int value) = 0;
 
     virtual bool EndWithTerminator() = 0;

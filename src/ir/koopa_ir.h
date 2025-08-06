@@ -103,7 +103,8 @@ public:
     void Dump(const char* output) override;
 
     void* CreateFuncType(void* retType) override;
-    void* CreateFunction(void* funcType, const std::string& name) override;
+    void* CreateFuncType(void* retType, std::vector<void*> params) override;
+    void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> params) override;
     void* CreateBasicBlock(const std::string& name, void* func) override;
 
     void CreateCondBr(void* cond, void* trueBB, void* falseBB) override;
@@ -134,7 +135,11 @@ public:
     void SetInserPointer(void* ptr) override;
 
     void* GetFunction() override;
+    void* GetFunctionArg(int index) override;
+
     void* GetInt32Type() override;
+    void* GetVoidType() override;
+
     void* GetInt32(int value) override;
 
     bool EndWithTerminator() override;
@@ -152,6 +157,7 @@ private:
     typedef std::vector<zcc_basic_block_data_t> zcc_basic_block_vec_t;
     struct zcc_function_data_t {
         std::string name;
+        std::vector<koopa_raw_value_data_t*> params;
         zcc_basic_block_vec_t bbs;
         koopa_raw_function_data_t* ptr;
     };

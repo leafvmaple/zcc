@@ -40,6 +40,8 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 {LineComment}   { }
 
 "int"           { return yy::Parser::make_INT(loc); }
+"void"          { return yy::Parser::make_VOID(loc); }
+
 "return"        { return yy::Parser::make_RETURN(loc); }
 "if"            { return yy::Parser::make_IF(loc); }
 "else"          { return yy::Parser::make_ELSE(loc); }
