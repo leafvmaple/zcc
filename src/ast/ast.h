@@ -18,7 +18,6 @@ class FuncDefAST;
 struct BaseAST {
 public:
     virtual ~BaseAST() = default;
-    virtual string ToString() const { return ""; };
     virtual void* Codegen(Env* params) = 0;
 };
 

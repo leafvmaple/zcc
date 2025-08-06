@@ -464,7 +464,7 @@ void* KoopaEnv::GetInt32(int value) {
 
 bool KoopaEnv::EndWithTerminator() {
     auto* basic_block = (zcc_value_vec_t*)insert_ptr;
-    return (!basic_block->empty() && _IsTerminator(basic_block->back()));
+    return !basic_block->empty() && _IsTerminator(basic_block->back());
 }
 
 void KoopaEnv::AddSymbol(const std::string& name, VAR_TYPE type, void* value) {

@@ -93,58 +93,56 @@ class KoopaEnv : public Env {
 public:
     KoopaEnv();
 
-    void EnterScope();
-    void ExitScope();
+    void EnterScope() override;
+    void ExitScope() override;
 
     koopa_raw_basic_block_t _ParseBasicBlock(const zcc_basic_block_data_t& bbs);
     koopa_raw_function_t _ParseFunction(const zcc_function_data_t& funcs);
     int _ParseProgram();
 
-    void Print();
-    void Dump(const char* output);
+    void Print() override;
+    void Dump(const char* output) override;
 
-    void* CreateFuncType(void* retType);
-    void* CreateFunction(void* funcType, const std::string& name);
-    void* CreateBasicBlock(const std::string& name, void* func);
+    void* CreateFuncType(void* retType) override;
+    void* CreateFunction(void* funcType, const std::string& name) override;
+    void* CreateBasicBlock(const std::string& name, void* func) override;
 
-    void CreateCondBr(void* cond, void* trueBB, void* falseBB);
-    void CreateBr(void* desc);
+    void CreateCondBr(void* cond, void* trueBB, void* falseBB) override;
+    void CreateBr(void* desc) override;
 
-    void CreateStore(void* value, void* dest);
-    void* CreateLoad(void* src);
+    void CreateStore(void* value, void* dest) override;
+    void* CreateLoad(void* src) override;
 
-    void CreateRet(void* value);
+    void CreateRet(void* value) override;
 
-    void* CreateAnd(void* lhs, void* rhs);
-    void* CreateOr(void* lhs, void* rhs);
-    void* CreateAdd(void* lhs, void* rhs);
-    void* CreateSub(void* lhs, void* rhs);
-    void* CreateMul(void* lhs, void* rhs);
-    void* CreateDiv(void* lhs, void* rhs);
-    void* CreateMod(void* lhs, void* rhs);
+    void* CreateAnd(void* lhs, void* rhs) override;
+    void* CreateOr(void* lhs, void* rhs) override;
+    void* CreateAdd(void* lhs, void* rhs) override;
+    void* CreateSub(void* lhs, void* rhs) override;
+    void* CreateMul(void* lhs, void* rhs) override;
+    void* CreateDiv(void* lhs, void* rhs) override;
+    void* CreateMod(void* lhs, void* rhs) override;
 
-    void* CreateAlloca(void* type, const std::string& name);
+    void* CreateAlloca(void* type, const std::string& name) override;
 
-    void* CreateICmpNE(void* lhs, void* rhs);
-    void* CreateICmpEQ(void* lhs, void* rhs);
-    void* CreateICmpLT(void* lhs, void* rhs);
-    void* CreateICmpGT(void* lhs, void* rhs);
-    void* CreateICmpLE(void* lhs, void* rhs);
-    void* CreateICmpGE(void* lhs, void* rhs);
+    void* CreateICmpNE(void* lhs, void* rhs) override;
+    void* CreateICmpEQ(void* lhs, void* rhs) override;
+    void* CreateICmpLT(void* lhs, void* rhs) override;
+    void* CreateICmpGT(void* lhs, void* rhs) override;
+    void* CreateICmpLE(void* lhs, void* rhs) override;
+    void* CreateICmpGE(void* lhs, void* rhs) override;
 
-    void SetInserPointer(void* ptr);
+    void SetInserPointer(void* ptr) override;
 
-    void* GetFunction();
+    void* GetFunction() override;
+    void* GetInt32Type() override;
+    void* GetInt32(int value) override;
 
-    void* GetInt32Type();
+    bool EndWithTerminator() override;
 
-    void* GetInt32(int value);
-
-    bool EndWithTerminator();
-
-    void AddSymbol(const std::string& name, VAR_TYPE type, void* value);
-    void* GetSymbolValue(const std::string& name);
-    VAR_TYPE GetSymbolType(void* value);
+    void AddSymbol(const std::string& name, VAR_TYPE type, void* value) override;
+    void* GetSymbolValue(const std::string& name) override;
+    VAR_TYPE GetSymbolType(void* value) override;
 
 private:
     void* _CreateInst(koopa_raw_value_t value);

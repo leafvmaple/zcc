@@ -186,8 +186,7 @@ void* LLVMEnv::GetInt32(int value) {
 
 bool LLVMEnv::EndWithTerminator() {
     auto* basic_block = (llvm::BasicBlock*)Builder.GetInsertBlock();
-    return !basic_block->empty() && 
-           (basic_block->back().isTerminator());
+    return !basic_block->empty() && basic_block->back().isTerminator();
 }
 
 void LLVMEnv::CreateRet(void* value) {

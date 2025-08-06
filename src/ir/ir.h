@@ -51,9 +51,7 @@ public:
     virtual void SetInserPointer(void* ptr) = 0;
 
     virtual void* GetFunction() = 0;
-    
     virtual void* GetInt32Type() = 0;
-
     virtual void* GetInt32(int value) = 0;
 
     virtual bool EndWithTerminator() = 0;
