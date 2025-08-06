@@ -101,7 +101,7 @@ public:
     int _ParseProgram();
 
     void Print();
-    void Dump(const std::string& outfile);
+    void Dump(const char* output);
 
     void* CreateFuncType(void* retType);
     void* CreateFunction(void* funcType, const std::string& name);

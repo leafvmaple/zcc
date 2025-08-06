@@ -6,6 +6,10 @@
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Transforms/Scalar/ADCE.h"
 
+#include "llvm/Support/raw_os_ostream.h"
+
+#include <fstream>
+
 LLVMEnv::LLVMEnv(std::string moduleName)
     : TheModule(std::forward<std::string>(moduleName), TheContext), Builder(TheContext) {
     EnterScope();
@@ -60,6 +64,16 @@ void* LLVMEnv::GetSymbolValue(const std::string& name) {
         }
     }
     return nullptr;
+}
+
+void LLVMEnv::Print() {
+    TheModule.print(llvm::outs(), nullptr);
+}
+
+void LLVMEnv::Dump(const char* output) {
+    std::ofstream outFile(output);
+    llvm::raw_os_ostream rawOutFile(outFile);
+    TheModule.print(rawOutFile, nullptr);
 }
 
 void* LLVMEnv::CreateFuncType(void* retType) {

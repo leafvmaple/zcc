@@ -1,6 +1,5 @@
 #include <cassert>
 #include <cstdio>
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -9,8 +8,6 @@ using namespace std;
 #include "Scanner.h"
 #include "ir/llvm_ir.h"
 #include "ir/koopa_ir.h"
-
-#include "llvm/Support/raw_os_ostream.h"
 
 int main(int argc, const char *argv[]) {
   assert(argc == 5);
@@ -24,15 +21,12 @@ int main(int argc, const char *argv[]) {
   scanner.parse(file, std::make_unique<CompUnitAST>());
 
   if (mode == "-llvm") {
-    LLVMEnv llvmParams(input);
-
-    std::ofstream outFile(output);
-    llvm::raw_os_ostream rawOutFile(outFile);
-
-    scanner.ast->Codegen(&llvmParams);
-    llvmParams.CleanUp();
-    llvmParams.TheModule.print(llvm::outs(), nullptr);
-    llvmParams.TheModule.print(rawOutFile, nullptr);
+    LLVMEnv env(input);
+    scanner.ast->Codegen(&env);
+    
+    env.CleanUp();
+    env.Print();
+    env.Dump(output);
   }
   else if(mode == "-koopa") {
     KoopaEnv env;

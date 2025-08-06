@@ -97,9 +97,9 @@ void KoopaEnv::Print() {
     }
 }
 
-void KoopaEnv::Dump(const std::string& outfile) {
+void KoopaEnv::Dump(const char* output) {
     if (_ParseProgram()) {
-        koopa_dump_to_file(program, outfile.c_str());
+        koopa_dump_to_file(program, output);
     }
 }
 

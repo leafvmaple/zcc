@@ -12,6 +12,9 @@ class Env {
 public:
     virtual ~Env() = default;
 
+    virtual void Print() = 0;
+    virtual void Dump(const char* output) = 0;
+
     virtual void EnterScope() = 0;
     virtual void ExitScope() = 0;
 

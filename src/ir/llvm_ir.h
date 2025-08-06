@@ -21,6 +21,9 @@ public:
     void EnterScope();
     void ExitScope();
 
+    void Print();
+    void Dump(const char* output);
+
     void* CreateFuncType(void* retType);
     void* CreateFunction(void* funcType, const std::string& name);
     void* CreateBasicBlock(const std::string& name, void* func);
