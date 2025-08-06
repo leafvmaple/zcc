@@ -15,8 +15,14 @@ Scanner::~Scanner() {
     yylex_destroy(lexer);
 }
 
-int Scanner::parse(FILE* input, std::unique_ptr<CompUnitAST>&& ast) {
+void Scanner::Parse(FILE* input, Env* env) {
     yyset_in(input, lexer);
-    this->ast = std::move(ast);
-    return parser->parse();
+    int ret = parser->parse();
+    if (ret == 0) {
+        ast.Codegen(env);
+    } else {
+        fprintf(stderr, "Parse error at %s:%d:%d\n",
+                loc->begin.filename ? loc->begin.filename->c_str() : "unknown",
+                loc->begin.line, loc->begin.column);
+    }
 }

@@ -12,16 +12,19 @@ namespace yy {
     class location;
 }
 
+class Env;
+
 class Scanner {
 public:
     Scanner();
     ~Scanner();
 
-    int parse(FILE* input, std::unique_ptr<CompUnitAST>&& ast);
+    void Parse(FILE* input, Env* env);
+    
+    CompUnitAST ast;
 
+private:
     void* lexer;
     std::unique_ptr<yy::Parser> parser;
     std::unique_ptr<yy::location> loc;
-
-    std::unique_ptr<CompUnitAST> ast;
 };

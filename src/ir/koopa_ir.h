@@ -173,7 +173,6 @@ private:
     zcc_value_vec_t* insert_ptr{};
 
     void* _CreateInst(koopa_raw_value_t value);
-
     koopa_raw_basic_block_t _ParseBasicBlock(const zcc_basic_block_data_t& bbs);
     koopa_raw_function_t _ParseFunction(const zcc_function_data_t& funcs);
     int _ParseProgram();
