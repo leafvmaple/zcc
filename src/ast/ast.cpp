@@ -263,7 +263,7 @@ void* ConstExprAST::Codegen(Env* env) {
     return expr->Codegen(env);
 }
 
-void* FuncParamAST::Codegen(Env* env) {
+void* FuncFParamAST::Codegen(Env* env) {
     auto* addr = env->CreateAlloca(btype->Codegen(env), ident);
     env->AddSymbol(ident, VAR_TYPE::VAR, addr);
 

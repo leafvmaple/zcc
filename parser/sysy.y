@@ -46,12 +46,12 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %type <std::vector<std::unique_ptr<BaseAST>>> BlockItems
 %type <std::vector<std::unique_ptr<DefineAST>>> ConstDefs VarDefs
-%type <std::vector<std::unique_ptr<FuncParamAST>>> FuncParams
+%type <std::vector<std::unique_ptr<FuncFParamAST>>> FuncFParams
 
 %type <std::unique_ptr<BaseAST>> OptExpr
 
 %type <std::unique_ptr<FuncDefAST>> FuncDef
-%type <std::unique_ptr<FuncParamAST>> FuncParam
+%type <std::unique_ptr<FuncFParamAST>> FuncFParam
 
 %type <std::unique_ptr<BaseAST>> MatchedStmt UnmatchedStmt
 %type <std::unique_ptr<BaseAST>> Block BlockItem Stmt Number LVal
@@ -68,7 +68,7 @@ CompUnit : | CompUnit FuncDef {
   ctx.ast.AddFuncDef(std::move($2));
 };
 
-FuncDef : BasicType IDENT '(' FuncParams ')' Block {
+FuncDef : BasicType IDENT '(' FuncFParams ')' Block {
   $$ = std::make_unique<FuncDefAST>(std::move($1), $2, std::move($4), std::move($6));
 } | BasicType IDENT '(' ')' Block {
   $$ = std::make_unique<FuncDefAST>(std::move($1), $2, std::move($5));
@@ -80,16 +80,16 @@ BasicType : INT {
   $$ = std::make_unique<VoidType>();
 };
 
-FuncParams : FuncParam {
-  $$ = std::vector<std::unique_ptr<FuncParamAST>>();
+FuncFParams : FuncFParam {
+  $$ = std::vector<std::unique_ptr<FuncFParamAST>>();
   $$.emplace_back(std::move($1));
-} | FuncParams ',' FuncParam {
+} | FuncFParams ',' FuncFParam {
   $1.emplace_back(std::move($3));
   $$ = std::move($1);
 };
 
-FuncParam : BasicType IDENT {
-  $$ = std::make_unique<FuncParamAST>(std::move($1), $2);
+FuncFParam : BasicType IDENT {
+  $$ = std::make_unique<FuncFParamAST>(std::move($1), $2);
 };
 
 Block : '{' BlockItems '}' {

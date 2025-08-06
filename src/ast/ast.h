@@ -14,7 +14,7 @@ using std::string;
 
 class Env;
 class FuncDefAST;
-class FuncParamAST;
+class FuncFParamAST;
 
 struct BaseAST {
 public:
@@ -47,14 +47,14 @@ public:
     FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, unique_ptr<BaseAST>&& block)
         : funcType(std::move(funcType)), ident(std::move(ident)), block(std::move(block)) {}
 
-    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncParamAST>>&& params, unique_ptr<BaseAST>&& block)
+    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncFParamAST>>&& params, unique_ptr<BaseAST>&& block)
         : funcType(std::move(funcType)), ident(std::move(ident)), params(std::move(params)), block(std::move(block)) {}
         
     void Codegen(Env* params);
 private:
     unique_ptr<BaseType> funcType;
     string ident;
-    vector<unique_ptr<FuncParamAST>> params;
+    vector<unique_ptr<FuncFParamAST>> params;
     unique_ptr<BaseAST> block;
 };
 
@@ -325,9 +325,9 @@ private:
     unique_ptr<BaseAST> expr;
 };
 
-class FuncParamAST : public BaseAST {
+class FuncFParamAST : public BaseAST {
 public:
-    FuncParamAST(unique_ptr<BaseType>&& btype, string ident)
+    FuncFParamAST(unique_ptr<BaseType>&& btype, string ident)
         : btype(std::move(btype)), ident(std::move(ident)) {}
 
     void* Codegen(Env* params) override;
