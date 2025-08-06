@@ -26,56 +26,6 @@ KoopaEnv::KoopaEnv() {
     funcs.reserve(VEC_RESERVE_SIZE);
 }
 
-koopa_raw_basic_block_t KoopaEnv::_ParseBasicBlock(const zcc_basic_block_data_t& bbs) {
-    std::vector<koopa_raw_value_t> insts;
-    bool isTerminator = false;
-    for (const auto& inst : bbs.insts) {
-        if (!isTerminator) {
-            insts.push_back(inst);
-        }
-        if (_IsTerminator(inst)) {
-            isTerminator = true;
-        }
-    }
-    bbs.ptr->insts = koopa_slice(KOOPA_RSIK_VALUE, insts);
-    return bbs.ptr;
-}
-
-koopa_raw_function_t KoopaEnv::_ParseFunction(const zcc_function_data_t& funcs) {
-    std::vector<koopa_raw_basic_block_t> bbs;
-    for (const auto& bb : funcs.bbs) {
-        bbs.push_back(_ParseBasicBlock(bb));
-    }
-    return new koopa_raw_function_data_t {
-        .ty = funcs.type,
-        .name = to_string(funcs.name),
-        .params = koopa_slice(KOOPA_RSIK_VALUE),
-        .bbs = koopa_slice(KOOPA_RSIK_BASIC_BLOCK, bbs)
-    };
-}
-
-int KoopaEnv::_ParseProgram() {
-    if (!funcs.empty()) {
-        std::vector<koopa_raw_function_t> func_vec;
-        for (const auto& func : funcs) {
-            func_vec.push_back(_ParseFunction(func));
-        }
-        raw_program = new koopa_raw_program_t {
-            .values = koopa_slice(KOOPA_RSIK_VALUE),
-            .funcs = koopa_slice(KOOPA_RSIK_FUNCTION, func_vec)
-        };
-        funcs.clear();
-    }
-    if (!program) {
-        auto res = koopa_generate_raw_to_koopa(raw_program, &program);
-        if (res != KOOPA_EC_SUCCESS) {
-            std::cerr << "Error generating Koopa IR: " << res << std::endl;
-            return 0;
-        }
-    }
-    return 1;
-}
-
 void KoopaEnv::EnterScope() {
     locals.push_back({});
     types.push_back({});
@@ -84,11 +34,6 @@ void KoopaEnv::EnterScope() {
 void KoopaEnv::ExitScope() {
     locals.pop_back();
     types.pop_back();
-}
-
-void* KoopaEnv::_CreateInst(koopa_raw_value_t value) {
-    insert_ptr->push_back(value);
-    return (void*)value;
 }
 
 void KoopaEnv::Print() {
@@ -491,4 +436,59 @@ VAR_TYPE KoopaEnv::GetSymbolType(void* value) {
         }
     }
     return VAR_TYPE::VAR;
+}
+
+void* KoopaEnv::_CreateInst(koopa_raw_value_t value) {
+    insert_ptr->push_back(value);
+    return (void*)value;
+}
+
+koopa_raw_basic_block_t KoopaEnv::_ParseBasicBlock(const zcc_basic_block_data_t& bbs) {
+    std::vector<koopa_raw_value_t> insts;
+    bool isTerminator = false;
+    for (const auto& inst : bbs.insts) {
+        if (!isTerminator) {
+            insts.push_back(inst);
+        }
+        if (_IsTerminator(inst)) {
+            isTerminator = true;
+        }
+    }
+    bbs.ptr->insts = koopa_slice(KOOPA_RSIK_VALUE, insts);
+    return bbs.ptr;
+}
+
+koopa_raw_function_t KoopaEnv::_ParseFunction(const zcc_function_data_t& funcs) {
+    std::vector<koopa_raw_basic_block_t> bbs;
+    for (const auto& bb : funcs.bbs) {
+        bbs.push_back(_ParseBasicBlock(bb));
+    }
+    return new koopa_raw_function_data_t {
+        .ty = funcs.type,
+        .name = to_string(funcs.name),
+        .params = koopa_slice(KOOPA_RSIK_VALUE),
+        .bbs = koopa_slice(KOOPA_RSIK_BASIC_BLOCK, bbs)
+    };
+}
+
+int KoopaEnv::_ParseProgram() {
+    if (!funcs.empty()) {
+        std::vector<koopa_raw_function_t> func_vec;
+        for (const auto& func : funcs) {
+            func_vec.push_back(_ParseFunction(func));
+        }
+        raw_program = new koopa_raw_program_t {
+            .values = koopa_slice(KOOPA_RSIK_VALUE),
+            .funcs = koopa_slice(KOOPA_RSIK_FUNCTION, func_vec)
+        };
+        funcs.clear();
+    }
+    if (!program) {
+        auto res = koopa_generate_raw_to_koopa(raw_program, &program);
+        if (res != KOOPA_EC_SUCCESS) {
+            std::cerr << "Error generating Koopa IR: " << res << std::endl;
+            return 0;
+        }
+    }
+    return 1;
 }

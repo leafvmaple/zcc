@@ -44,6 +44,9 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 "if"            { return yy::Parser::make_IF(loc); }
 "else"          { return yy::Parser::make_ELSE(loc); }
 "const"         { return yy::Parser::make_CONST(loc); }
+"while"         { return yy::Parser::make_WHILE(loc); }
+"break"         { return yy::Parser::make_BREAK(loc); }
+"continue"      { return yy::Parser::make_CONTINUE(loc); }
 
 "&&"            { return yy::Parser::make_AND(loc); }
 "||"            { return yy::Parser::make_OR(loc); }

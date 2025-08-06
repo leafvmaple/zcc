@@ -36,7 +36,7 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %lex-param {void *scanner} {yy::location& loc}
 %parse-param {void *scanner} {yy::location& loc} { class Scanner& ctx }
 
-%token INT RETURN CONST IF ELSE
+%token INT RETURN CONST IF ELSE WHILE BREAK CONTINUE
 %token AND OR EQ NE LE GE
 %token <std::string> IDENT
 %token <int> INT_CONST
@@ -106,7 +106,13 @@ MatchedStmt :
   $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5), std::move($7));
 } | RETURN Expr ';' {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Ret, std::move($2));
-}
+} | WHILE '(' Expr ')' MatchedStmt {
+  $$ = std::make_unique<StmtAST>(StmtAST::Type::While, std::move($3), std::move($5));
+} | BREAK ';' {
+  $$ = std::make_unique<StmtAST>(StmtAST::Type::Break);
+} | CONTINUE ';' {
+  $$ = std::make_unique<StmtAST>(StmtAST::Type::Continue);
+};
 
 UnmatchedStmt: IF '(' Expr ')' Stmt {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5));

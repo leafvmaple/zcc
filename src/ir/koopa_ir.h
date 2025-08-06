@@ -15,19 +15,6 @@ enum class SYMBOL {
     VAR,
 };
 
-typedef std::vector<koopa_raw_value_t> zcc_value_vec_t;
-struct zcc_basic_block_data_t {
-    zcc_value_vec_t insts;
-    koopa_raw_basic_block_data_t* ptr;
-};
-typedef std::vector<zcc_basic_block_data_t> zcc_basic_block_vec_t;
-struct zcc_function_data_t {
-    std::string name;
-    koopa_raw_type_t type;
-    zcc_basic_block_vec_t bbs;
-};
-typedef std::vector<zcc_function_data_t> zcc_function_vec_t;
-
 class KoopaEnv;
 
 koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind) {
@@ -95,10 +82,22 @@ public:
 
     void EnterScope() override;
     void ExitScope() override;
+    
+    void EnterWhile(void* entry, void* end) override {
+        whiles.push_back({(koopa_raw_basic_block_t)entry, (koopa_raw_basic_block_t)end});
+    }
 
-    koopa_raw_basic_block_t _ParseBasicBlock(const zcc_basic_block_data_t& bbs);
-    koopa_raw_function_t _ParseFunction(const zcc_function_data_t& funcs);
-    int _ParseProgram();
+    void ExitWhile() override {
+        whiles.pop_back();
+    }
+
+    void* GetWhileEntry() override {
+        return (void*)whiles.back().entry;
+    }
+
+    void* GetWhileEnd() override {
+        return (void*)whiles.back().end;
+    }
 
     void Print() override;
     void Dump(const char* output) override;
@@ -145,15 +144,37 @@ public:
     VAR_TYPE GetSymbolType(void* value) override;
 
 private:
-    void* _CreateInst(koopa_raw_value_t value);
+    typedef std::vector<koopa_raw_value_t> zcc_value_vec_t;
+    struct zcc_basic_block_data_t {
+        zcc_value_vec_t insts;
+        koopa_raw_basic_block_data_t* ptr;
+    };
+    typedef std::vector<zcc_basic_block_data_t> zcc_basic_block_vec_t;
+    struct zcc_function_data_t {
+        std::string name;
+        koopa_raw_type_t type;
+        zcc_basic_block_vec_t bbs;
+    };
+    typedef std::vector<zcc_function_data_t> zcc_function_vec_t;
+
+    struct zcc_while_data_t {
+        koopa_raw_basic_block_t entry;
+        koopa_raw_basic_block_t end;
+    };
 
     zcc_function_vec_t funcs;
 
-    std::vector<std::map<std::string, koopa_raw_value_t>> locals;
-    std::vector<std::map<koopa_raw_value_t, VAR_TYPE>> types;
+    std::vector<std::map<std::string, koopa_raw_value_t>> locals{};
+    std::vector<std::map<koopa_raw_value_t, VAR_TYPE>> types{};
+    std::vector<zcc_while_data_t> whiles{};
 
-    koopa_raw_program_t* raw_program = nullptr;
-    koopa_program_t program = nullptr;
+    koopa_raw_program_t* raw_program{};
+    koopa_program_t program{};
+    zcc_value_vec_t* insert_ptr{};
 
-    zcc_value_vec_t* insert_ptr = nullptr;
+    void* _CreateInst(koopa_raw_value_t value);
+
+    koopa_raw_basic_block_t _ParseBasicBlock(const zcc_basic_block_data_t& bbs);
+    koopa_raw_function_t _ParseFunction(const zcc_function_data_t& funcs);
+    int _ParseProgram();
 };

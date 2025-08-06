@@ -21,6 +21,19 @@ public:
     void EnterScope() override;
     void ExitScope() override;
 
+    void EnterWhile(void* entry, void* end) override {
+        whiles.push_back({(llvm::BasicBlock*)entry, (llvm::BasicBlock*)end});
+    }
+    void ExitWhile() override {
+        whiles.pop_back();
+    }
+    void* GetWhileEntry() override {
+        return (void*)whiles.back().entry;
+    }
+    void* GetWhileEnd() override { 
+        return (void*)whiles.back().end;
+    }
+
     void Print() override;
     void Dump(const char* output) override;
 
@@ -66,10 +79,16 @@ public:
     VAR_TYPE GetSymbolType(void* value) override;
 
 private:
+    struct while_data_t {
+        llvm::BasicBlock* entry;
+        llvm::BasicBlock* end;
+    };
+
     llvm::LLVMContext TheContext;
     llvm::Module TheModule;
     llvm::IRBuilder<llvm::NoFolder, llvm::IRBuilderDefaultInserter> Builder;
 
     std::vector<std::map<std::string, llvm::Value*>> locals;
     std::vector<std::map<llvm::Value*, VAR_TYPE>> types;
+    std::vector<while_data_t> whiles;
 };

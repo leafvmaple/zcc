@@ -18,6 +18,11 @@ public:
     virtual void EnterScope() = 0;
     virtual void ExitScope() = 0;
 
+    virtual void EnterWhile(void* entry, void* end) = 0;
+    virtual void ExitWhile() = 0;
+    virtual void* GetWhileEntry() = 0;
+    virtual void* GetWhileEnd() = 0;
+
     virtual void* CreateFuncType(void* retType) = 0;
     virtual void* CreateFunction(void* funcType, const std::string& name) = 0;
     virtual void* CreateBasicBlock(const std::string& name, void* func) = 0;

@@ -69,6 +69,30 @@ void* StmtAST::Codegen(Env* env) {
 
     } else if (type == Type::Ret) {
         env->CreateRet(expr1->Codegen(env));
+    } else if (type == Type::While) {
+        void* func = env->GetFunction();
+        void* condBB = env->CreateBasicBlock("while_entry", func);
+        void* bodyBB = env->CreateBasicBlock("while_body", func);
+        void* endBB = env->CreateBasicBlock("end", func);
+
+        env->EnterWhile(condBB, endBB);
+
+        env->CreateBr(condBB);
+        env->SetInserPointer(condBB);
+
+        env->CreateCondBr(expr1->Codegen(env), bodyBB, endBB);
+
+        env->SetInserPointer(bodyBB);
+        expr2->Codegen(env);
+        env->CreateBr(condBB);
+
+        env->SetInserPointer(endBB);
+
+        env->ExitWhile();
+    } else if (type == Type::Break) {
+        env->CreateBr(env->GetWhileEnd());
+    } else if (type == Type::Continue) {
+        env->CreateBr(env->GetWhileEntry());
     }
 
     return nullptr;  // Assignment does not return a value

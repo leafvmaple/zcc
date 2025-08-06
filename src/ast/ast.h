@@ -71,6 +71,9 @@ public:
         Block,
         If,
         Ret,
+        While,
+        Break,
+        Continue,
     };
     StmtAST(Type type)
         : type(type) {};
