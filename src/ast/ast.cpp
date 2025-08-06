@@ -147,6 +147,13 @@ void* UnaryExprAST::Codegen(Env* env) {
         } else if (op == "!") {
             return env->CreateICmpEQ(expr->Codegen(env), NumberAST(0).Codegen(env));
         }
+    } else if (type == Type::Call) {
+        // std::vector<void*> values;
+        // auto* func = env->GetSymbolValue(ident);
+        // for (auto& arg : args) {
+        //     values.push_back(arg->Codegen(env));
+        // }
+        // return env->CreateCall(func, values);
     }
     return nullptr;  // Should not reach here
 }

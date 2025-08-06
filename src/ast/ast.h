@@ -138,10 +138,15 @@ class UnaryExprAST : public BaseAST {
 public:
     enum class Type {
         Primary,
-        Unary
+        Unary,
+        Call
     };
     UnaryExprAST(Type type, unique_ptr<BaseAST>&& expr)
         : type(type), expr(std::move(expr)) {}
+        UnaryExprAST(Type type, string ident)
+        : type(type), ident(std::move(ident)) {}
+    UnaryExprAST(Type type, string ident, vector<unique_ptr<BaseAST>>&& args)
+        : type(type), ident(std::move(ident)), args(std::move(args)) {}
     UnaryExprAST(Type type, string op, unique_ptr<BaseAST>&& expr)
         : type(type), op(std::move(op)), expr(std::move(expr)) {}
 
@@ -149,7 +154,9 @@ public:
 private:
     Type type;
     string op;
+    string ident;
     unique_ptr<BaseAST> expr;
+    vector<unique_ptr<BaseAST>> args;
 };
 
 class MulExprAST : public BaseAST {
@@ -334,4 +341,14 @@ public:
 
     unique_ptr<BaseType> btype;
     string ident;
+};
+
+class FuncRParamAST : public BaseAST {
+public:
+    FuncRParamAST(unique_ptr<BaseAST>&& expr)
+        : expr(std::move(expr)) {}
+
+    void* Codegen(Env* params) override;
+private:
+    unique_ptr<BaseAST> expr;
 };

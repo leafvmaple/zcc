@@ -44,7 +44,7 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %token END 0
 
-%type <std::vector<std::unique_ptr<BaseAST>>> BlockItems
+%type <std::vector<std::unique_ptr<BaseAST>>> BlockItems FuncRParams
 %type <std::vector<std::unique_ptr<DefineAST>>> ConstDefs VarDefs
 %type <std::vector<std::unique_ptr<FuncFParamAST>>> FuncFParams
 
@@ -166,7 +166,11 @@ UnaryExpr : PrimaryExpr {
   $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Primary, std::move($1));
 } | UnaryOp UnaryExpr {
   $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Unary, $1, std::move($2));
-};
+} | IDENT '(' ')' {
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Call, $1);
+} | IDENT '(' FuncRParams ')' {
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Call, $1, std::move($3));
+}
 
 MulExpr : UnaryExpr {
   $$ = std::make_unique<MulExprAST>(std::move($1));
@@ -266,6 +270,14 @@ LVal : IDENT {
 
 ConstExpr : Expr {
   $$ = std::make_unique<ConstExprAST>(std::move($1));
+}
+
+FuncRParams : Expr {
+  $$ = std::vector<std::unique_ptr<BaseAST>>();
+  $$.emplace_back(std::move($1));
+} | FuncRParams Expr {
+  $1.emplace_back(std::move($2));
+  $$ = std::move($1);
 }
 
 UnaryOp : '+'  {
