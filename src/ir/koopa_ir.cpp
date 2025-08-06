@@ -48,6 +48,36 @@ void KoopaEnv::Dump(const char* output) {
     }
 }
 
+void KoopaEnv::Pass() {
+    for (auto& func : funcs) {
+        bool isEmpty = true;
+        for (auto& bb : func.bbs) {
+            std::vector<koopa_raw_value_t> insts;
+            bool isTerminator = false;
+            for (const auto& inst : bb.insts) {
+                if (!isTerminator) {
+                    insts.push_back(inst);
+                    isEmpty = false;
+                }
+                if (_IsTerminator(inst)) {
+                    isTerminator = true;
+                }
+            }
+            std::swap(bb.insts, insts);
+        }
+        if (isEmpty) {
+            func.bbs.back().insts.push_back(new koopa_raw_value_data_t {
+                .ty = koopa_type(KOOPA_RTT_UNIT),
+                .name = nullptr,
+                .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+                .kind = {
+                    .tag = KOOPA_RVT_RETURN
+                }
+            });
+        }
+    }
+}
+
 void* KoopaEnv::CreateFuncType(void* retType) {
     return new koopa_raw_type_kind_t {
         KOOPA_RTT_FUNCTION,
@@ -496,17 +526,7 @@ void* KoopaEnv::_CreateInst(koopa_raw_value_t value) {
 }
 
 koopa_raw_basic_block_t KoopaEnv::_ParseBasicBlock(const zcc_basic_block_data_t& bbs) {
-    std::vector<koopa_raw_value_t> insts;
-    bool isTerminator = false;
-    for (const auto& inst : bbs.insts) {
-        if (!isTerminator) {
-            insts.push_back(inst);
-        }
-        if (_IsTerminator(inst)) {
-            isTerminator = true;
-        }
-    }
-    bbs.ptr->insts = koopa_slice(KOOPA_RSIK_VALUE, insts);
+    bbs.ptr->insts = koopa_slice(KOOPA_RSIK_VALUE, bbs.insts);
     return bbs.ptr;
 }
 

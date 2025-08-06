@@ -27,7 +27,7 @@ int main(int argc, const char *argv[]) {
 
   scanner.Parse(file, env);
 
-  // env->CleanUp();
+  env->Pass();
   env->Dump(output);
   env->Print();
 

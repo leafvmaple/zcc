@@ -15,7 +15,7 @@ LLVMEnv::LLVMEnv(std::string moduleName)
     EnterScope();
 }
 
-void LLVMEnv::CleanUp() {
+void LLVMEnv::Pass() {
 #if LLVM_VERSION_MAJOR >= 18
     llvm::PassBuilder pb;
     llvm::FunctionAnalysisManager fam;

@@ -80,6 +80,8 @@ class KoopaEnv : public Env {
 public:
     KoopaEnv();
 
+    void Pass() override;
+
     void EnterScope() override;
     void ExitScope() override;
     
