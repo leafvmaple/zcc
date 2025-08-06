@@ -36,7 +36,8 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %lex-param {void *scanner} {yy::location& loc}
 %parse-param {void *scanner} {yy::location& loc} { class Scanner& ctx }
 
-%token INT RETURN CONST IF ELSE WHILE BREAK CONTINUE
+%token INT VOID
+%token RETURN CONST IF ELSE WHILE BREAK CONTINUE
 %token AND OR EQ NE LE GE
 %token <std::string> IDENT
 %token <int> INT_CONST
@@ -60,8 +61,8 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %%
 
-CompUnit : FuncDef {
-  ctx.ast.AddFuncDef(std::move($1));
+CompUnit : | CompUnit FuncDef {
+  ctx.ast.AddFuncDef(std::move($2));
 };
 
 FuncDef : BType IDENT '(' ')' Block {
@@ -70,6 +71,8 @@ FuncDef : BType IDENT '(' ')' Block {
 
 BType : INT {
   $$ = std::make_unique<IntType>();
+} | VOID {
+  $$ = std::make_unique<VoidType>();
 };
 
 Block : '{' BlockItems '}' {
