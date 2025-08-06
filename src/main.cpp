@@ -5,7 +5,7 @@
 
 using namespace std;
 
-#include "Scanner.h"
+#include "scanner/scanner.h"
 #include "ir/llvm_ir.h"
 #include "ir/koopa_ir.h"
 

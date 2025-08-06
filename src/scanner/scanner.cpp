@@ -1,4 +1,4 @@
-#include "Scanner.h"
+#include "scanner.h"
 
 #include "sysy.tab.hpp"
 #include "sysy.lex.hpp"

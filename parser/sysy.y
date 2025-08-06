@@ -14,7 +14,7 @@
 %code requires {
   #include <memory>
   #include <string>
-  #include "Scanner.h"
+  #include "scanner/scanner.h"
 }
 
 %code

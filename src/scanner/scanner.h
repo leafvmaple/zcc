@@ -4,8 +4,8 @@
 #include <string>
 #include <memory>
 
-#include "ast.h"
-#include "type.h"
+#include "ast/ast.h"
+#include "ast/type.h"
 
 namespace yy {
     class Parser;

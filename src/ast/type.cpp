@@ -1,6 +1,6 @@
-#include "type.h"
+#include "ir/ir.h"
 
-#include "ir.h"
+#include "type.h"
 
 void* IntType::Codegen(Env* env) {
     return env->GetInt32Type();
