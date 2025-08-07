@@ -113,7 +113,7 @@ void LLVMEnv::CreateStore(void* value, void* dest) {
     Builder.CreateStore((llvm::Value*)value, (llvm::Value*)dest);
 }
 
-void* LLVMEnv::CreateLoad(void* src) {
+llvm::Value* LLVMEnv::CreateLoad(void* src) {
     // TODO
     return Builder.CreateLoad(llvm::Type::getInt32Ty(TheContext), (llvm::Value*)src);
 }

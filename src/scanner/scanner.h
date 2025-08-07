@@ -12,14 +12,13 @@ namespace yy {
     class location;
 }
 
-class Env;
-
 class Scanner {
 public:
     Scanner();
     ~Scanner();
 
-    void Parse(FILE* input, Env* env);
+    template<typename V>
+    void Parse(FILE* input, Env<V>* env);
     
     CompUnitAST ast;
 

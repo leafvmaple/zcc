@@ -3,9 +3,10 @@
 #include "ast/ast.h"
 #include "ir/ir.h"
 
+template<typename V>
 class Generator {
 public:
-    Generator(Env *env) : env(env) {};
+    Generator(Env<V> *env) : env(env) {};
 
     void Generate(CompUnitAST& ast) {
         for (auto&& funcDef : ast.funcDefs) {
@@ -142,8 +143,8 @@ public:
     }
     void* Generate(LOrExprAST* lorExpr) {
         if (lorExpr->left) {
-            auto lg1 = env->CreateICmpNE(Generate(lorExpr->left.get()), NumberAST(0).Codegen(env));
-            auto lg2 = env->CreateICmpNE(Generate(lorExpr->right.get()), NumberAST(0).Codegen(env));
+            auto lg1 = env->CreateICmpNE(Generate(lorExpr->left.get()), env->GetInt32(0));
+            auto lg2 = env->CreateICmpNE(Generate(lorExpr->right.get()), env->GetInt32(0));
 
             return env->CreateOr(lg1, lg2);
         }
@@ -151,8 +152,8 @@ public:
     }
     void* Generate(LAndExprAST* landExpr) {
         if (landExpr->left) {
-            auto lg1 = env->CreateICmpNE(Generate(landExpr->left.get()), NumberAST(0).Codegen(env));
-            auto lg2 = env->CreateICmpNE(Generate(landExpr->right.get()), NumberAST(0).Codegen(env));
+            auto lg1 = env->CreateICmpNE(Generate(landExpr->left.get()), env->GetInt32(0));
+            auto lg2 = env->CreateICmpNE(Generate(landExpr->right.get()), env->GetInt32(0));
 
             return env->CreateAnd(lg1, lg2);
         }
@@ -265,5 +266,5 @@ public:
     }
 
 private:
-    Env* env;
+    Env<V>* env;
 };

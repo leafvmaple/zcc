@@ -128,7 +128,8 @@ void* KoopaEnv::CreateFunction(void* funcType, const std::string& name, std::vec
     }
     func.bbs.reserve(VEC_RESERVE_SIZE);
     AddSymbol(name, VAR_TYPE::FUNC, func.ptr);
-    return (void*)&funcs.emplace_back(func);
+    funcs.emplace_back(func);
+    return (void*)&funcs.back();
 }
 
 void* KoopaEnv::CreateBasicBlock(const std::string& name, void* func) {
@@ -197,8 +198,8 @@ void KoopaEnv::CreateStore(void* value, void* dest) {
     });
 }
 
-void* KoopaEnv::CreateLoad(void* src) {
-    return _CreateInst(new koopa_raw_value_data_t {
+koopa_raw_value_data_t* KoopaEnv::CreateLoad(void* src) {
+    return (koopa_raw_value_data_t*)_CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),

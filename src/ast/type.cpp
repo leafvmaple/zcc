@@ -2,9 +2,13 @@
 
 #include "type.h"
 
+#include "llvm/IR/Value.h"
+#include "../libkoopa/include/koopa.h"
+
 #include <cassert>
 
-void* BaseType::Codegen(Env* env) {
+template<typename V>
+void* BaseType::Codegen(Env<V>* env) {
     switch (type) {
         case TYPE::INT:
             return env->GetInt32Type();
@@ -15,3 +19,6 @@ void* BaseType::Codegen(Env* env) {
             return nullptr;
     }
 }
+
+template void* BaseType::Codegen<llvm::Value>(Env<llvm::Value>* env);
+template void* BaseType::Codegen<koopa_raw_value_data>(Env<koopa_raw_value_data>* env);

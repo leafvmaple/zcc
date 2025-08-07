@@ -76,9 +76,10 @@ koopa_raw_value_t inline koopa_int(int value) {
 const char* to_string(std::string name);
 const char* to_string(int value);
 
-class KoopaEnv : public Env {
+class KoopaEnv : public Env<koopa_raw_value_data_t> {
 public:
     KoopaEnv();
+    KoopaEnv(std::string input) : KoopaEnv() {}
 
     void Pass() override;
 
@@ -112,7 +113,7 @@ public:
     void CreateBr(void* desc) override;
 
     void CreateStore(void* value, void* dest) override;
-    void* CreateLoad(void* src) override;
+    koopa_raw_value_data_t* CreateLoad(void* src) override;
     void CreateRet(void* value) override;
     void* CreateCall(void* func, std::vector<void*> args) override;
 

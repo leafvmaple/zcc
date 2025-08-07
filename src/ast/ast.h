@@ -11,7 +11,6 @@ using std::unique_ptr;
 using std::vector;
 using std::string;
 
-class Env;
 class FuncDefAST;
 class FuncFParamAST;
 class BlockAST;
@@ -133,8 +132,6 @@ public:
 class NumberAST {
 public:
     NumberAST(int value) : value(value) {}
-
-    void* Codegen(Env* params);
 
     int value;
 };

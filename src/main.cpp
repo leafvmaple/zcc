@@ -9,30 +9,31 @@ using namespace std;
 #include "ir/llvm_ir.h"
 #include "ir/koopa_ir.h"
 
+template<typename EnvType>
+void processFile(const char* input, const char* output) {
+    Scanner scanner{};
+    EnvType env(input);
+    
+    auto file = fopen(input, "r");
+    scanner.Parse(file, &env);
+    env.Pass();
+    env.Dump(output);
+    env.Print();
+
+    fclose(file);
+}
+
 int main(int argc, const char *argv[]) {
-  auto mode = std::string(argv[1]);
-  auto input = argv[2];
-  auto output = argv[4];
-  auto file = fopen(input, "r");
+    auto mode = std::string(argv[1]);
+    auto input = argv[2];
+    auto output = argv[4];
 
-  Scanner scanner{};
-  Env* env{};
+    if (mode == "-llvm") {
+        processFile<LLVMEnv>(input, output);
+    }
+    else if(mode == "-koopa") {
+        processFile<KoopaEnv>(input, output);
+    }
 
-  if (mode == "-llvm") {
-    env = new LLVMEnv(input);
-  }
-  else if(mode == "-koopa") {
-    env = new KoopaEnv();
-  }
-
-  scanner.Parse(file, env);
-
-  env->Pass();
-  env->Dump(output);
-  env->Print();
-
-  fclose(file);
-  delete env;
-
-  return 0;
+    return 0;
 }

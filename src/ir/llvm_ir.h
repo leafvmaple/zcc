@@ -12,7 +12,7 @@
 #include "ir.h"
 
 
-class LLVMEnv : public Env {
+class LLVMEnv : public Env<llvm::Value> {
 public:
     LLVMEnv(std::string moduleName);
 
@@ -45,7 +45,7 @@ public:
     void CreateBr(void* desc) override;
 
     void CreateStore(void* value, void* dest) override;
-    void* CreateLoad(void* src) override;
+    llvm::Value* CreateLoad(void* src) override;
     void CreateRet(void* value) override;
     void* CreateCall(void* func, std::vector<void*> args) override;
     

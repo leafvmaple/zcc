@@ -9,6 +9,7 @@ enum class VAR_TYPE {
     FUNC,
 };
 
+template<typename V>
 class Env {
 public:
     virtual ~Env() = default;
@@ -33,7 +34,7 @@ public:
     virtual void CreateBr(void* desc) = 0;
 
     virtual void CreateStore(void* value, void* dest) = 0;
-    virtual void* CreateLoad(void* src) = 0;
+    virtual V* CreateLoad(void* src) = 0;
     virtual void CreateRet(void* value) = 0;
     virtual void* CreateCall(void* func, std::vector<void*> args) = 0;
 
