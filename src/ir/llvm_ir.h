@@ -47,7 +47,7 @@ public:
     void CreateStore(void* value, void* dest) override;
     void* CreateLoad(void* src) override;
     void CreateRet(void* value) override;
-    void* CreateCall(void* func, std::vector<void*> args) override { return nullptr; };
+    void* CreateCall(void* func, std::vector<void*> args) override;
     
     void* CreateAlloca(void* type, const std::string& name) override;
 

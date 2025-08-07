@@ -92,6 +92,7 @@ void* LLVMEnv::CreateFunction(void* funcType, const std::string& name, std::vect
         args->setName(names[i]);
         ++args;
     }
+    AddSymbol(name, VAR_TYPE::FUNC, (void*)func);
     return func;
 }
 
@@ -214,6 +215,15 @@ bool LLVMEnv::EndWithTerminator() {
 
 void LLVMEnv::CreateRet(void* value) {
     Builder.CreateRet((llvm::Value*)value);
+}
+
+void* LLVMEnv::CreateCall(void* func, std::vector<void*> args) {
+    auto* llvmFunc = (llvm::Function*)func;
+    auto argValues = std::vector<llvm::Value*>();
+    for (auto& arg : args) {
+        argValues.push_back((llvm::Value*)arg);
+    }
+    return Builder.CreateCall(llvmFunc, argValues);
 }
 
 VAR_TYPE LLVMEnv::GetSymbolType(void* value) {
