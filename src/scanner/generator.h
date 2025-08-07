@@ -8,11 +8,11 @@ public:
     Generator(Env *env) : env(env) {};
 
     void Generate(CompUnitAST& ast) {
-        for (auto&& funcDef : ast.funcDef) {
-            Generate(std::move(funcDef));
+        for (auto&& funcDef : ast.funcDefs) {
+            Generate(funcDef.get());
         }
     }
-    void Generate(std::unique_ptr<FuncDefAST> funcDef) {
+    void Generate(FuncDefAST* funcDef) {
         std::vector<void*> types;
         std::vector<std::string> names;
         
@@ -28,48 +28,52 @@ public:
         env->SetInserPointer(bb);
 
         for (size_t i = 0; i < funcDef->params.size(); ++i) {
-            env->CreateStore(env->GetFunctionArg(i), funcDef->params[i]->Codegen(env));
+            env->CreateStore(env->GetFunctionArg(i), Generate(funcDef->params[i].get()));
         }
 
-        Generate(std::move(funcDef->block));
+        Generate(funcDef->block.get());
     }
-    void Generate(std::unique_ptr<BlockAST> block) {
+    void Generate(BlockAST* block) {
         env->EnterScope();
         for (auto&& item : block->items)
-            Generate(std::move(item));
+            Generate(item.get());
         env->ExitScope();
     }
-    void Generate(std::unique_ptr<BlockItemAST> item) {
+    void Generate(BlockItemAST* item) {
         if (item->decl) {
-            Generate(std::move(item->decl));
+            Generate(item->decl.get());
         } else if (item->stmt) {
-            Generate(std::move(item->stmt));
+            Generate(item->stmt.get());
         }
     }
-    void Generate(std::unique_ptr<DeclAST> decl) {
-        decl->Codegen(env);
+    void Generate(DeclAST* decl) {
+        if (decl->constDecl) {
+            Generate(decl->constDecl.get());
+        } else if (decl->varDecl) {
+            Generate(decl->varDecl.get());
+        }
     }
-    void Generate(std::unique_ptr<StmtAST> stmt) {
+    void Generate(StmtAST* stmt) {
         if (stmt->type == StmtAST::Type::Assign) {
-            env->CreateStore(stmt->expr2->Codegen(env), stmt->expr1->Codegen(env));
+            env->CreateStore(Generate(stmt->lval.get()), Generate(stmt->expr.get()));
         } else if (stmt->type == StmtAST::Type::Expr) {
-            if (stmt->expr1)
-                stmt->expr1->Codegen(env);
+            if (stmt->expr)
+                Generate(stmt->expr.get());
         } else if (stmt->type == StmtAST::Type::Block) {
-            stmt->block->Codegen(env);
+            Generate(stmt->block.get());
         } else if (stmt->type == StmtAST::Type::If) {
-            auto* cond = stmt->expr1->Codegen(env);
+            auto* cond = Generate(stmt->expr.get());
             auto* func = env->GetFunction();
             auto* thenBB = env->CreateBasicBlock("then", func);
             void* endBB{};
 
-            if (stmt->expr3) {
+            if (stmt->elseStmt) {
                 auto* elseBB = env->CreateBasicBlock("else", func);
                 endBB = env->CreateBasicBlock("end", func);
                 env->CreateCondBr(cond, thenBB, elseBB);
 
                 env->SetInserPointer(elseBB);
-                stmt->expr3->Codegen(env);
+                Generate(stmt->elseStmt.get());
                 env->CreateBr(endBB);
             } else {
                 endBB = env->CreateBasicBlock("end", func);
@@ -77,13 +81,13 @@ public:
             }
             
             env->SetInserPointer(thenBB);
-            stmt->expr2->Codegen(env);
+            Generate(stmt->thenStmt.get());
             env->CreateBr(endBB);
 
             env->SetInserPointer(endBB);
 
         } else if (stmt->type == StmtAST::Type::Ret) {
-            env->CreateRet(stmt->expr1->Codegen(env));
+            Generate(stmt->expr.get());
         } else if (stmt->type == StmtAST::Type::While) {
             void* func = env->GetFunction();
             void* condBB = env->CreateBasicBlock("while_entry", func);
@@ -95,10 +99,10 @@ public:
             env->CreateBr(condBB);
             env->SetInserPointer(condBB);
 
-            env->CreateCondBr(stmt->expr1->Codegen(env), bodyBB, endBB);
+            env->CreateCondBr(Generate(stmt->cond.get()), bodyBB, endBB);
 
             env->SetInserPointer(bodyBB);
-            stmt->expr2->Codegen(env);
+            Generate(stmt->thenStmt.get());
             env->CreateBr(condBB);
 
             env->SetInserPointer(endBB);
@@ -109,6 +113,155 @@ public:
         } else if (stmt->type == StmtAST::Type::Continue) {
             env->CreateBr(env->GetWhileEntry());
         }
+    }
+    void* Generate(ExprAST* expr) {
+        return Generate(expr->lorExpr.get());
+    }
+    void* Generate(PrimaryExprAST* primary) {
+        if (primary->type == PrimaryExprAST::Type::Expr) {
+            return Generate(primary->expr.get());
+        } else if (primary->type == PrimaryExprAST::Type::LVal) {
+            auto* val = Generate(primary->lval.get());
+            auto symbol_type = env->GetSymbolType(val);
+
+            if (symbol_type == VAR_TYPE::VAR) {
+                return env->CreateLoad(val);
+            } else if (symbol_type == VAR_TYPE::CONST) {
+                return val;
+            }
+        } else if (primary->type == PrimaryExprAST::Type::Number) {
+            return Generate(primary->value.get());
+        }
+        return nullptr;  // Should not reach here
+    }
+    void* Generate(NumberAST* number) {
+        return env->GetInt32(number->value);
+    }
+    void* Generate(LValAST* lval) {
+        return env->GetSymbolValue(lval->ident);
+    }
+    void* Generate(LOrExprAST* lorExpr) {
+        if (lorExpr->left) {
+            auto lg1 = env->CreateICmpNE(Generate(lorExpr->left.get()), NumberAST(0).Codegen(env));
+            auto lg2 = env->CreateICmpNE(Generate(lorExpr->right.get()), NumberAST(0).Codegen(env));
+
+            return env->CreateOr(lg1, lg2);
+        }
+        return Generate(lorExpr->landExpr.get());
+    }
+    void* Generate(LAndExprAST* landExpr) {
+        if (landExpr->left) {
+            auto lg1 = env->CreateICmpNE(Generate(landExpr->left.get()), NumberAST(0).Codegen(env));
+            auto lg2 = env->CreateICmpNE(Generate(landExpr->right.get()), NumberAST(0).Codegen(env));
+
+            return env->CreateAnd(lg1, lg2);
+        }
+        return Generate(landExpr->eqExpr.get());
+    }
+    void* Generate(EqExprAST* eqExpr) {
+        if (eqExpr->left) {
+            auto left = Generate(eqExpr->left.get());
+            auto right = Generate(eqExpr->right.get());
+            if (eqExpr->op == EqExprAST::Op::EQ) {
+                return env->CreateICmpEQ(left, right);
+            } else if (eqExpr->op == EqExprAST::Op::NE) {
+                return env->CreateICmpNE(left, right);
+            }
+        }
+        return Generate(eqExpr->relExpr.get());
+    }
+    void* Generate(RelExprAST* relExpr) {
+        if (relExpr->left) {
+            auto left = Generate(relExpr->left.get());
+            auto right = Generate(relExpr->right.get());
+            if (relExpr->op == RelExprAST::Op::LT) {
+                return env->CreateICmpLT(left, right);
+            } else if (relExpr->op == RelExprAST::Op::GT) {
+                return env->CreateICmpGT(left, right);
+            } else if (relExpr->op == RelExprAST::Op::LE) {
+                return env->CreateICmpLE(left, right);
+            } else if (relExpr->op == RelExprAST::Op::GE) {
+                return env->CreateICmpGE(left, right);
+            }
+        }
+        return Generate(relExpr->addExpr.get());
+    }
+    void* Generate(AddExprAST* addExpr) {
+        if (addExpr->left) {
+            auto left = Generate(addExpr->left.get());
+            auto right = Generate(addExpr->right.get());
+            if (addExpr->op == "+") {
+                return env->CreateAdd(left, right);
+            } else if (addExpr->op == "-") {
+                return env->CreateSub(left, right);
+            }
+        }
+        return Generate(addExpr->mulExpr.get());
+    }
+    void* Generate(MulExprAST* mulExpr) {
+        if (mulExpr->left) {
+            auto left = Generate(mulExpr->left.get());
+            auto right = Generate(mulExpr->right.get());
+            if (mulExpr->op == "*") {
+                return env->CreateMul(left, right);
+            } else if (mulExpr->op == "/") {
+                return env->CreateDiv(left, right);
+            } else if (mulExpr->op == "%") {
+                return env->CreateMod(left, right);
+            }
+        }
+        return Generate(mulExpr->unaryExpr.get());
+    }
+    void* Generate(UnaryExprAST* unaryExpr) {
+        if (unaryExpr->type == UnaryExprAST::Type::Primary) {
+            return Generate(unaryExpr->primaryExpr.get());
+        } else if (unaryExpr->type == UnaryExprAST::Type::Unary) {
+            auto expr = Generate(unaryExpr->unaryExpr.get());
+            if (unaryExpr->op == "+") {
+                return expr;  // Unary plus, no change
+            } else if (unaryExpr->op == "-") {
+                return env->CreateSub(env->GetInt32(0), expr);
+            } else if (unaryExpr->op == "!") {
+                return env->CreateICmpEQ(expr, env->GetInt32(0));
+            }
+        } else if (unaryExpr->type == UnaryExprAST::Type::Call) {
+            std::vector<void*> args;
+            for (auto& arg : unaryExpr->callArgs) {
+                args.push_back(Generate(arg.get()));
+            }
+            auto* func = env->GetSymbolValue(unaryExpr->ident);
+            return env->CreateCall(func, args);
+        }
+        return nullptr;  // Should not reach here
+    }
+    void* Generate(FuncFParamAST* param) {
+        auto* addr = env->CreateAlloca(param->btype->Codegen(env), param->ident);
+        env->AddSymbol(param->ident, VAR_TYPE::VAR, addr);
+        return addr;  // Return the address of the parameter
+    }
+    void* Generate(ConstDeclAST* constDecl) {
+        for (auto& def : constDecl->constDefs) {
+            env->AddSymbol(def->ident, VAR_TYPE::CONST, Generate(def->initVal.get()));
+        }
+        return nullptr;  // Const declarations do not return a value
+    }
+    void* Generate(VarDeclAST* varDecl) {
+        for (const auto& def : varDecl->varDefs) {
+            auto* varAddr = env->CreateAlloca(varDecl->btype->Codegen(env), def->ident);
+            if (def->initVal)
+                env->CreateStore(Generate(def->initVal.get()), varAddr);
+            env->AddSymbol(def->ident, VAR_TYPE::VAR, varAddr);
+        }
+        return nullptr;  // Const declarations do not return a value
+    }
+    void* Generate(ConstInitValAST* initVal) {
+        return Generate(initVal->constExpr.get());
+    }
+    void* Generate(InitValAST* initVal) {
+        return Generate(initVal->constExpr.get());
+    }
+    void* Generate(ConstExprAST* constExpr) {
+        return Generate(constExpr->expr.get());
     }
 
 private:

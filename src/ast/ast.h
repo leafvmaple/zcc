@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "llvm/IR/Function.h"
-
 #include "type.h"
 
 using std::unique_ptr;
@@ -18,36 +17,43 @@ class FuncFParamAST;
 class BlockAST;
 class BlockItemAST;
 class StmtAST;
-
-struct BaseAST {
-public:
-    virtual ~BaseAST() = default;
-    virtual void* Codegen(Env* params) = 0;
-};
+class ConstInitValAST;
+class InitValAST;
+class LValAST;
+class NumberAST;
+class ExprAST;
+class LOrExprAST;
+class ConstDeclAST;
+class VarDeclAST;
+class ConstExprAST;
 
 class DefineAST {
 public:
     DefineAST(string ident)
         : ident(std::move(ident)) {}
-    DefineAST(string ident, unique_ptr<BaseAST>&& initVal)
+    DefineAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal)
+        : ident(std::move(ident)), constInitVal(std::move(constInitVal)) {}
+    DefineAST(string ident, unique_ptr<InitValAST>&& initVal)
         : ident(std::move(ident)), initVal(std::move(initVal)) {}
 
     string ident;
-    unique_ptr<BaseAST> initVal;
+    unique_ptr<ConstInitValAST> constInitVal;
+    unique_ptr<InitValAST> initVal;
 };
 
 struct CompUnitAST {
 public:
-    void AddFuncDef(unique_ptr<FuncDefAST>&& funcDef);
+    void AddFuncDef(unique_ptr<FuncDefAST>&& funcDef) {
+        funcDefs.emplace_back(std::move(funcDef));
+    }
 
-    vector<unique_ptr<FuncDefAST>> funcDef;
+    vector<unique_ptr<FuncDefAST>> funcDefs;
 };
 
 class FuncDefAST {
 public:
     FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, unique_ptr<BlockAST>&& block)
         : funcType(std::move(funcType)), ident(std::move(ident)), block(std::move(block)) {}
-
     FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncFParamAST>>&& params, unique_ptr<BlockAST>&& block)
         : funcType(std::move(funcType)), ident(std::move(ident)), params(std::move(params)), block(std::move(block)) {}
 
@@ -59,15 +65,12 @@ public:
 
 class BlockAST {
 public:
-    BlockAST(vector<unique_ptr<BlockItemAST>>&& items)
-        : items(std::move(items)) {}
-
-    void* Codegen(Env* params);
+    BlockAST(vector<unique_ptr<BlockItemAST>>&& items) : items(std::move(items)) {}
 
     vector<unique_ptr<BlockItemAST>> items;
 };
 
-class StmtAST : public BaseAST {
+class StmtAST {
 public:
     enum class Type {
         Assign,
@@ -77,39 +80,39 @@ public:
         Ret,
         While,
         Break,
-        Continue,
+        Continue
     };
+
     StmtAST(Type type)
-        : type(type) {};
-    StmtAST(Type type, unique_ptr<BaseAST>&& expr1)
-        : type(type), expr1(std::move(expr1)) {};
+        : type(type) {}
+    StmtAST(Type type, unique_ptr<ExprAST>&& expr)
+        : type(type), expr(std::move(expr)) {}
     StmtAST(Type type, unique_ptr<BlockAST>&& block)
         : type(type), block(std::move(block)) {}
-    StmtAST(Type type, unique_ptr<BaseAST>&& expr1, unique_ptr<BaseAST>&& expr2)
-        : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)) {}
-    StmtAST(Type type, unique_ptr<BaseAST>&& expr1, unique_ptr<BaseAST>&& expr2, unique_ptr<BaseAST>&& expr3)
-        : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)), expr3(std::move(expr3)) {}
- 
-    void* Codegen(Env* params) override;
+    StmtAST(Type type, unique_ptr<LValAST>&& lval, unique_ptr<ExprAST>&& expr) 
+        : type(type), lval(std::move(lval)), expr(std::move(expr)) {}
+    StmtAST(Type type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt) 
+        : type(type), cond(std::move(cond)), thenStmt(std::move(thenStmt)) {}
+    StmtAST(Type type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt, unique_ptr<StmtAST>&& elseStmt) 
+        : type(type), cond(std::move(cond)), thenStmt(std::move(thenStmt)), elseStmt(std::move(elseStmt)) {}
 
     Type type;
-    unique_ptr<BaseAST> expr1;
-    unique_ptr<BaseAST> expr2;
-    unique_ptr<BaseAST> expr3;
+    unique_ptr<LValAST> lval;
+    unique_ptr<ExprAST> expr;
     unique_ptr<BlockAST> block;
+    unique_ptr<ExprAST> cond;
+    unique_ptr<StmtAST> thenStmt;
+    unique_ptr<StmtAST> elseStmt;
 };
 
-class ExprAST : public BaseAST {
+class ExprAST {
 public:
-    ExprAST(unique_ptr<BaseAST>&& expr)
-        : expr(std::move(expr)) {};
+    ExprAST(unique_ptr<LOrExprAST>&& lorExpr) : lorExpr(std::move(lorExpr)) {}
 
-    void* Codegen(Env* params) override;
-private:
-    unique_ptr<BaseAST> expr;
+    unique_ptr<LOrExprAST> lorExpr;
 };
 
-class PrimaryExprAST : public BaseAST {
+class PrimaryExprAST {
 public:
     enum class Type {
         Expr,
@@ -117,243 +120,203 @@ public:
         Number
     };
 
-    PrimaryExprAST(Type type, unique_ptr<BaseAST>&& ast)
-        : type(type), ast(std::move(ast)) {}
+    PrimaryExprAST(Type type, unique_ptr<ExprAST>&& expr) : type(type), expr(std::move(expr)) {}
+    PrimaryExprAST(Type type, unique_ptr<LValAST>&& lval) : type(type), lval(std::move(lval)) {}
+    PrimaryExprAST(Type type, unique_ptr<NumberAST>&& value) : type(type), value(std::move(value)) {}
 
-    void* Codegen(Env* params) override;
-private:
     Type type;
-    unique_ptr<BaseAST> ast;
+    unique_ptr<ExprAST> expr;
+    unique_ptr<LValAST> lval;
+    unique_ptr<NumberAST> value;
 };
 
-class NumberAST : public BaseAST {
+class NumberAST {
 public:
-    NumberAST(int value)
-        : value(value) {}
+    NumberAST(int value) : value(value) {}
 
-    void* Codegen(Env* params) override;
-private:
+    void* Codegen(Env* params);
+
     int value;
 };
 
-class UnaryExprAST : public BaseAST {
+class UnaryExprAST {
 public:
     enum class Type {
         Primary,
         Unary,
         Call
     };
-    UnaryExprAST(Type type, unique_ptr<BaseAST>&& expr)
-        : type(type), expr(std::move(expr)) {}
-        UnaryExprAST(Type type, string ident)
-        : type(type), ident(std::move(ident)) {}
-    UnaryExprAST(Type type, string ident, vector<unique_ptr<BaseAST>>&& args)
-        : type(type), ident(std::move(ident)), args(std::move(args)) {}
-    UnaryExprAST(Type type, string op, unique_ptr<BaseAST>&& expr)
-        : type(type), op(std::move(op)), expr(std::move(expr)) {}
 
-    void* Codegen(Env* params) override;
-private:
+    UnaryExprAST(Type type, unique_ptr<PrimaryExprAST>&& primaryExpr) 
+        : type(type), primaryExpr(std::move(primaryExpr)) {}
+    UnaryExprAST(Type type, string op, unique_ptr<UnaryExprAST>&& unaryExpr) 
+        : type(type), op(std::move(op)), unaryExpr(std::move(unaryExpr)) {}
+    UnaryExprAST(Type type, string ident) : type(type), ident(std::move(ident)) {}
+    UnaryExprAST(Type type, string ident, vector<unique_ptr<ExprAST>>&& callArgs) 
+        : type(type), ident(std::move(ident)), callArgs(std::move(callArgs)) {}
+
     Type type;
     string op;
     string ident;
-    unique_ptr<BaseAST> expr;
-    vector<unique_ptr<BaseAST>> args;
+    unique_ptr<PrimaryExprAST> primaryExpr;
+    unique_ptr<UnaryExprAST> unaryExpr;
+    vector<unique_ptr<ExprAST>> callArgs;
 };
 
-class MulExprAST : public BaseAST {
+class MulExprAST {
 public:
-    MulExprAST(unique_ptr<BaseAST>&& expr)
-        : expr1(std::move(expr)) {}
-    MulExprAST(unique_ptr<BaseAST>&& left, string op, unique_ptr<BaseAST>&& right)
-        : op(std::move(op)), expr1(std::move(left)), expr2(std::move(right)) {}
+    MulExprAST(unique_ptr<UnaryExprAST>&& unaryExpr)
+        : unaryExpr(std::move(unaryExpr)) {}
+    MulExprAST(unique_ptr<MulExprAST>&& left, string op, unique_ptr<UnaryExprAST>&& right) 
+        : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
 
-    void* Codegen(Env* params) override;
-private:
+    unique_ptr<MulExprAST> left;
     string op;
-    unique_ptr<BaseAST> expr1;
-    unique_ptr<BaseAST> expr2;
+    unique_ptr<UnaryExprAST> unaryExpr;
+    unique_ptr<UnaryExprAST> right;
 };
 
-class AddExprAST : public BaseAST {
+class AddExprAST {
 public:
-    AddExprAST(unique_ptr<BaseAST>&& expr)
-        : expr1(std::move(expr)) {}
-    AddExprAST(unique_ptr<BaseAST>&& left, string op, unique_ptr<BaseAST>&& right)
-        : op(std::move(op)), expr1(std::move(left)), expr2(std::move(right)) {}
+    AddExprAST(unique_ptr<MulExprAST>&& mulExpr) : mulExpr(std::move(mulExpr)) {}
+    AddExprAST(unique_ptr<AddExprAST>&& left, string op, unique_ptr<MulExprAST>&& right) 
+        : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
 
-    void* Codegen(Env* params) override;
-private:
+    unique_ptr<AddExprAST> left;
     string op;
-    unique_ptr<BaseAST> expr1;
-    unique_ptr<BaseAST> expr2;
+    unique_ptr<MulExprAST> mulExpr;
+    unique_ptr<MulExprAST> right;
 };
 
-class RelExprAST : public BaseAST {
+class RelExprAST {
 public:
-    enum class Op {
-        LT,
-        GT,
-        LE,
-        GE,
-    };
-    RelExprAST(unique_ptr<BaseAST>&& expr)
-        : expr1(std::move(expr)) {}
-    RelExprAST(unique_ptr<BaseAST>&& left, Op op, unique_ptr<BaseAST>&& right)
-        : op(std::move(op)), expr1(std::move(left)), expr2(std::move(right)) {}
+    enum class Op { LT, GT, LE, GE };
 
-    void* Codegen(Env* params) override;
-private:
-    Op op;
-    unique_ptr<BaseAST> expr1;
-    unique_ptr<BaseAST> expr2;
-};
-
-class EqExprAST : public BaseAST {
-public:
-    enum class Op {
-        EQ,
-        NE,
-    };
-    EqExprAST(unique_ptr<BaseAST>&& expr)
-        : expr1(std::move(expr)) {}
-    EqExprAST(unique_ptr<BaseAST>&& left, Op op, unique_ptr<BaseAST>&& right)
-        : op(std::move(op)), expr1(std::move(left)), expr2(std::move(right)) {}
-
-    void* Codegen(Env* params) override;
-private:
-    Op op;
-    unique_ptr<BaseAST> expr1;
-    unique_ptr<BaseAST> expr2;
-};
-
-class LAndExprAST : public BaseAST {
-public:
-    LAndExprAST(unique_ptr<BaseAST>&& expr) : expr1(std::move(expr)) {}
-    LAndExprAST(unique_ptr<BaseAST>&& left, unique_ptr<BaseAST>&& right)
-        : expr1(std::move(left)), expr2(std::move(right)) {}
+    RelExprAST(unique_ptr<AddExprAST>&& addExpr)
+        : addExpr(std::move(addExpr)) {}
+    RelExprAST(unique_ptr<RelExprAST>&& left, Op op, unique_ptr<AddExprAST>&& right) 
+        : left(std::move(left)), op(op), right(std::move(right)) {}
     
-    void* Codegen(Env* params) override;
-private:
-    unique_ptr<BaseAST> expr1;
-    unique_ptr<BaseAST> expr2;
+    unique_ptr<AddExprAST> addExpr;
+    unique_ptr<RelExprAST> left;
+    Op op;
+    unique_ptr<AddExprAST> right;
 };
 
-class LOrExprAST : public BaseAST {
+class EqExprAST {
 public:
-    LOrExprAST(unique_ptr<BaseAST>&& expr)
-        : expr1(std::move(expr)) {}
-    LOrExprAST(unique_ptr<BaseAST>&& left, unique_ptr<BaseAST>&& right)
-        : expr1(std::move(left)), expr2(std::move(right)) {}
+    enum class Op { EQ, NE };
 
-    void* Codegen(Env* params) override;
-private:
-    unique_ptr<BaseAST> expr1;
-    unique_ptr<BaseAST> expr2;
+    EqExprAST(unique_ptr<RelExprAST>&& relExpr) : relExpr(std::move(relExpr)) {}
+    EqExprAST(unique_ptr<EqExprAST>&& left, Op op, unique_ptr<RelExprAST>&& right) 
+        : left(std::move(left)), op(op), right(std::move(right)) {}
+
+    
+    unique_ptr<RelExprAST> relExpr;
+    unique_ptr<EqExprAST> left;
+    Op op;
+    unique_ptr<RelExprAST> right;
 };
 
-class DeclAST : public BaseAST {
+class LAndExprAST {
 public:
-    DeclAST(unique_ptr<BaseAST>&& constDecl)
-        : constDecl(std::move(constDecl)) {}
+    LAndExprAST(unique_ptr<EqExprAST>&& eqExpr) : eqExpr(std::move(eqExpr)) {}
+    LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<EqExprAST>&& right) 
+        : left(std::move(left)), right(std::move(right)) {}
 
-    void* Codegen(Env* params) override;
-
-    unique_ptr<BaseAST> constDecl;
+    unique_ptr<LAndExprAST> left;
+    unique_ptr<EqExprAST> eqExpr;
+    unique_ptr<EqExprAST> right;
 };
 
-class ConstDeclAST : public BaseAST {
+class LOrExprAST {
 public:
-    ConstDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<DefineAST>>&& constDef)
-        : btype(std::move(btype)), constDef(std::move(constDef)) {}
+    LOrExprAST(unique_ptr<LAndExprAST>&& landExpr)
+        : landExpr(std::move(landExpr)) {}
+    LOrExprAST(unique_ptr<LOrExprAST>&& left, unique_ptr<LAndExprAST>&& right) 
+        : left(std::move(left)), right(std::move(right)) {}
 
-    void* Codegen(Env* params) override;
-private:
+    unique_ptr<LOrExprAST> left;
+    unique_ptr<LAndExprAST> landExpr;
+    unique_ptr<LAndExprAST> right;
+};
+
+class DeclAST {
+public:
+    DeclAST(unique_ptr<ConstDeclAST>&& constDecl) : constDecl(std::move(constDecl)) {}
+    DeclAST(unique_ptr<VarDeclAST>&& varDecl) : varDecl(std::move(varDecl)) {}
+
+    unique_ptr<ConstDeclAST> constDecl;
+    unique_ptr<VarDeclAST> varDecl;
+};
+
+class ConstDeclAST {
+public:
+    ConstDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<DefineAST>>&& constDefs)
+        : btype(std::move(btype)), constDefs(std::move(constDefs)) {}
+
     unique_ptr<BaseType> btype;
-    vector<unique_ptr<DefineAST>> constDef;
+    vector<unique_ptr<DefineAST>> constDefs;
 };
 
-class VarDeclAST : public BaseAST {
+class VarDeclAST {
 public:
-    VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<DefineAST>>&& localDef)
-        : btype(std::move(btype)), localDef(std::move(localDef)) {}
+    VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<DefineAST>>&& varDefs)
+        : btype(std::move(btype)), varDefs(std::move(varDefs)) {}
 
-    void* Codegen(Env* params) override;
-private:
     unique_ptr<BaseType> btype;
-    vector<unique_ptr<DefineAST>> localDef;
+    vector<unique_ptr<DefineAST>> varDefs;
 };
 
-class ConstInitValAST : public BaseAST {
+class ConstInitValAST {
 public:
-    ConstInitValAST(unique_ptr<BaseAST>&& expr)
-        : expr(std::move(expr)) {}
+    ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr) : constExpr(std::move(constExpr)) {}
 
-    void* Codegen(Env* params) override;
-private:
-    unique_ptr<BaseAST> expr;
+    unique_ptr<ConstExprAST> constExpr;
 };
 
-class InitValAST : public BaseAST {
+class InitValAST {
 public:
-    InitValAST(unique_ptr<BaseAST>&& expr)
-        : expr(std::move(expr)) {}
+    InitValAST(unique_ptr<ConstExprAST>&& constExpr) : constExpr(std::move(constExpr)) {}
 
-    void* Codegen(Env* params) override;
-private:
-    unique_ptr<BaseAST> expr;
+    unique_ptr<ConstExprAST> constExpr;
 };
 
-class BlockItemAST{
+class BlockItemAST {
 public:
-    BlockItemAST(unique_ptr<DeclAST>&& decl)
-        : decl(std::move(decl)) {}
-    BlockItemAST(unique_ptr<StmtAST>&& stmt)
-        : stmt(std::move(stmt)) {}
-
-    void* Codegen(Env* params);
+    BlockItemAST(unique_ptr<DeclAST>&& decl) : decl(std::move(decl)) {}
+    BlockItemAST(unique_ptr<StmtAST>&& stmt) : stmt(std::move(stmt)) {}
 
     unique_ptr<DeclAST> decl;
     unique_ptr<StmtAST> stmt;
 };
 
-class LValAST : public BaseAST {
+class LValAST {
 public:
-    LValAST(string ident)
-        : ident(std::move(ident)) {}
+    LValAST(string ident) : ident(std::move(ident)) {}
 
-    void* Codegen(Env* params) override;
-private:
     string ident;
 };
 
-class ConstExprAST : public BaseAST {
+class ConstExprAST {
 public:
-    ConstExprAST(unique_ptr<BaseAST>&& expr)
-        : expr(std::move(expr)) {}
+    ConstExprAST(unique_ptr<ExprAST>&& expr) : expr(std::move(expr)) {}
 
-    void* Codegen(Env* params) override;
-private:
-    unique_ptr<BaseAST> expr;
+    unique_ptr<ExprAST> expr;
 };
 
-class FuncFParamAST : public BaseAST {
+class FuncFParamAST {
 public:
     FuncFParamAST(unique_ptr<BaseType>&& btype, string ident)
         : btype(std::move(btype)), ident(std::move(ident)) {}
-
-    void* Codegen(Env* params) override;
 
     unique_ptr<BaseType> btype;
     string ident;
 };
 
-class FuncRParamAST : public BaseAST {
+class FuncRParamAST {
 public:
-    FuncRParamAST(unique_ptr<BaseAST>&& expr)
-        : expr(std::move(expr)) {}
+    FuncRParamAST(unique_ptr<ExprAST>&& expr) : expr(std::move(expr)) {}
 
-    void* Codegen(Env* params) override;
-private:
-    unique_ptr<BaseAST> expr;
+    unique_ptr<ExprAST> expr;
 };

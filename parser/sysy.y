@@ -44,11 +44,11 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %token END 0
 
-%type <std::vector<std::unique_ptr<BaseAST>>> FuncRParams
+%type <std::vector<std::unique_ptr<ExprAST>>> FuncRParams
 %type <std::vector<std::unique_ptr<DefineAST>>> ConstDefs VarDefs
 %type <std::vector<std::unique_ptr<FuncFParamAST>>> FuncFParams
 
-%type <std::unique_ptr<BaseAST>> OptExpr
+%type <std::unique_ptr<ExprAST>> OptExpr
 
 %type <std::unique_ptr<FuncDefAST>> FuncDef
 %type <std::unique_ptr<FuncFParamAST>> FuncFParam
@@ -58,11 +58,25 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %type <std::unique_ptr<BlockItemAST>> BlockItem
 %type <std::unique_ptr<DeclAST>> Decl
 %type <std::unique_ptr<StmtAST>> Stmt MatchedStmt UnmatchedStmt
+%type <std::unique_ptr<NumberAST>> Number
+%type <std::unique_ptr<LValAST>> LVal
+%type <std::unique_ptr<ExprAST>> Expr
 
-%type <std::unique_ptr<BaseAST>> Number LVal
-%type <std::unique_ptr<BaseAST>> Expr UnaryExpr PrimaryExpr MulExpr AddExpr RelExpr EqExpr LAndExpr LOrExpr ConstExpr
-%type <std::unique_ptr<BaseAST>> ConstDecl VarDecl
-%type <std::unique_ptr<BaseAST>> ConstInitVal InitVal
+%type <std::unique_ptr<UnaryExprAST>> UnaryExpr
+%type <std::unique_ptr<PrimaryExprAST>> PrimaryExpr
+%type <std::unique_ptr<MulExprAST>> MulExpr
+%type <std::unique_ptr<AddExprAST>> AddExpr
+%type <std::unique_ptr<RelExprAST>> RelExpr
+%type <std::unique_ptr<EqExprAST>> EqExpr
+%type <std::unique_ptr<LAndExprAST>> LAndExpr
+%type <std::unique_ptr<LOrExprAST>> LOrExpr
+%type <std::unique_ptr<ConstExprAST>> ConstExpr
+
+%type <std::unique_ptr<ConstDeclAST>> ConstDecl
+%type <std::unique_ptr<VarDeclAST>> VarDecl
+%type <std::unique_ptr<ConstInitValAST>> ConstInitVal
+%type <std::unique_ptr<InitValAST>> InitVal
+
 %type <std::unique_ptr<BaseType>> BasicType
 %type <std::unique_ptr<DefineAST>> ConstDef VarDef
 %type <std::string> UnaryOp MulOp AddOp
@@ -120,8 +134,7 @@ Stmt : MatchedStmt {
   $$ = std::move($1);
 };
 
-MatchedStmt :
-    LVal '=' Expr ';'{
+MatchedStmt : LVal '=' Expr ';'{
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Assign, std::move($1), std::move($3));
 } | OptExpr ';' {
   $$ = std::make_unique<StmtAST>(StmtAST::Type::Expr, std::move($1));
@@ -146,9 +159,9 @@ UnmatchedStmt: IF '(' Expr ')' Stmt {
 };
 
 OptExpr : Expr {
-  $$ = std::unique_ptr<BaseAST>(std::move($1));
+  $$ = std::move($1);
 } | {
-  $$ = std::unique_ptr<BaseAST>();
+  $$ = std::unique_ptr<ExprAST>();
 };
 
 Expr : LOrExpr {
@@ -278,7 +291,7 @@ ConstExpr : Expr {
 }
 
 FuncRParams : Expr {
-  $$ = std::vector<std::unique_ptr<BaseAST>>();
+  $$ = std::vector<std::unique_ptr<ExprAST>>();
   $$.emplace_back(std::move($1));
 } | FuncRParams Expr {
   $1.emplace_back(std::move($2));
