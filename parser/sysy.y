@@ -75,9 +75,9 @@ FuncDef : BasicType IDENT '(' FuncFParams ')' Block {
 };
 
 BasicType : INT {
-  $$ = std::make_unique<IntType>();
+  $$ = std::make_unique<BaseType>(BaseType::TYPE::INT);
 } | VOID {
-  $$ = std::make_unique<VoidType>();
+  $$ = std::make_unique<BaseType>(BaseType::TYPE::VOID);
 };
 
 FuncFParams : FuncFParam {

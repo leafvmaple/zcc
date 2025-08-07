@@ -2,10 +2,16 @@
 
 #include "type.h"
 
-void* IntType::Codegen(Env* env) {
-    return env->GetInt32Type();
-}
+#include <cassert>
 
-void* VoidType::Codegen(Env* env) {
-    return env->GetVoidType();
+void* BaseType::Codegen(Env* env) {
+    switch (type) {
+        case TYPE::INT:
+            return env->GetInt32Type();
+        case TYPE::VOID:
+            return env->GetVoidType();
+        default:
+            assert(false && "Unknown type");
+            return nullptr;
+    }
 }

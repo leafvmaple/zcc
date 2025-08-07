@@ -8,15 +8,14 @@ class Env;
 class KoopaEnv;
 
 struct BaseType {
-    virtual ~BaseType() = default;
+    enum class TYPE {
+        INT,
+        VOID,
+    };
+    BaseType(TYPE type) : type(type) {}
 
-    virtual void* Codegen(Env* env) = 0;
-};
+    void* Codegen(Env* env);
 
-struct IntType : public BaseType {
-    void* Codegen(Env* env) override;
-};
-
-struct VoidType : public BaseType {
-    void* Codegen(Env* env) override;
+private:
+    TYPE type;
 };
