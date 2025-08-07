@@ -15,6 +15,9 @@ using std::string;
 class Env;
 class FuncDefAST;
 class FuncFParamAST;
+class BlockAST;
+class BlockItemAST;
+class StmtAST;
 
 struct BaseAST {
 public:
@@ -42,26 +45,26 @@ public:
 
 class FuncDefAST {
 public:
-    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, unique_ptr<BaseAST>&& block)
+    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, unique_ptr<BlockAST>&& block)
         : funcType(std::move(funcType)), ident(std::move(ident)), block(std::move(block)) {}
 
-    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncFParamAST>>&& params, unique_ptr<BaseAST>&& block)
+    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncFParamAST>>&& params, unique_ptr<BlockAST>&& block)
         : funcType(std::move(funcType)), ident(std::move(ident)), params(std::move(params)), block(std::move(block)) {}
 
     unique_ptr<BaseType> funcType;
     string ident;
     vector<unique_ptr<FuncFParamAST>> params;
-    unique_ptr<BaseAST> block;
+    unique_ptr<BlockAST> block;
 };
 
-class BlockAST : public BaseAST {
+class BlockAST {
 public:
-    BlockAST(vector<unique_ptr<BaseAST>>&& blocks)
-        : items(std::move(blocks)) {}
+    BlockAST(vector<unique_ptr<BlockItemAST>>&& items)
+        : items(std::move(items)) {}
 
-    void* Codegen(Env* params) override;
-private:
-    vector<unique_ptr<BaseAST>> items;
+    void* Codegen(Env* params);
+
+    vector<unique_ptr<BlockItemAST>> items;
 };
 
 class StmtAST : public BaseAST {
@@ -80,17 +83,20 @@ public:
         : type(type) {};
     StmtAST(Type type, unique_ptr<BaseAST>&& expr1)
         : type(type), expr1(std::move(expr1)) {};
+    StmtAST(Type type, unique_ptr<BlockAST>&& block)
+        : type(type), block(std::move(block)) {}
     StmtAST(Type type, unique_ptr<BaseAST>&& expr1, unique_ptr<BaseAST>&& expr2)
         : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)) {}
     StmtAST(Type type, unique_ptr<BaseAST>&& expr1, unique_ptr<BaseAST>&& expr2, unique_ptr<BaseAST>&& expr3)
         : type(type), expr1(std::move(expr1)), expr2(std::move(expr2)), expr3(std::move(expr3)) {}
  
     void* Codegen(Env* params) override;
-private:
+
     Type type;
     unique_ptr<BaseAST> expr1;
     unique_ptr<BaseAST> expr2;
     unique_ptr<BaseAST> expr3;
+    unique_ptr<BlockAST> block;
 };
 
 class ExprAST : public BaseAST {
@@ -252,7 +258,7 @@ public:
         : constDecl(std::move(constDecl)) {}
 
     void* Codegen(Env* params) override;
-private:
+
     unique_ptr<BaseAST> constDecl;
 };
 
@@ -298,14 +304,17 @@ private:
     unique_ptr<BaseAST> expr;
 };
 
-class BlockItemAST : public BaseAST {
+class BlockItemAST{
 public:
-    BlockItemAST(unique_ptr<BaseAST>&& ast)
-        : ast(std::move(ast)) {}
+    BlockItemAST(unique_ptr<DeclAST>&& decl)
+        : decl(std::move(decl)) {}
+    BlockItemAST(unique_ptr<StmtAST>&& stmt)
+        : stmt(std::move(stmt)) {}
 
-    void* Codegen(Env* params) override;
-private:
-    unique_ptr<BaseAST> ast;
+    void* Codegen(Env* params);
+
+    unique_ptr<DeclAST> decl;
+    unique_ptr<StmtAST> stmt;
 };
 
 class LValAST : public BaseAST {

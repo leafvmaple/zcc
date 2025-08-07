@@ -44,7 +44,7 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %token END 0
 
-%type <std::vector<std::unique_ptr<BaseAST>>> BlockItems FuncRParams
+%type <std::vector<std::unique_ptr<BaseAST>>> FuncRParams
 %type <std::vector<std::unique_ptr<DefineAST>>> ConstDefs VarDefs
 %type <std::vector<std::unique_ptr<FuncFParamAST>>> FuncFParams
 
@@ -53,10 +53,15 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %type <std::unique_ptr<FuncDefAST>> FuncDef
 %type <std::unique_ptr<FuncFParamAST>> FuncFParam
 
-%type <std::unique_ptr<BaseAST>> MatchedStmt UnmatchedStmt
-%type <std::unique_ptr<BaseAST>> Block BlockItem Stmt Number LVal
+%type <std::unique_ptr<BlockAST>> Block
+%type <std::vector<std::unique_ptr<BlockItemAST>>> BlockItems
+%type <std::unique_ptr<BlockItemAST>> BlockItem
+%type <std::unique_ptr<DeclAST>> Decl
+%type <std::unique_ptr<StmtAST>> Stmt MatchedStmt UnmatchedStmt
+
+%type <std::unique_ptr<BaseAST>> Number LVal
 %type <std::unique_ptr<BaseAST>> Expr UnaryExpr PrimaryExpr MulExpr AddExpr RelExpr EqExpr LAndExpr LOrExpr ConstExpr
-%type <std::unique_ptr<BaseAST>> Decl ConstDecl VarDecl
+%type <std::unique_ptr<BaseAST>> ConstDecl VarDecl
 %type <std::unique_ptr<BaseAST>> ConstInitVal InitVal
 %type <std::unique_ptr<BaseType>> BasicType
 %type <std::unique_ptr<DefineAST>> ConstDef VarDef
@@ -103,7 +108,7 @@ BlockItem : Decl {
 }
 
 BlockItems : {
-  $$ = std::vector<std::unique_ptr<BaseAST>>();
+  $$ = std::vector<std::unique_ptr<BlockItemAST>>();
 } | BlockItems BlockItem {
   $1.emplace_back(std::move($2));
   $$ = std::move($1);

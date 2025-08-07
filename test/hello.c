@@ -5,6 +5,7 @@ int half(int x) {
 void f() {}
 
 int main() {
+  int x = 10;
   f();
-  return half(10);
+  return half(x);
 }

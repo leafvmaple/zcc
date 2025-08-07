@@ -16,7 +16,11 @@ void* BlockAST::Codegen(Env* env) {
 }
 
 void* BlockItemAST::Codegen(Env* env) {
-    return ast->Codegen(env);
+    if (decl) {
+        return decl->Codegen(env);
+    } else if (stmt) {
+        return stmt->Codegen(env);
+    }
 }
 
 void* StmtAST::Codegen(Env* env) {
@@ -26,7 +30,7 @@ void* StmtAST::Codegen(Env* env) {
         if (expr1)
             expr1->Codegen(env);
     } else if (type == Type::Block) {
-        expr1->Codegen(env);
+        block->Codegen(env);
     } else if (type == Type::If) {
         auto* cond = expr1->Codegen(env);
         auto* func = env->GetFunction();
