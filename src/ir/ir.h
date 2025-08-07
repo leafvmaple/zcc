@@ -6,6 +6,7 @@
 enum class VAR_TYPE {
     CONST,
     VAR,
+    FUNC,
 };
 
 class Env {
@@ -34,6 +35,7 @@ public:
     virtual void CreateStore(void* value, void* dest) = 0;
     virtual void* CreateLoad(void* src) = 0;
     virtual void CreateRet(void* value) = 0;
+    virtual void* CreateCall(void* func, std::vector<void*> args) = 0;
 
     virtual void* CreateAnd(void* lhs, void* rhs) = 0;
     virtual void* CreateOr(void* lhs, void* rhs) = 0;
@@ -53,7 +55,7 @@ public:
     virtual void* CreateICmpGT(void* lhs, void* rhs) = 0;
     virtual void* CreateICmpLE(void* lhs, void* rhs) = 0;
     virtual void* CreateICmpGE(void* lhs, void* rhs) = 0;
-
+    
     virtual void SetInserPointer(void* ptr) = 0;
 
     virtual void* GetFunction() = 0;

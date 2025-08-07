@@ -113,8 +113,8 @@ public:
 
     void CreateStore(void* value, void* dest) override;
     void* CreateLoad(void* src) override;
-
     void CreateRet(void* value) override;
+    void* CreateCall(void* func, std::vector<void*> args) override;
 
     void* CreateAnd(void* lhs, void* rhs) override;
     void* CreateOr(void* lhs, void* rhs) override;
@@ -169,10 +169,15 @@ private:
         koopa_raw_basic_block_t end;
     };
 
+    union koopa_raw_symobol_data_t {
+        koopa_raw_value_t value;
+        koopa_raw_function_t function;
+    };
+
     zcc_function_vec_t funcs;
 
-    std::vector<std::map<std::string, koopa_raw_value_t>> locals{};
-    std::vector<std::map<koopa_raw_value_t, VAR_TYPE>> types{};
+    std::vector<std::map<std::string, void*>> locals{};
+    std::vector<std::map<void*, VAR_TYPE>> types{};
     std::vector<zcc_while_data_t> whiles{};
 
     koopa_raw_program_t* raw_program{};
