@@ -1,4 +1,5 @@
 #include "scanner.h"
+#include "generator.h"
 
 #include "sysy.tab.hpp"
 #include "sysy.lex.hpp"
@@ -19,7 +20,8 @@ void Scanner::Parse(FILE* input, Env* env) {
     yyset_in(input, lexer);
     int ret = parser->parse();
     if (ret == 0) {
-        ast.Codegen(env);
+        Generator generator(env);
+        generator.Generate(ast);
     } else {
         fprintf(stderr, "Parse error at %s:%d:%d\n",
                 loc->begin.filename ? loc->begin.filename->c_str() : "unknown",

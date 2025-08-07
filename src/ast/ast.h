@@ -37,8 +37,6 @@ struct CompUnitAST {
 public:
     void AddFuncDef(unique_ptr<FuncDefAST>&& funcDef);
 
-    void Codegen(Env* params);
-private:
     vector<unique_ptr<FuncDefAST>> funcDef;
 };
 
@@ -49,9 +47,7 @@ public:
 
     FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncFParamAST>>&& params, unique_ptr<BaseAST>&& block)
         : funcType(std::move(funcType)), ident(std::move(ident)), params(std::move(params)), block(std::move(block)) {}
-        
-    void Codegen(Env* params);
-private:
+
     unique_ptr<BaseType> funcType;
     string ident;
     vector<unique_ptr<FuncFParamAST>> params;

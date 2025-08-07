@@ -6,33 +6,6 @@ void CompUnitAST::AddFuncDef(unique_ptr<FuncDefAST>&& funcDef) {
     this->funcDef.emplace_back(std::move(funcDef));
 }
 
-void CompUnitAST::Codegen(Env* env) {
-    for (auto& func : funcDef)
-        func->Codegen(env);
-}
-
-void FuncDefAST::Codegen(Env* env) {
-    std::vector<void*> types;
-    std::vector<std::string> names;
-    
-    for (auto& param : params) {
-        types.push_back(param->btype->Codegen(env));
-        names.push_back(param->ident);
-    }
-
-    auto* type = env->CreateFuncType(funcType->Codegen(env), types);
-    auto* func = env->CreateFunction(type, ident, names);
-    auto* bb = env->CreateBasicBlock("entry", func);
-
-    env->SetInserPointer(bb);
-
-    for (size_t i = 0; i < params.size(); ++i) {
-        env->CreateStore(env->GetFunctionArg(i), params[i]->Codegen(env));
-    }
-
-    block->Codegen(env);
-}
-
 void* BlockAST::Codegen(Env* env) {
     env->EnterScope();
     for (auto& block : items)
