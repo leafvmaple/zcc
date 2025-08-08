@@ -63,7 +63,6 @@ inline koopa::Type* koopa_pointer(koopa_raw_type_tag_t tag) {
 koopa_raw_value_t inline koopa_int(int value) {
     return new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_INTEGER,
@@ -116,8 +115,9 @@ public:
     void CreateBr(koopa::BasicBlock* desc) override;
 
     void CreateStore(koopa::Value* value, koopa::Value* dest) override;
-    koopa::Value* CreateLoad(koopa::Value* src) override;
     void CreateRet(koopa::Value* value) override;
+
+    koopa::Value* CreateLoad(koopa::Value* src) override;
     koopa::Value* CreateCall(koopa::Function* func, std::vector<koopa::Value*> args) override;
 
     koopa::Value* CreateAnd(koopa::Value* lhs, koopa::Value* rhs) override;
@@ -129,6 +129,8 @@ public:
     koopa::Value* CreateMod(koopa::Value* lhs, koopa::Value* rhs) override;
 
     koopa::Value* CreateAlloca(koopa::Type* type, const std::string& name) override;
+    koopa::Value* CreateGlobal(koopa::Type* type, const std::string& name, koopa::Value* init) override;
+    koopa::Value* CreateZero(koopa::Type* type) override;
 
     koopa::Value* CreateICmpNE(koopa::Value* lhs, koopa::Value* rhs) override;
     koopa::Value* CreateICmpEQ(koopa::Value* lhs, koopa::Value* rhs) override;
@@ -155,12 +157,8 @@ private:
         koopa::BasicBlock* end;
     };
 
-    union koopa_raw_symobol_data_t {
-        koopa_raw_value_t value;
-        koopa_raw_function_t function;
-    };
-
     zcc_function_vec_t funcs;
+    std::vector<koopa_raw_value_data_t*> values;
 
     std::vector<std::map<std::string, void*>> locals{};
     std::vector<std::map<void*, VAR_TYPE>> types{};

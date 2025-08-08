@@ -55,6 +55,8 @@ public:
     virtual V* CreateMod(V* lhs, V* rhs) = 0;
 
     virtual V* CreateAlloca(T* type, const std::string& name) = 0;
+    virtual V* CreateGlobal(T* type, const std::string& name, V* init) = 0;
+    virtual V* CreateZero(T* type) = 0;
 
     virtual V* CreateICmpNE(V* lhs, V* rhs) = 0;
     virtual V* CreateICmpEQ(V* lhs, V* rhs) = 0;
@@ -84,6 +86,10 @@ public:
     void ExitScope() {
         locals.pop_back();
         types.pop_back();
+    }
+
+    bool IsGlobalScope() const {
+        return locals.size() == 1;
     }
 
     void AddSymbol(const std::string& name, VAR_TYPE type, Symbol_Value value)  {

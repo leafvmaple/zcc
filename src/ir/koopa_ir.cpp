@@ -337,13 +337,37 @@ koopa::Value* KoopaEnv::CreateMod(koopa::Value* lhs, koopa::Value* rhs) {
 
 koopa::Value* KoopaEnv::CreateAlloca(koopa::Type* type, const std::string& name) {
     return _CreateInst(new koopa_raw_value_data_t {
-        .ty = koopa_type(KOOPA_RTT_INT32),
+        .ty = type,
         .name = to_string("@" + name),
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_ALLOC,
         }
     });
+}
+
+koopa::Value* KoopaEnv::CreateGlobal(koopa::Type* type, const std::string& name, koopa::Value* init) {
+    return values.emplace_back(new koopa_raw_value_data_t {
+        .ty = type,
+        .name = to_string("@" + name),
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+        .kind = {
+            .tag = KOOPA_RVT_GLOBAL_ALLOC,
+            .data.global_alloc = {
+                .init = init
+            }
+        }
+    });
+}
+
+koopa::Value* KoopaEnv::CreateZero(koopa::Type* type) {
+    return new koopa_raw_value_data_t {
+        .ty = type,
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+        .kind = {
+            .tag = KOOPA_RVT_ZERO_INIT
+        }
+    };
 }
 
 koopa::Value* KoopaEnv::CreateICmpNE(koopa::Value* lhs, koopa::Value* rhs) {
@@ -509,7 +533,7 @@ int KoopaEnv::_ParseProgram() {
             func_vec.push_back(_ParseFunction(func));
         }
         raw_program = new koopa_raw_program_t {
-            .values = koopa_slice(KOOPA_RSIK_VALUE),
+            .values = koopa_slice(KOOPA_RSIK_VALUE, values),
             .funcs = koopa_slice(KOOPA_RSIK_FUNCTION, func_vec)
         };
         funcs.clear();

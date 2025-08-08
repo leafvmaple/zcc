@@ -96,6 +96,11 @@ llvm::Value* LLVMEnv::CreateAlloca(llvm::Type* type, const std::string& name) {
     return Builder.CreateAlloca(type, nullptr, name);
 }
 
+llvm::Value* LLVMEnv::CreateGlobal(llvm::Type* type, const std::string& name, llvm::Value* init) {
+    // TODO
+    return new llvm::GlobalVariable(TheModule, type, false, llvm::GlobalValue::ExternalLinkage, nullptr, name);
+}
+
 llvm::Value* LLVMEnv::CreateAnd(llvm::Value* lhs, llvm::Value* rhs) {
     return Builder.CreateAnd(lhs, rhs);
 }

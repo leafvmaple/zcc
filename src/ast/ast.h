@@ -25,18 +25,27 @@ class LOrExprAST;
 class ConstDeclAST;
 class VarDeclAST;
 class ConstExprAST;
+class DeclAST;
 
-class DefineAST {
+class ConstDefAST {
 public:
-    DefineAST(string ident)
+    ConstDefAST(string ident)
         : ident(std::move(ident)) {}
-    DefineAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal)
+    ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal)
         : ident(std::move(ident)), constInitVal(std::move(constInitVal)) {}
-    DefineAST(string ident, unique_ptr<InitValAST>&& initVal)
-        : ident(std::move(ident)), initVal(std::move(initVal)) {}
 
     string ident;
     unique_ptr<ConstInitValAST> constInitVal;
+};
+
+class VarDefAST {
+public:
+    VarDefAST(string ident)
+        : ident(std::move(ident)) {}
+    VarDefAST(string ident, unique_ptr<InitValAST>&& initVal)
+        : ident(std::move(ident)), initVal(std::move(initVal)) {}
+
+    string ident;
     unique_ptr<InitValAST> initVal;
 };
 
@@ -45,8 +54,12 @@ public:
     void AddFuncDef(unique_ptr<FuncDefAST>&& funcDef) {
         funcDefs.emplace_back(std::move(funcDef));
     }
+    void AddDecl(unique_ptr<DeclAST>&& decl) {
+        decls.emplace_back(std::move(decl));
+    }
 
     vector<unique_ptr<FuncDefAST>> funcDefs;
+    vector<unique_ptr<DeclAST>> decls;
 };
 
 class FuncDefAST {
@@ -258,20 +271,20 @@ public:
 
 class ConstDeclAST {
 public:
-    ConstDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<DefineAST>>&& constDefs)
+    ConstDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<ConstDefAST>>&& constDefs)
         : btype(std::move(btype)), constDefs(std::move(constDefs)) {}
 
     unique_ptr<BaseType> btype;
-    vector<unique_ptr<DefineAST>> constDefs;
+    vector<unique_ptr<ConstDefAST>> constDefs;
 };
 
 class VarDeclAST {
 public:
-    VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<DefineAST>>&& varDefs)
+    VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<VarDefAST>>&& varDefs)
         : btype(std::move(btype)), varDefs(std::move(varDefs)) {}
 
     unique_ptr<BaseType> btype;
-    vector<unique_ptr<DefineAST>> varDefs;
+    vector<unique_ptr<VarDefAST>> varDefs;
 };
 
 class ConstInitValAST {

@@ -45,7 +45,8 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %token END 0
 
 %type <std::vector<std::unique_ptr<ExprAST>>> FuncRParams
-%type <std::vector<std::unique_ptr<DefineAST>>> ConstDefs VarDefs
+%type <std::vector<std::unique_ptr<ConstDefAST>>> ConstDefs
+%type <std::vector<std::unique_ptr<VarDefAST>>> VarDefs
 %type <std::vector<std::unique_ptr<FuncFParamAST>>> FuncFParams
 
 %type <std::unique_ptr<ExprAST>> OptExpr
@@ -78,13 +79,16 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %type <std::unique_ptr<InitValAST>> InitVal
 
 %type <std::unique_ptr<BaseType>> BasicType
-%type <std::unique_ptr<DefineAST>> ConstDef VarDef
+%type <std::unique_ptr<ConstDefAST>> ConstDef
+%type <std::unique_ptr<VarDefAST>> VarDef
 %type <std::string> UnaryOp MulOp AddOp
 
 %%
 
 CompUnit : | CompUnit FuncDef {
   ctx.ast.AddFuncDef(std::move($2));
+} | CompUnit Decl {
+  ctx.ast.AddDecl(std::move($2));
 };
 
 FuncDef : BasicType IDENT '(' FuncFParams ')' Block {
@@ -249,7 +253,7 @@ VarDecl : BasicType VarDefs ';' {
 }
 
 ConstDefs : ConstDef {
-  $$ = std::vector<std::unique_ptr<DefineAST>>();
+  $$ = std::vector<std::unique_ptr<ConstDefAST>>();
   $$.emplace_back(std::move($1));
 } | ConstDefs ',' ConstDef {
   $1.emplace_back(std::move($3));
@@ -257,11 +261,11 @@ ConstDefs : ConstDef {
 }
 
 ConstDef : IDENT '=' ConstInitVal {
-  $$ = std::make_unique<DefineAST>($1, std::move($3));
+  $$ = std::make_unique<ConstDefAST>($1, std::move($3));
 }
 
 VarDefs : VarDef {
-  $$ = std::vector<std::unique_ptr<DefineAST>>();
+  $$ = std::vector<std::unique_ptr<VarDefAST>>();
   $$.emplace_back(std::move($1));
 } | VarDefs ',' VarDef {
   $1.emplace_back(std::move($3));
@@ -269,9 +273,9 @@ VarDefs : VarDef {
 }
 
 VarDef : IDENT {
-  $$ = std::make_unique<DefineAST>($1);
+  $$ = std::make_unique<VarDefAST>($1);
 } | IDENT '=' InitVal {
-  $$ = std::make_unique<DefineAST>($1, std::move($3));
+  $$ = std::make_unique<VarDefAST>($1, std::move($3));
 }
 
 ConstInitVal : ConstExpr {

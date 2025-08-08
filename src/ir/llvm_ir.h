@@ -47,6 +47,10 @@ public:
     llvm::Value* CreateCall(llvm::Function* func, std::vector<llvm::Value*> args) override;
     
     llvm::Value* CreateAlloca(llvm::Type* type, const std::string& name) override;
+    llvm::Value* CreateGlobal(llvm::Type* type, const std::string& name, llvm::Value* init) override;
+    llvm::Value* CreateZero(llvm::Type* type) override { 
+        return llvm::Constant::getNullValue(type);
+    };
 
     llvm::Value* CreateAnd(llvm::Value* lhs, llvm::Value* rhs) override;
     llvm::Value* CreateOr(llvm::Value* lhs, llvm::Value* rhs) override;

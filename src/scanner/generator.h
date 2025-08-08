@@ -10,6 +10,9 @@ public:
     Generator(EnvType *env) : env(env) {};
 
     void Generate(CompUnitAST& ast) {
+        for (auto&& decl : ast.decls) {
+            Generate(decl.get());
+        }
         for (auto&& funcDef : ast.funcDefs) {
             Generate(funcDef.get());
         }
@@ -243,14 +246,21 @@ public:
     }
     void Generate(ConstDeclAST* constDecl) {
         for (auto& def : constDecl->constDefs) {
-            env->AddSymbol(def->ident, VAR_TYPE::CONST, { .value = Generate(def->initVal.get()) });
+            env->AddSymbol(def->ident, VAR_TYPE::CONST, { .value = Generate(def->constInitVal.get()) });
         }
     }
     void Generate(VarDeclAST* varDecl) {
+        V* varAddr{};
+        auto* type = varDecl->btype->Codegen(env);
         for (const auto& def : varDecl->varDefs) {
-            auto* varAddr = env->CreateAlloca(varDecl->btype->Codegen(env), def->ident);
-            if (def->initVal)
-                env->CreateStore(Generate(def->initVal.get()), varAddr);
+            if (env->IsGlobalScope()) {
+                auto* initVal = def->initVal ? Generate(def->initVal.get()) : env->CreateZero(type);
+                varAddr = env->CreateGlobal(type, def->ident, initVal);
+            } else {
+                varAddr = env->CreateAlloca(type, def->ident);
+                if (def->initVal)
+                    env->CreateStore(Generate(def->initVal.get()), varAddr);
+            }
             env->AddSymbol(def->ident, VAR_TYPE::VAR, { .value = varAddr });
         }
     }
