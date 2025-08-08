@@ -35,27 +35,27 @@ public:
 
     virtual void CreateStore(V* value, V* dest) = 0;
     virtual V* CreateLoad(V* src) = 0;
-    virtual void CreateRet(void* value) = 0;
-    virtual void* CreateCall(void* func, std::vector<void*> args) = 0;
+    virtual void CreateRet(V* value) = 0;
+    virtual V* CreateCall(void* func, std::vector<void*> args) = 0;
 
-    virtual void* CreateAnd(void* lhs, void* rhs) = 0;
-    virtual void* CreateOr(void* lhs, void* rhs) = 0;
+    virtual V* CreateAnd(V* lhs, V* rhs) = 0;
+    virtual V* CreateOr(V* lhs, V* rhs) = 0;
 
-    virtual void* CreateAdd(void* lhs, void* rhs) = 0;
-    virtual void* CreateSub(void* lhs, void* rhs) = 0;
-    virtual void* CreateMul(void* lhs, void* rhs) = 0;
-    virtual void* CreateDiv(void* lhs, void* rhs) = 0;
-    virtual void* CreateMod(void* lhs, void* rhs) = 0;
+    virtual V* CreateAdd(V* lhs, V* rhs) = 0;
+    virtual V* CreateSub(V* lhs, V* rhs) = 0;
+    virtual V* CreateMul(V* lhs, V* rhs) = 0;
+    virtual V* CreateDiv(V* lhs, V* rhs) = 0;
+    virtual V* CreateMod(V* lhs, V* rhs) = 0;
 
-    virtual void* CreateAlloca(void* type, const std::string& name) = 0;
+    virtual V* CreateAlloca(T* type, const std::string& name) = 0;
 
-    virtual void* CreateICmpNE(void* lhs, void* rhs) = 0;
-    virtual void* CreateICmpEQ(void* lhs, void* rhs) = 0;
+    virtual V* CreateICmpNE(V* lhs, V* rhs) = 0;
+    virtual V* CreateICmpEQ(V* lhs, V* rhs) = 0;
 
-    virtual void* CreateICmpLT(void* lhs, void* rhs) = 0;
-    virtual void* CreateICmpGT(void* lhs, void* rhs) = 0;
-    virtual void* CreateICmpLE(void* lhs, void* rhs) = 0;
-    virtual void* CreateICmpGE(void* lhs, void* rhs) = 0;
+    virtual V* CreateICmpLT(V* lhs, V* rhs) = 0;
+    virtual V* CreateICmpGT(V* lhs, V* rhs) = 0;
+    virtual V* CreateICmpLE(V* lhs, V* rhs) = 0;
+    virtual V* CreateICmpGE(V* lhs, V* rhs) = 0;
     
     virtual void SetInserPointer(B* ptr) = 0;
 
@@ -65,7 +65,7 @@ public:
     virtual T* GetInt32Type() = 0;
     virtual T* GetVoidType() = 0;
 
-    virtual void* GetInt32(int value) = 0;
+    virtual V* GetInt32(int value) = 0;
 
     virtual bool EndWithTerminator() = 0;
 

@@ -80,9 +80,9 @@ void LLVMEnv::Dump(const char* output) {
 llvm::Type* LLVMEnv::CreateFuncType(llvm::Type* retType, std::vector<llvm::Type*> params) {
     auto paramTypes = std::vector<llvm::Type*>();
     for (auto& param : params) {
-        paramTypes.push_back((llvm::Type*)param);
+        paramTypes.push_back(param);
     }
-    return llvm::FunctionType::get((llvm::Type*)retType, paramTypes, false);
+    return llvm::FunctionType::get(retType, paramTypes, false);
 }
 
 llvm::Function* LLVMEnv::CreateFunction(llvm::Type* funcType, const std::string& name, std::vector<std::string> names) {
@@ -101,8 +101,8 @@ llvm::BasicBlock* LLVMEnv::CreateBasicBlock(const std::string& name, llvm::Funct
 }
 
 void LLVMEnv::CreateCondBr(llvm::Value* cond, llvm::BasicBlock* trueBB, llvm::BasicBlock* falseBB) {
-    auto* logic_cond = CreateICmpNE((llvm::Value*)cond, GetInt32(0));
-    Builder.CreateCondBr((llvm::Value*)logic_cond, (llvm::BasicBlock*)trueBB, (llvm::BasicBlock*)falseBB);
+    auto* logic_cond = CreateICmpNE(cond, GetInt32(0));
+    Builder.CreateCondBr(logic_cond, (llvm::BasicBlock*)trueBB, (llvm::BasicBlock*)falseBB);
 }
 
 void LLVMEnv::CreateBr(llvm::BasicBlock* desc) {
@@ -118,65 +118,65 @@ llvm::Value* LLVMEnv::CreateLoad(llvm::Value* src) {
     return Builder.CreateLoad(llvm::Type::getInt32Ty(TheContext), src);
 }
 
-void* LLVMEnv::CreateAlloca(void* type, const std::string& name) {
-    return Builder.CreateAlloca((llvm::Type*)type, nullptr, name);
+llvm::Value* LLVMEnv::CreateAlloca(llvm::Type* type, const std::string& name) {
+    return Builder.CreateAlloca(type, nullptr, name);
 }
 
-void* LLVMEnv::CreateAnd(void* lhs, void* rhs) {
-    return Builder.CreateAnd((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateAnd(llvm::Value* lhs, llvm::Value* rhs) {
+    return Builder.CreateAnd(lhs, rhs);
 }
 
-void* LLVMEnv::CreateOr(void* lhs, void* rhs) {
-    return Builder.CreateOr((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateOr(llvm::Value* lhs, llvm::Value* rhs) {
+    return Builder.CreateOr(lhs, rhs);
 }
 
-void* LLVMEnv::CreateAdd(void* lhs, void* rhs) {
-    return Builder.CreateAdd((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateAdd(llvm::Value* lhs, llvm::Value* rhs) {
+    return Builder.CreateAdd(lhs, rhs);
 }
 
-void* LLVMEnv::CreateSub(void* lhs, void* rhs) {
-    return Builder.CreateSub((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateSub(llvm::Value* lhs, llvm::Value* rhs) {
+    return Builder.CreateSub(lhs, rhs);
 }
 
-void* LLVMEnv::CreateMul(void* lhs, void* rhs) {
-    return Builder.CreateMul((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateMul(llvm::Value* lhs, llvm::Value* rhs) {
+    return Builder.CreateMul(lhs, rhs);
 }
 
-void* LLVMEnv::CreateDiv(void* lhs, void* rhs) {
-    return Builder.CreateSDiv((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateDiv(llvm::Value* lhs, llvm::Value* rhs) {
+    return Builder.CreateSDiv(lhs, rhs);
 }
 
-void* LLVMEnv::CreateMod(void* lhs, void* rhs) {
-    return Builder.CreateSRem((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateMod(llvm::Value* lhs, llvm::Value* rhs) {
+    return Builder.CreateSRem(lhs, rhs);
 }
 
-void* LLVMEnv::CreateICmpNE(void* lhs, void* rhs) {
-    auto* res = Builder.CreateICmpNE((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateICmpNE(llvm::Value* lhs, llvm::Value* rhs) {
+    auto* res = Builder.CreateICmpNE(lhs, rhs);
     return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
 }
 
-void* LLVMEnv::CreateICmpEQ(void* lhs, void* rhs) {
-    auto* res = Builder.CreateICmpEQ((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateICmpEQ(llvm::Value* lhs, llvm::Value* rhs) {
+    auto* res = Builder.CreateICmpEQ(lhs, rhs);
     return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
 }
 
-void* LLVMEnv::CreateICmpLT(void* lhs, void* rhs) {
-    auto* res = Builder.CreateICmpSLT((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateICmpLT(llvm::Value* lhs, llvm::Value* rhs) {
+    auto* res = Builder.CreateICmpSLT(lhs, rhs);
     return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
 }
 
-void* LLVMEnv::CreateICmpGT(void* lhs, void* rhs) {
-    auto* res = Builder.CreateICmpSGT((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateICmpGT(llvm::Value* lhs, llvm::Value* rhs) {
+    auto* res = Builder.CreateICmpSGT(lhs, rhs);
     return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
 }
 
-void* LLVMEnv::CreateICmpLE(void* lhs, void* rhs) {
-    auto* res = Builder.CreateICmpSLE((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateICmpLE(llvm::Value* lhs, llvm::Value* rhs) {
+    auto* res = Builder.CreateICmpSLE(lhs, rhs);
     return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
 }
 
-void* LLVMEnv::CreateICmpGE(void* lhs, void* rhs) {
-    auto* res = Builder.CreateICmpSGE((llvm::Value*)lhs, (llvm::Value*)rhs);
+llvm::Value* LLVMEnv::CreateICmpGE(llvm::Value* lhs, llvm::Value* rhs) {
+    auto* res = Builder.CreateICmpSGE(lhs, rhs);
     return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
 }
 
@@ -204,7 +204,7 @@ llvm::Type* LLVMEnv::GetVoidType() {
     return llvm::Type::getVoidTy(TheContext);
 }
 
-void* LLVMEnv::GetInt32(int value) {
+llvm::Value* LLVMEnv::GetInt32(int value) {
     return llvm::ConstantInt::get((llvm::IntegerType*)GetInt32Type(), value);
 }
 
@@ -213,11 +213,11 @@ bool LLVMEnv::EndWithTerminator() {
     return !basic_block->empty() && basic_block->back().isTerminator();
 }
 
-void LLVMEnv::CreateRet(void* value) {
-    Builder.CreateRet((llvm::Value*)value);
+void LLVMEnv::CreateRet(llvm::Value* value) {
+    Builder.CreateRet(value);
 }
 
-void* LLVMEnv::CreateCall(void* func, std::vector<void*> args) {
+llvm::Value* LLVMEnv::CreateCall(void* func, std::vector<void*> args) {
     auto* llvmFunc = (llvm::Function*)func;
     auto argValues = std::vector<llvm::Value*>();
     for (auto& arg : args) {

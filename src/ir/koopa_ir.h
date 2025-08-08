@@ -120,25 +120,25 @@ public:
 
     void CreateStore(koopa::Value* value, koopa::Value* dest) override;
     koopa::Value* CreateLoad(koopa::Value* src) override;
-    void CreateRet(void* value) override;
-    void* CreateCall(void* func, std::vector<void*> args) override;
+    void CreateRet(koopa::Value* value) override;
+    koopa::Value* CreateCall(void* func, std::vector<void*> args) override;
 
-    void* CreateAnd(void* lhs, void* rhs) override;
-    void* CreateOr(void* lhs, void* rhs) override;
-    void* CreateAdd(void* lhs, void* rhs) override;
-    void* CreateSub(void* lhs, void* rhs) override;
-    void* CreateMul(void* lhs, void* rhs) override;
-    void* CreateDiv(void* lhs, void* rhs) override;
-    void* CreateMod(void* lhs, void* rhs) override;
+    koopa::Value* CreateAnd(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateOr(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateAdd(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateSub(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateMul(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateDiv(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateMod(koopa::Value* lhs, koopa::Value* rhs) override;
 
-    void* CreateAlloca(void* type, const std::string& name) override;
+    koopa::Value* CreateAlloca(koopa::Type* type, const std::string& name) override;
 
-    void* CreateICmpNE(void* lhs, void* rhs) override;
-    void* CreateICmpEQ(void* lhs, void* rhs) override;
-    void* CreateICmpLT(void* lhs, void* rhs) override;
-    void* CreateICmpGT(void* lhs, void* rhs) override;
-    void* CreateICmpLE(void* lhs, void* rhs) override;
-    void* CreateICmpGE(void* lhs, void* rhs) override;
+    koopa::Value* CreateICmpNE(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateICmpEQ(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateICmpLT(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateICmpGT(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateICmpLE(koopa::Value* lhs, koopa::Value* rhs) override;
+    koopa::Value* CreateICmpGE(koopa::Value* lhs, koopa::Value* rhs) override;
 
     void SetInserPointer(koopa::BasicBlock* ptr) override;
 
@@ -148,7 +148,7 @@ public:
     koopa::Type* GetInt32Type() override;
     koopa::Type* GetVoidType() override;
 
-    void* GetInt32(int value) override;
+    koopa::Value* GetInt32(int value) override;
 
     bool EndWithTerminator() override;
 
@@ -177,7 +177,7 @@ private:
     koopa_program_t program{};
     zcc_basic_block_data_t* insert_ptr{};
 
-    void* _CreateInst(koopa_raw_value_t value);
+    koopa::Value* _CreateInst(koopa::Value* value);
     koopa_raw_basic_block_t _ParseBasicBlock(const zcc_basic_block_data_t& bbs);
     koopa_raw_function_t _ParseFunction(const zcc_function_data_t& funcs);
     int _ParseProgram();

@@ -46,25 +46,25 @@ public:
 
     void CreateStore(llvm::Value* value, llvm::Value* dest) override;
     llvm::Value* CreateLoad(llvm::Value* src) override;
-    void CreateRet(void* value) override;
-    void* CreateCall(void* func, std::vector<void*> args) override;
+    void CreateRet(llvm::Value* value) override;
+    llvm::Value* CreateCall(void* func, std::vector<void*> args) override;
     
-    void* CreateAlloca(void* type, const std::string& name) override;
+    llvm::Value* CreateAlloca(llvm::Type* type, const std::string& name) override;
 
-    void* CreateAnd(void* lhs, void* rhs) override;
-    void* CreateOr(void* lhs, void* rhs) override;
-    void* CreateAdd(void* lhs, void* rhs) override;
-    void* CreateSub(void* lhs, void* rhs) override;
-    void* CreateMul(void* lhs, void* rhs) override;
-    void* CreateDiv(void* lhs, void* rhs) override;
-    void* CreateMod(void* lhs, void* rhs) override;
+    llvm::Value* CreateAnd(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateOr(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateAdd(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateSub(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateMul(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateDiv(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateMod(llvm::Value* lhs, llvm::Value* rhs) override;
 
-    void* CreateICmpNE(void* lhs, void* rhs) override;
-    void* CreateICmpEQ(void* lhs, void* rhs) override;
-    void* CreateICmpLT(void* lhs, void* rhs) override;
-    void* CreateICmpGT(void* lhs, void* rhs) override;
-    void* CreateICmpLE(void* lhs, void* rhs) override;
-    void* CreateICmpGE(void* lhs, void* rhs) override;
+    llvm::Value* CreateICmpNE(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateICmpEQ(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateICmpLT(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateICmpGT(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateICmpLE(llvm::Value* lhs, llvm::Value* rhs) override;
+    llvm::Value* CreateICmpGE(llvm::Value* lhs, llvm::Value* rhs) override;
 
     void SetInserPointer(llvm::BasicBlock* ptr) override;
 
@@ -74,7 +74,7 @@ public:
     llvm::Type* GetInt32Type() override;
     llvm::Type* GetVoidType() override;
 
-    void* GetInt32(int value) override;
+    llvm::Value* GetInt32(int value) override;
 
     bool EndWithTerminator() override;
 

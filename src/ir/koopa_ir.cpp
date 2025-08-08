@@ -204,7 +204,7 @@ koopa::Value* KoopaEnv::CreateLoad(koopa::Value* src) {
     });
 }
 
-void KoopaEnv::CreateRet(void* value) {
+void KoopaEnv::CreateRet(koopa::Value* value) {
     _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -218,7 +218,7 @@ void KoopaEnv::CreateRet(void* value) {
     });
 }
 
-void* KoopaEnv::CreateCall(void* func, std::vector<void*> args) {
+koopa::Value* KoopaEnv::CreateCall(void* func, std::vector<void*> args) {
     auto* function = (koopa_raw_function_t)func;
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = function->ty,
@@ -234,7 +234,7 @@ void* KoopaEnv::CreateCall(void* func, std::vector<void*> args) {
     });
 }
 
-void* KoopaEnv::CreateAnd(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateAnd(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -250,7 +250,7 @@ void* KoopaEnv::CreateAnd(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateOr(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateOr(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -266,7 +266,7 @@ void* KoopaEnv::CreateOr(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateAdd(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateAdd(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -282,7 +282,7 @@ void* KoopaEnv::CreateAdd(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateSub(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateSub(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -298,7 +298,7 @@ void* KoopaEnv::CreateSub(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateMul(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateMul(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -314,7 +314,7 @@ void* KoopaEnv::CreateMul(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateDiv(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateDiv(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -330,7 +330,7 @@ void* KoopaEnv::CreateDiv(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateMod(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateMod(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -346,7 +346,7 @@ void* KoopaEnv::CreateMod(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateAlloca(void* type, const std::string& name) {
+koopa::Value* KoopaEnv::CreateAlloca(koopa::Type* type, const std::string& name) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = to_string("@" + name),
@@ -357,7 +357,7 @@ void* KoopaEnv::CreateAlloca(void* type, const std::string& name) {
     });
 }
 
-void* KoopaEnv::CreateICmpNE(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateICmpNE(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -373,7 +373,7 @@ void* KoopaEnv::CreateICmpNE(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateICmpEQ(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateICmpEQ(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -389,7 +389,7 @@ void* KoopaEnv::CreateICmpEQ(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateICmpLT(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateICmpLT(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -405,7 +405,7 @@ void* KoopaEnv::CreateICmpLT(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateICmpGT(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateICmpGT(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -421,7 +421,7 @@ void* KoopaEnv::CreateICmpGT(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateICmpLE(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateICmpLE(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -437,7 +437,7 @@ void* KoopaEnv::CreateICmpLE(void* lhs, void* rhs) {
     });
 }
 
-void* KoopaEnv::CreateICmpGE(void* lhs, void* rhs) {
+koopa::Value* KoopaEnv::CreateICmpGE(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -474,7 +474,7 @@ koopa::Type* KoopaEnv::GetVoidType() {
     return koopa_type(KOOPA_RTT_UNIT);
 }
 
-void* KoopaEnv::GetInt32(int value) {
+koopa::Value* KoopaEnv::GetInt32(int value) {
     return new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
         .name = nullptr,
@@ -518,9 +518,9 @@ VAR_TYPE KoopaEnv::GetSymbolType(void* value) {
     return VAR_TYPE::VAR;
 }
 
-void* KoopaEnv::_CreateInst(koopa_raw_value_t value) {
+koopa::Value* KoopaEnv::_CreateInst(koopa::Value* value) {
     insert_ptr->insts.push_back(value);
-    return (void*)value;
+    return value;
 }
 
 koopa_raw_basic_block_t KoopaEnv::_ParseBasicBlock(const zcc_basic_block_data_t& bbs) {
