@@ -59,6 +59,10 @@ llvm::Type* LLVMEnv::CreateFuncType(llvm::Type* retType, std::vector<llvm::Type*
     return llvm::FunctionType::get(retType, paramTypes, false);
 }
 
+llvm::BasicBlock* LLVMEnv::CreateBasicBlock(const std::string& name, llvm::Function* func) {
+    return llvm::BasicBlock::Create(TheContext, name, func);
+}
+
 llvm::Function* LLVMEnv::CreateFunction(llvm::Type* funcType, const std::string& name, std::vector<std::string> names) {
     auto func = llvm::Function::Create((llvm::FunctionType*)funcType, llvm::Function::ExternalLinkage, name, &TheModule);
     auto args = func->arg_begin();
@@ -70,8 +74,8 @@ llvm::Function* LLVMEnv::CreateFunction(llvm::Type* funcType, const std::string&
     return func;
 }
 
-llvm::BasicBlock* LLVMEnv::CreateBasicBlock(const std::string& name, llvm::Function* func) {
-    return llvm::BasicBlock::Create(TheContext, name, func);
+void LLVMEnv::CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params) {
+    
 }
 
 void LLVMEnv::CreateCondBr(llvm::Value* cond, llvm::BasicBlock* trueBB, llvm::BasicBlock* falseBB) {
@@ -181,6 +185,14 @@ llvm::Type* LLVMEnv::GetInt32Type() {
 
 llvm::Type* LLVMEnv::GetVoidType() {
     return llvm::Type::getVoidTy(TheContext);
+}
+
+llvm::Type* LLVMEnv::GetArrayType() {
+    return llvm::ArrayType::get(GetInt32Type(), 0); // 0 for dynamic size
+}
+
+llvm::Type* LLVMEnv::GetPointerType(llvm::Type* type) {
+    return llvm::PointerType::get(type, 0); // 0 for address space
 }
 
 llvm::Value* LLVMEnv::GetInt32(int value) {

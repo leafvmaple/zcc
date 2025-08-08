@@ -10,6 +10,19 @@ public:
     Generator(EnvType *env) : env(env) {};
 
     void Generate(CompUnitAST& ast) {
+        auto* intType = env->GetInt32Type();
+        auto* voidType = env->GetVoidType();
+        auto* pointType = env->GetPointerType(intType);
+
+        env->CreateBuiltin("getint", intType, {});
+        env->CreateBuiltin("getch", intType, {});
+        env->CreateBuiltin("getarray", intType, {pointType});
+        env->CreateBuiltin("putint", voidType, {intType});
+        env->CreateBuiltin("putch", voidType, {intType});
+        env->CreateBuiltin("putarray", voidType, {intType, pointType});
+        env->CreateBuiltin("starttiem", voidType, {});
+        env->CreateBuiltin("stoptime", voidType, {});
+
         for (auto&& decl : ast.decls) {
             Generate(decl.get());
         }

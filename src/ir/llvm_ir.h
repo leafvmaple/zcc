@@ -21,8 +21,9 @@ public:
     void Dump(const char* output) override;
 
     llvm::Type* CreateFuncType(llvm::Type* retType, std::vector<llvm::Type*> params) override;
-    llvm::Function* CreateFunction(llvm::Type* funcType, const std::string& name, std::vector<std::string> names) override;
     llvm::BasicBlock* CreateBasicBlock(const std::string& name, llvm::Function* func) override;
+    llvm::Function* CreateFunction(llvm::Type* funcType, const std::string& name, std::vector<std::string> names) override;
+    void CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params) override;
 
     void CreateCondBr(llvm::Value* cond, llvm::BasicBlock* thenBB, llvm::BasicBlock* elseBB) override;
     void CreateBr(llvm::BasicBlock* desc) override;
@@ -60,6 +61,8 @@ public:
 
     llvm::Type* GetInt32Type() override;
     llvm::Type* GetVoidType() override;
+    llvm::Type* GetArrayType() override;
+    llvm::Type* GetPointerType(llvm::Type* type) override;
 
     llvm::Value* GetInt32(int value) override;
 

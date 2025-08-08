@@ -55,10 +55,9 @@ void KoopaEnv::Optimize() {
             }
             std::swap(bb->insts, insts);
         }
-        if (isEmpty) {
+        if (isEmpty && !func.bbs.empty()) {
             func.bbs.back()->insts.push_back(new koopa_raw_value_data_t {
                 .ty = koopa_type(KOOPA_RTT_UNIT),
-                .name = nullptr,
                 .used_by = koopa_slice(KOOPA_RSIK_VALUE),
                 .kind = {
                     .tag = KOOPA_RVT_RETURN
@@ -72,8 +71,7 @@ koopa::Type* KoopaEnv::CreateFuncType(koopa::Type* retType, std::vector<koopa::T
     std::vector<koopa_raw_value_data_t*> byte;
     for (size_t i = 0; i < params.size(); ++i) {
         byte.push_back(new koopa_raw_value_data_t {
-            .ty = (koopa_raw_type_t)params[i],
-            .name = nullptr,
+            .ty = params[i],
             .used_by = koopa_slice(KOOPA_RSIK_VALUE),
             .kind = {
                 .tag = KOOPA_RVT_FUNC_ARG_REF,
@@ -87,21 +85,21 @@ koopa::Type* KoopaEnv::CreateFuncType(koopa::Type* retType, std::vector<koopa::T
         KOOPA_RTT_FUNCTION,
         .data.function = {
             .params = koopa_slice(KOOPA_RSIK_TYPE, params),
-            .ret = (koopa_raw_type_t)retType
+            .ret = retType
         }
     };
 }
 
 koopa::Function* KoopaEnv::CreateFunction(koopa::Type* funcType, const std::string& name, std::vector<std::string> params) {
-    zcc_function_data_t func = {
+    auto& func = funcs.emplace_back(koopa::Function {
         .name = name,
         .ptr = new koopa_raw_function_data_t {
-            .ty = (koopa_raw_type_t)funcType,
+            .ty = funcType,
             .name = to_string("@" + name),
             .params = koopa_slice(KOOPA_RSIK_VALUE),
             .bbs = koopa_slice(KOOPA_RSIK_BASIC_BLOCK)
         }
-    };
+    });
     for (int i = 0; i < funcType->data.function.params.len; ++i) {
         func.params.push_back(new koopa_raw_value_data_t {
             .ty = (koopa_raw_type_t)funcType->data.function.params.buffer[i],
@@ -115,9 +113,21 @@ koopa::Function* KoopaEnv::CreateFunction(koopa::Type* funcType, const std::stri
             }
         });
     }
-    funcs.push_back(func);
-    AddSymbol(name, VAR_TYPE::FUNC, { .function = &funcs.back() });
-    return &funcs.back();
+    AddSymbol(name, VAR_TYPE::FUNC, { .function = &func });
+    return &func;
+}
+
+void KoopaEnv::CreateBuiltin(const std::string& name, koopa::Type* retType, std::vector<koopa::Type*> params) {
+    auto& func = funcs.emplace_back(koopa::Function {
+        .name = name,
+        .ptr = new koopa_raw_function_data_t {
+            .ty = CreateFuncType(retType, params),
+            .name = to_string("@" + name),
+            .params = koopa_slice(KOOPA_RSIK_VALUE),
+            .bbs = koopa_slice(KOOPA_RSIK_BASIC_BLOCK)
+        }
+    });
+    AddSymbol(name, VAR_TYPE::FUNC, { .function = &func });
 }
 
 koopa::BasicBlock* KoopaEnv::CreateBasicBlock(const std::string& name, koopa::Function* func) {
@@ -135,12 +145,11 @@ koopa::BasicBlock* KoopaEnv::CreateBasicBlock(const std::string& name, koopa::Fu
 void KoopaEnv::CreateCondBr(koopa::Value* cond, koopa::BasicBlock* trueBB, koopa::BasicBlock* falseBB) {
     _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_UNIT),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BRANCH,
             .data.branch = {
-                .cond = (koopa_raw_value_t)cond,
+                .cond = cond,
                 .true_bb = trueBB->ptr,
                 .false_bb = falseBB->ptr,
                 .true_args = koopa_slice(KOOPA_RSIK_VALUE),
@@ -153,7 +162,6 @@ void KoopaEnv::CreateCondBr(koopa::Value* cond, koopa::BasicBlock* trueBB, koopa
 void KoopaEnv::CreateBr(koopa::BasicBlock* desc) {
     _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_UNIT),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_JUMP,
@@ -168,7 +176,6 @@ void KoopaEnv::CreateBr(koopa::BasicBlock* desc) {
 void KoopaEnv::CreateStore(koopa::Value* value, koopa::Value* dest) {
     _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_STORE,
@@ -183,7 +190,6 @@ void KoopaEnv::CreateStore(koopa::Value* value, koopa::Value* dest) {
 koopa::Value* KoopaEnv::CreateLoad(koopa::Value* src) {
     return (koopa::Value*)_CreateInst(new koopa::Value {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_LOAD,
@@ -197,12 +203,11 @@ koopa::Value* KoopaEnv::CreateLoad(koopa::Value* src) {
 void KoopaEnv::CreateRet(koopa::Value* value) {
     _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_RETURN,
             .data.ret = {
-                .value = (koopa_raw_value_t)value
+                .value = value
             }
         }
     });
@@ -211,7 +216,6 @@ void KoopaEnv::CreateRet(koopa::Value* value) {
 koopa::Value* KoopaEnv::CreateCall(koopa::Function* func, std::vector<koopa::Value*> args) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = func->ptr->ty,
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_CALL,
@@ -226,14 +230,13 @@ koopa::Value* KoopaEnv::CreateCall(koopa::Function* func, std::vector<koopa::Val
 koopa::Value* KoopaEnv::CreateAnd(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_AND,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -242,14 +245,13 @@ koopa::Value* KoopaEnv::CreateAnd(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateOr(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_OR,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -258,14 +260,13 @@ koopa::Value* KoopaEnv::CreateOr(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateAdd(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_ADD,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -274,14 +275,13 @@ koopa::Value* KoopaEnv::CreateAdd(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateSub(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_SUB,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -290,14 +290,13 @@ koopa::Value* KoopaEnv::CreateSub(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateMul(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_MUL,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -306,14 +305,13 @@ koopa::Value* KoopaEnv::CreateMul(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateDiv(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_DIV,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -322,14 +320,13 @@ koopa::Value* KoopaEnv::CreateDiv(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateMod(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_MOD,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -373,14 +370,13 @@ koopa::Value* KoopaEnv::CreateZero(koopa::Type* type) {
 koopa::Value* KoopaEnv::CreateICmpNE(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_NOT_EQ,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -389,14 +385,13 @@ koopa::Value* KoopaEnv::CreateICmpNE(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateICmpEQ(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_EQ,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -405,14 +400,13 @@ koopa::Value* KoopaEnv::CreateICmpEQ(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateICmpLT(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_LT,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -421,14 +415,13 @@ koopa::Value* KoopaEnv::CreateICmpLT(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateICmpGT(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_GT,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -437,14 +430,13 @@ koopa::Value* KoopaEnv::CreateICmpGT(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateICmpLE(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_LE,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -453,14 +445,13 @@ koopa::Value* KoopaEnv::CreateICmpLE(koopa::Value* lhs, koopa::Value* rhs) {
 koopa::Value* KoopaEnv::CreateICmpGE(koopa::Value* lhs, koopa::Value* rhs) {
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_BINARY,
             .data.binary = {
                 .op = KOOPA_RBO_GE,
-                .lhs = (koopa_raw_value_t)lhs,
-                .rhs = (koopa_raw_value_t)rhs
+                .lhs = lhs,
+                .rhs = rhs
             }
         }
     });
@@ -487,10 +478,17 @@ koopa::Type* KoopaEnv::GetVoidType() {
     return koopa_type(KOOPA_RTT_UNIT);
 }
 
+koopa::Type* KoopaEnv::GetArrayType() {
+    return koopa_type(KOOPA_RTT_ARRAY);
+}
+
+koopa::Type* KoopaEnv::GetPointerType(koopa::Type* type) {
+    return koopa_pointer(type);
+}
+
 koopa::Value* KoopaEnv::GetInt32(int value) {
     return new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
-        .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_INTEGER,

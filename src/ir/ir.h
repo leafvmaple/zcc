@@ -29,8 +29,9 @@ public:
     virtual void Dump(const char* output) = 0;
 
     virtual Type* CreateFuncType(Type* retType, std::vector<Type*> params) = 0;
-    virtual Function* CreateFunction(Type* funcType, const std::string& name, std::vector<std::string> names) = 0;
     virtual BasicBlock* CreateBasicBlock(const std::string& name, Function* func) = 0;
+    virtual Function* CreateFunction(Type* funcType, const std::string& name, std::vector<std::string> names) = 0;
+    virtual void CreateBuiltin(const std::string& name, Type* retType, std::vector<Type*> params) = 0;
 
     virtual void CreateCondBr(Value* cond, BasicBlock* trueBB, BasicBlock* falseBB) = 0;
     virtual void CreateBr(BasicBlock* desc) = 0;
@@ -68,6 +69,8 @@ public:
 
     virtual Type* GetInt32Type() = 0;
     virtual Type* GetVoidType() = 0;
+    virtual Type* GetArrayType() = 0;
+    virtual Type* GetPointerType(Type* type) = 0;
 
     virtual Value* GetInt32(int value) = 0;
 

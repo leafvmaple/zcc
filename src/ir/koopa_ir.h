@@ -51,11 +51,11 @@ inline koopa::Type* koopa_type(koopa_raw_type_tag_t tag) {
     return new koopa_raw_type_kind_t { tag };
 }
 
-inline koopa::Type* koopa_pointer(koopa_raw_type_tag_t tag) {
+inline koopa::Type* koopa_pointer(koopa::Type* type) {
     return new koopa_raw_type_kind_t {
         .tag = KOOPA_RTT_POINTER,
         .data.pointer = {
-            .base = koopa_type(tag)
+            .base = type
         }
     };
 }
@@ -91,8 +91,9 @@ public:
     void Dump(const char* output) override;
 
     koopa::Type* CreateFuncType(koopa::Type* retType, std::vector<koopa::Type*> params) override;
-    koopa::Function* CreateFunction(koopa::Type* funcType, const std::string& name, std::vector<std::string> params) override;
     koopa::BasicBlock* CreateBasicBlock(const std::string& name, F* func) override;
+    koopa::Function* CreateFunction(koopa::Type* funcType, const std::string& name, std::vector<std::string> params) override;
+    void CreateBuiltin(const std::string& name, koopa::Type* retType, std::vector<koopa::Type*> params) override;
 
     void CreateCondBr(koopa::Value* cond, koopa::BasicBlock* trueBB, koopa::BasicBlock* falseBB) override;
     void CreateBr(koopa::BasicBlock* desc) override;
@@ -129,6 +130,8 @@ public:
 
     koopa::Type* GetInt32Type() override;
     koopa::Type* GetVoidType() override;
+    koopa::Type* GetArrayType() override;
+    koopa::Type* GetPointerType(koopa::Type* type) override;
 
     koopa::Value* GetInt32(int value) override;
 
@@ -137,9 +140,6 @@ public:
 private:
     zcc_function_vec_t funcs;
     std::vector<koopa_raw_value_data_t*> values;
-
-    std::vector<std::map<std::string, void*>> locals{};
-    std::vector<std::map<void*, VAR_TYPE>> types{};
 
     koopa_raw_program_t* raw_program{};
     koopa_program_t program{};
