@@ -119,9 +119,12 @@ public:
         Number
     };
 
-    PrimaryExprAST(Type type, unique_ptr<ExprAST>&& expr) : type(type), expr(std::move(expr)) {}
-    PrimaryExprAST(Type type, unique_ptr<LValAST>&& lval) : type(type), lval(std::move(lval)) {}
-    PrimaryExprAST(Type type, unique_ptr<NumberAST>&& value) : type(type), value(std::move(value)) {}
+    PrimaryExprAST(Type type, unique_ptr<ExprAST>&& expr)
+        : type(type), expr(std::move(expr)) {}
+    PrimaryExprAST(Type type, unique_ptr<LValAST>&& lval)
+        : type(type), lval(std::move(lval)) {}
+    PrimaryExprAST(Type type, unique_ptr<NumberAST>&& value)
+        : type(type), value(std::move(value)) {}
 
     Type type;
     unique_ptr<ExprAST> expr;
@@ -148,7 +151,8 @@ public:
         : type(type), primaryExpr(std::move(primaryExpr)) {}
     UnaryExprAST(Type type, string op, unique_ptr<UnaryExprAST>&& unaryExpr) 
         : type(type), op(std::move(op)), unaryExpr(std::move(unaryExpr)) {}
-    UnaryExprAST(Type type, string ident) : type(type), ident(std::move(ident)) {}
+    UnaryExprAST(Type type, string ident)
+        : type(type), ident(std::move(ident)) {}
     UnaryExprAST(Type type, string ident, vector<unique_ptr<ExprAST>>&& callArgs) 
         : type(type), ident(std::move(ident)), callArgs(std::move(callArgs)) {}
 
@@ -175,7 +179,8 @@ public:
 
 class AddExprAST {
 public:
-    AddExprAST(unique_ptr<MulExprAST>&& mulExpr) : mulExpr(std::move(mulExpr)) {}
+    AddExprAST(unique_ptr<MulExprAST>&& mulExpr)
+        : mulExpr(std::move(mulExpr)) {}
     AddExprAST(unique_ptr<AddExprAST>&& left, string op, unique_ptr<MulExprAST>&& right) 
         : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
 
@@ -204,7 +209,8 @@ class EqExprAST {
 public:
     enum class Op { EQ, NE };
 
-    EqExprAST(unique_ptr<RelExprAST>&& relExpr) : relExpr(std::move(relExpr)) {}
+    EqExprAST(unique_ptr<RelExprAST>&& relExpr)
+        : relExpr(std::move(relExpr)) {}
     EqExprAST(unique_ptr<EqExprAST>&& left, Op op, unique_ptr<RelExprAST>&& right) 
         : left(std::move(left)), op(op), right(std::move(right)) {}
 
@@ -217,12 +223,13 @@ public:
 
 class LAndExprAST {
 public:
-    LAndExprAST(unique_ptr<EqExprAST>&& eqExpr) : eqExpr(std::move(eqExpr)) {}
+    LAndExprAST(unique_ptr<EqExprAST>&& eqExpr)
+        : eqExpr(std::move(eqExpr)) {}
     LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<EqExprAST>&& right) 
         : left(std::move(left)), right(std::move(right)) {}
 
-    unique_ptr<LAndExprAST> left;
     unique_ptr<EqExprAST> eqExpr;
+    unique_ptr<LAndExprAST> left;
     unique_ptr<EqExprAST> right;
 };
 
@@ -233,15 +240,17 @@ public:
     LOrExprAST(unique_ptr<LOrExprAST>&& left, unique_ptr<LAndExprAST>&& right) 
         : left(std::move(left)), right(std::move(right)) {}
 
-    unique_ptr<LOrExprAST> left;
     unique_ptr<LAndExprAST> landExpr;
+    unique_ptr<LOrExprAST> left;
     unique_ptr<LAndExprAST> right;
 };
 
 class DeclAST {
 public:
-    DeclAST(unique_ptr<ConstDeclAST>&& constDecl) : constDecl(std::move(constDecl)) {}
-    DeclAST(unique_ptr<VarDeclAST>&& varDecl) : varDecl(std::move(varDecl)) {}
+    DeclAST(unique_ptr<ConstDeclAST>&& constDecl)
+        : constDecl(std::move(constDecl)) {}
+    DeclAST(unique_ptr<VarDeclAST>&& varDecl)
+        : varDecl(std::move(varDecl)) {}
 
     unique_ptr<ConstDeclAST> constDecl;
     unique_ptr<VarDeclAST> varDecl;
@@ -267,14 +276,16 @@ public:
 
 class ConstInitValAST {
 public:
-    ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr) : constExpr(std::move(constExpr)) {}
+    ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr)
+        : constExpr(std::move(constExpr)) {}
 
     unique_ptr<ConstExprAST> constExpr;
 };
 
 class InitValAST {
 public:
-    InitValAST(unique_ptr<ConstExprAST>&& constExpr) : constExpr(std::move(constExpr)) {}
+    InitValAST(unique_ptr<ConstExprAST>&& constExpr)
+        : constExpr(std::move(constExpr)) {}
 
     unique_ptr<ConstExprAST> constExpr;
 };

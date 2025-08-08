@@ -17,9 +17,6 @@ public:
     LLVMEnv(std::string moduleName);
 
     void Pass() override;
-    
-    void EnterScope() override;
-    void ExitScope() override;
 
     void EnterWhile(llvm::BasicBlock* entry, llvm::BasicBlock* end) override {
         whiles.push_back({(llvm::BasicBlock*)entry, (llvm::BasicBlock*)end});
@@ -78,10 +75,6 @@ public:
 
     bool EndWithTerminator() override;
 
-    void AddSymbol(const std::string& name, VAR_TYPE type, void* value) override;
-    void* GetSymbolValue(const std::string& name) override;
-    VAR_TYPE GetSymbolType(void* value) override;
-
 private:
     struct while_data_t {
         llvm::BasicBlock* entry;
@@ -92,7 +85,5 @@ private:
     llvm::Module TheModule;
     llvm::IRBuilder<llvm::NoFolder, llvm::IRBuilderDefaultInserter> Builder;
 
-    std::vector<std::map<std::string, llvm::Value*>> locals;
-    std::vector<std::map<llvm::Value*, VAR_TYPE>> types;
     std::vector<while_data_t> whiles;
 };

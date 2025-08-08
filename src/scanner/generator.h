@@ -123,8 +123,8 @@ public:
         if (primary->type == PrimaryExprAST::Type::Expr) {
             return Generate(primary->expr.get());
         } else if (primary->type == PrimaryExprAST::Type::LVal) {
-            auto* val = Generate(primary->lval.get());
-            auto symbol_type = env->GetSymbolType(val);
+            auto val = Generate(primary->lval.get());
+            auto symbol_type = env->GetSymbolType({ .value = val });
 
             if (symbol_type == VAR_TYPE::VAR) {
                 return env->CreateLoad(val);
@@ -140,7 +140,7 @@ public:
         return env->GetInt32(number->value);
     }
     V* Generate(LValAST* lval) {
-        return (V*)env->GetSymbolValue(lval->ident);
+        return env->GetSymbolValue(lval->ident).value;
     }
     V* Generate(LOrExprAST* lorExpr) {
         if (lorExpr->left) {
@@ -231,19 +231,19 @@ public:
             for (auto& arg : unaryExpr->callArgs) {
                 args.push_back(Generate(arg.get()));
             }
-            auto* func = env->GetSymbolValue(unaryExpr->ident);
-            return env->CreateCall(func, args);
+            auto symbol = env->GetSymbolValue(unaryExpr->ident);
+            return env->CreateCall(symbol.function, args);
         }
         return nullptr;
     }
     V* Generate(FuncFParamAST* param) {
-        auto* addr = env->CreateAlloca(param->btype->Codegen(env), param->ident);
-        env->AddSymbol(param->ident, VAR_TYPE::VAR, addr);
+        auto addr = env->CreateAlloca(param->btype->Codegen(env), param->ident);
+        env->AddSymbol(param->ident, VAR_TYPE::VAR, { .value = addr });
         return addr;  // Return the address of the parameter
     }
     void Generate(ConstDeclAST* constDecl) {
         for (auto& def : constDecl->constDefs) {
-            env->AddSymbol(def->ident, VAR_TYPE::CONST, Generate(def->initVal.get()));
+            env->AddSymbol(def->ident, VAR_TYPE::CONST, { .value = Generate(def->initVal.get()) });
         }
     }
     void Generate(VarDeclAST* varDecl) {
@@ -251,7 +251,7 @@ public:
             auto* varAddr = env->CreateAlloca(varDecl->btype->Codegen(env), def->ident);
             if (def->initVal)
                 env->CreateStore(Generate(def->initVal.get()), varAddr);
-            env->AddSymbol(def->ident, VAR_TYPE::VAR, varAddr);
+            env->AddSymbol(def->ident, VAR_TYPE::VAR, { .value = varAddr });
         }
     }
     V* Generate(ConstInitValAST* initVal) {

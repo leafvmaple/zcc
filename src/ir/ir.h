@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 enum class VAR_TYPE {
     CONST,
@@ -12,14 +13,20 @@ enum class VAR_TYPE {
 template<typename T, typename V, typename B, typename F>
 class Env {
 public:
+    union Symbol_Value {
+        V* value;
+        F* function;
+
+        bool operator<(const Symbol_Value& other) const {
+            return value < other.value;
+        }
+    };
+
     virtual ~Env() = default;
 
     virtual void Pass() = 0;
     virtual void Print() = 0;
     virtual void Dump(const char* output) = 0;
-
-    virtual void EnterScope() = 0;
-    virtual void ExitScope() = 0;
 
     virtual void EnterWhile(B* entry, B* end) = 0;
     virtual void ExitWhile() = 0;
@@ -69,7 +76,42 @@ public:
 
     virtual bool EndWithTerminator() = 0;
 
-    virtual void AddSymbol(const std::string& name, VAR_TYPE type, void* value) = 0;
-    virtual void* GetSymbolValue(const std::string& name) = 0;
-    virtual VAR_TYPE GetSymbolType(void* value) = 0;
+    void EnterScope() {
+        locals.push_back({});
+        types.push_back({});
+    }
+
+    void ExitScope() {
+        locals.pop_back();
+        types.pop_back();
+    }
+
+    void AddSymbol(const std::string& name, VAR_TYPE type, Symbol_Value value)  {
+        locals.back()[name] = value;
+        types.back()[value] = type;
+    }
+
+    Symbol_Value GetSymbolValue(const std::string& name) {
+        for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
+            auto found = it->find(name);
+            if (found != it->end()) {
+                return found->second;
+            }
+        }
+        return { nullptr };
+    }
+
+    VAR_TYPE GetSymbolType(Symbol_Value value)  {
+        for (auto it = types.rbegin(); it != types.rend(); ++it) {
+            auto found = it->find(value);
+            if (found != it->end()) {
+                return found->second;
+            }
+        }
+        return VAR_TYPE::VAR;
+    }
+
+private:
+    std::vector<std::map<std::string, Symbol_Value>> locals;
+    std::vector<std::map<Symbol_Value, VAR_TYPE>> types;
 };

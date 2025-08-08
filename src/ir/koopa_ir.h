@@ -88,9 +88,6 @@ public:
     KoopaEnv(std::string input) : KoopaEnv() {}
 
     void Pass() override;
-
-    void EnterScope() override;
-    void ExitScope() override;
     
     void EnterWhile(koopa::BasicBlock* entry, koopa::BasicBlock* end) override {
         whiles.push_back({entry, end});
@@ -151,10 +148,6 @@ public:
     koopa::Value* GetInt32(int value) override;
 
     bool EndWithTerminator() override;
-
-    void AddSymbol(const std::string& name, VAR_TYPE type, void* value) override;
-    void* GetSymbolValue(const std::string& name) override;
-    VAR_TYPE GetSymbolType(void* value) override;
 
 private:
     struct zcc_while_data_t {

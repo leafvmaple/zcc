@@ -26,16 +26,6 @@ KoopaEnv::KoopaEnv() {
     funcs.reserve(VEC_RESERVE_SIZE);
 }
 
-void KoopaEnv::EnterScope() {
-    locals.push_back({});
-    types.push_back({});
-}
-
-void KoopaEnv::ExitScope() {
-    locals.pop_back();
-    types.pop_back();
-}
-
 void KoopaEnv::Print() {
     if (_ParseProgram()) {
         koopa_dump_to_stdout(program);
@@ -125,8 +115,8 @@ koopa::Function* KoopaEnv::CreateFunction(koopa::Type* funcType, const std::stri
             }
         });
     }
-    AddSymbol(name, VAR_TYPE::FUNC, func.ptr);
     funcs.push_back(func);
+    AddSymbol(name, VAR_TYPE::FUNC, { .function = &funcs.back() });
     return &funcs.back();
 }
 
@@ -491,31 +481,6 @@ koopa::Value* KoopaEnv::GetInt32(int value) {
 bool KoopaEnv::EndWithTerminator() {
     auto* basic_block = (koopa_inst_vec_t*)insert_ptr;
     return !basic_block->empty() && _IsTerminator(basic_block->back());
-}
-
-void KoopaEnv::AddSymbol(const std::string& name, VAR_TYPE type, void* value) {
-    locals.back()[name] = value;
-    types.back()[value] = type;
-}
-
-void* KoopaEnv::GetSymbolValue(const std::string& name) {
-    for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
-        auto found = it->find(name);
-        if (found != it->end()) {
-            return (void*)found->second;  // funnction or value
-        }
-    }
-    return nullptr;
-}
-
-VAR_TYPE KoopaEnv::GetSymbolType(void* value) {
-    for (auto it = types.rbegin(); it != types.rend(); ++it) {
-        auto found = it->find(value);
-        if (found != it->end()) {
-            return found->second;
-        }
-    }
-    return VAR_TYPE::VAR;
 }
 
 koopa::Value* KoopaEnv::_CreateInst(koopa::Value* value) {

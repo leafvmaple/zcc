@@ -41,32 +41,6 @@ void LLVMEnv::Pass() {
 #endif
 }
 
-void LLVMEnv::EnterScope() {
-    locals.push_back({});
-    types.push_back({});
-}
-
-void LLVMEnv::ExitScope() {
-    locals.pop_back();
-    types.pop_back();
-}
-
-void LLVMEnv::AddSymbol(const std::string& name, VAR_TYPE type, void* value) {
-    auto value_t = (llvm::Value*)value;
-    locals.back()[name] = value_t;
-    types.back()[value_t] = type;
-}
-
-void* LLVMEnv::GetSymbolValue(const std::string& name) {
-    for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
-        auto found = it->find(name);
-        if (found != it->end()) {
-            return (void*)found->second;
-        }
-    }
-    return nullptr;
-}
-
 void LLVMEnv::Print() {
     TheModule.print(llvm::outs(), nullptr);
 }
@@ -92,7 +66,7 @@ llvm::Function* LLVMEnv::CreateFunction(llvm::Type* funcType, const std::string&
         args->setName(names[i]);
         ++args;
     }
-    AddSymbol(name, VAR_TYPE::FUNC, (void*)func);
+    AddSymbol(name, VAR_TYPE::FUNC, { func });
     return func;
 }
 
@@ -220,14 +194,4 @@ void LLVMEnv::CreateRet(llvm::Value* value) {
 llvm::Value* LLVMEnv::CreateCall(void* func, std::vector<llvm::Value*> args) {
     auto* llvmFunc = (llvm::Function*)func;
     return Builder.CreateCall(llvmFunc, args);
-}
-
-VAR_TYPE LLVMEnv::GetSymbolType(void* value) {
-    for (auto it = types.rbegin(); it != types.rend(); ++it) {
-        auto found = it->find((llvm::Value*)value);
-        if (found != it->end()) {
-            return found->second;
-        }
-    }
-    return VAR_TYPE::VAR;
 }
