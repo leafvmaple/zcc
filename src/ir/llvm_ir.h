@@ -17,20 +17,6 @@ public:
     LLVMEnv(std::string moduleName);
 
     void Pass() override;
-
-    void EnterWhile(llvm::BasicBlock* entry, llvm::BasicBlock* end) override {
-        whiles.push_back({(llvm::BasicBlock*)entry, (llvm::BasicBlock*)end});
-    }
-    void ExitWhile() override {
-        whiles.pop_back();
-    }
-    llvm::BasicBlock* GetWhileEntry() override {
-        return whiles.back().entry;
-    }
-    llvm::BasicBlock* GetWhileEnd() override { 
-        return whiles.back().end;
-    }
-
     void Print() override;
     void Dump(const char* output) override;
 
@@ -80,14 +66,8 @@ public:
     bool EndWithTerminator() override;
 
 private:
-    struct while_data_t {
-        llvm::BasicBlock* entry;
-        llvm::BasicBlock* end;
-    };
 
     llvm::LLVMContext TheContext;
     llvm::Module TheModule;
     llvm::IRBuilder<llvm::NoFolder, llvm::IRBuilderDefaultInserter> Builder;
-
-    std::vector<while_data_t> whiles;
 };

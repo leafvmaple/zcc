@@ -87,23 +87,6 @@ public:
     KoopaEnv(std::string input) : KoopaEnv() {}
 
     void Pass() override;
-    
-    void EnterWhile(koopa::BasicBlock* entry, koopa::BasicBlock* end) override {
-        whiles.push_back({entry, end});
-    }
-
-    void ExitWhile() override {
-        whiles.pop_back();
-    }
-
-    koopa::BasicBlock* GetWhileEntry() override {
-        return whiles.back().entry;
-    }
-
-    koopa::BasicBlock* GetWhileEnd() override {
-        return whiles.back().end;
-    }
-
     void Print() override;
     void Dump(const char* output) override;
 
@@ -152,17 +135,11 @@ public:
     bool EndWithTerminator() override;
 
 private:
-    struct zcc_while_data_t {
-        koopa::BasicBlock* entry;
-        koopa::BasicBlock* end;
-    };
-
     zcc_function_vec_t funcs;
     std::vector<koopa_raw_value_data_t*> values;
 
     std::vector<std::map<std::string, void*>> locals{};
     std::vector<std::map<void*, VAR_TYPE>> types{};
-    std::vector<zcc_while_data_t> whiles{};
 
     koopa_raw_program_t* raw_program{};
     koopa_program_t program{};

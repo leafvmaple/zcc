@@ -28,11 +28,6 @@ public:
     virtual void Print() = 0;
     virtual void Dump(const char* output) = 0;
 
-    virtual void EnterWhile(B* entry, B* end) = 0;
-    virtual void ExitWhile() = 0;
-    virtual B* GetWhileEntry() = 0;
-    virtual B* GetWhileEnd() = 0;
-
     virtual T* CreateFuncType(T* retType, std::vector<T*> params) = 0;
     virtual F* CreateFunction(T* funcType, const std::string& name, std::vector<std::string> names) = 0;
     virtual B* CreateBasicBlock(const std::string& name, F* func) = 0;
@@ -116,8 +111,30 @@ public:
         }
         return VAR_TYPE::VAR;
     }
+    
+    void EnterWhile(B* entry, B* end) {
+        whiles.push_back({entry, end});
+    }
+
+    void ExitWhile() {
+        whiles.pop_back();
+    }
+
+    B* GetWhileEntry() {
+        return whiles.back().entry;
+    }
+
+    B* GetWhileEnd() { 
+        return whiles.back().end;
+    }
 
 private:
+    struct while_data_t {
+        B* entry;
+        B* end;
+    };
+
     std::vector<std::map<std::string, Symbol_Value>> locals;
     std::vector<std::map<Symbol_Value, VAR_TYPE>> types;
+    std::vector<while_data_t> whiles;
 };
