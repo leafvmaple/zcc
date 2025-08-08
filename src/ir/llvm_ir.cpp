@@ -80,7 +80,7 @@ void LLVMEnv::CreateBuiltin(const std::string& name, llvm::Type* retType, std::v
 
 void LLVMEnv::CreateCondBr(llvm::Value* cond, llvm::BasicBlock* trueBB, llvm::BasicBlock* falseBB) {
     auto* logic_cond = CreateICmpNE(cond, GetInt32(0));
-    Builder.CreateCondBr(logic_cond, (llvm::BasicBlock*)trueBB, (llvm::BasicBlock*)falseBB);
+    Builder.CreateCondBr(logic_cond, trueBB, falseBB);
 }
 
 void LLVMEnv::CreateBr(llvm::BasicBlock* desc) {
@@ -187,8 +187,8 @@ llvm::Type* LLVMEnv::GetVoidType() {
     return llvm::Type::getVoidTy(TheContext);
 }
 
-llvm::Type* LLVMEnv::GetArrayType() {
-    return llvm::ArrayType::get(GetInt32Type(), 0); // 0 for dynamic size
+llvm::Type* LLVMEnv::GetArrayType(llvm::Type* type) {
+    return llvm::ArrayType::get(type, 0); // 0 for dynamic size
 }
 
 llvm::Type* LLVMEnv::GetPointerType(llvm::Type* type) {
@@ -196,11 +196,11 @@ llvm::Type* LLVMEnv::GetPointerType(llvm::Type* type) {
 }
 
 llvm::Value* LLVMEnv::GetInt32(int value) {
-    return llvm::ConstantInt::get((llvm::IntegerType*)GetInt32Type(), value);
+    return llvm::ConstantInt::get(GetInt32Type(), value);
 }
 
 bool LLVMEnv::EndWithTerminator() {
-    auto* basic_block = (llvm::BasicBlock*)Builder.GetInsertBlock();
+    auto* basic_block = Builder.GetInsertBlock();
     return !basic_block->empty() && basic_block->back().isTerminator();
 }
 

@@ -61,7 +61,7 @@ public:
 
     llvm::Type* GetInt32Type() override;
     llvm::Type* GetVoidType() override;
-    llvm::Type* GetArrayType() override;
+    llvm::Type* GetArrayType(llvm::Type* type) override;
     llvm::Type* GetPointerType(llvm::Type* type) override;
 
     llvm::Value* GetInt32(int value) override;
