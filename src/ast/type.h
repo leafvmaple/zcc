@@ -4,7 +4,7 @@
 
 using std::string;
 
-template<typename V>
+template<typename T, typename V, typename B, typename F>
 class Env;
 class KoopaEnv;
 
@@ -15,8 +15,8 @@ struct BaseType {
     };
     BaseType(TYPE type) : type(type) {}
 
-    template<typename V>
-    void* Codegen(Env<V>* env);
+    template<typename T, typename V, typename B, typename F>
+    T* Codegen(Env<T, V, B, F>* env);
 
 private:
     TYPE type;

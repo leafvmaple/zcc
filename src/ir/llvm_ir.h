@@ -12,7 +12,7 @@
 #include "ir.h"
 
 
-class LLVMEnv : public Env<llvm::Value> {
+class LLVMEnv : public Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function> {
 public:
     LLVMEnv(std::string moduleName);
 
@@ -21,31 +21,31 @@ public:
     void EnterScope() override;
     void ExitScope() override;
 
-    void EnterWhile(void* entry, void* end) override {
+    void EnterWhile(llvm::BasicBlock* entry, llvm::BasicBlock* end) override {
         whiles.push_back({(llvm::BasicBlock*)entry, (llvm::BasicBlock*)end});
     }
     void ExitWhile() override {
         whiles.pop_back();
     }
-    void* GetWhileEntry() override {
-        return (void*)whiles.back().entry;
+    llvm::BasicBlock* GetWhileEntry() override {
+        return whiles.back().entry;
     }
-    void* GetWhileEnd() override { 
-        return (void*)whiles.back().end;
+    llvm::BasicBlock* GetWhileEnd() override { 
+        return whiles.back().end;
     }
 
     void Print() override;
     void Dump(const char* output) override;
 
-    void* CreateFuncType(void* retType, std::vector<void*> params) override;
-    void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> names) override;
-    void* CreateBasicBlock(const std::string& name, void* func) override;
+    llvm::Type* CreateFuncType(llvm::Type* retType, std::vector<llvm::Type*> params) override;
+    llvm::Function* CreateFunction(llvm::Type* funcType, const std::string& name, std::vector<std::string> names) override;
+    llvm::BasicBlock* CreateBasicBlock(const std::string& name, llvm::Function* func) override;
 
-    void CreateCondBr(void* cond, void* thenBB, void* elseBB) override;
-    void CreateBr(void* desc) override;
+    void CreateCondBr(llvm::Value* cond, llvm::BasicBlock* thenBB, llvm::BasicBlock* elseBB) override;
+    void CreateBr(llvm::BasicBlock* desc) override;
 
-    void CreateStore(void* value, void* dest) override;
-    llvm::Value* CreateLoad(void* src) override;
+    void CreateStore(llvm::Value* value, llvm::Value* dest) override;
+    llvm::Value* CreateLoad(llvm::Value* src) override;
     void CreateRet(void* value) override;
     void* CreateCall(void* func, std::vector<void*> args) override;
     
@@ -66,13 +66,13 @@ public:
     void* CreateICmpLE(void* lhs, void* rhs) override;
     void* CreateICmpGE(void* lhs, void* rhs) override;
 
-    void SetInserPointer(void* ptr) override;
+    void SetInserPointer(llvm::BasicBlock* ptr) override;
 
-    void* GetFunction() override;
-    void* GetFunctionArg(int index) override;
+    llvm::Function* GetFunction() override;
+    llvm::Value* GetFunctionArg(int index) override;
 
-    void* GetInt32Type() override;
-    void* GetVoidType() override;
+    llvm::Type* GetInt32Type() override;
+    llvm::Type* GetVoidType() override;
 
     void* GetInt32(int value) override;
 

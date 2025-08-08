@@ -9,7 +9,7 @@ enum class VAR_TYPE {
     FUNC,
 };
 
-template<typename V>
+template<typename T, typename V, typename B, typename F>
 class Env {
 public:
     virtual ~Env() = default;
@@ -21,20 +21,20 @@ public:
     virtual void EnterScope() = 0;
     virtual void ExitScope() = 0;
 
-    virtual void EnterWhile(void* entry, void* end) = 0;
+    virtual void EnterWhile(B* entry, B* end) = 0;
     virtual void ExitWhile() = 0;
-    virtual void* GetWhileEntry() = 0;
-    virtual void* GetWhileEnd() = 0;
+    virtual B* GetWhileEntry() = 0;
+    virtual B* GetWhileEnd() = 0;
 
-    virtual void* CreateFuncType(void* retType, std::vector<void*> params) = 0;
-    virtual void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> names) = 0;
-    virtual void* CreateBasicBlock(const std::string& name, void* func) = 0;
+    virtual T* CreateFuncType(T* retType, std::vector<T*> params) = 0;
+    virtual F* CreateFunction(T* funcType, const std::string& name, std::vector<std::string> names) = 0;
+    virtual B* CreateBasicBlock(const std::string& name, F* func) = 0;
 
-    virtual void CreateCondBr(void* cond, void* trueBB, void* falseBB) = 0;
-    virtual void CreateBr(void* desc) = 0;
+    virtual void CreateCondBr(V* cond, B* trueBB, B* falseBB) = 0;
+    virtual void CreateBr(B* desc) = 0;
 
-    virtual void CreateStore(void* value, void* dest) = 0;
-    virtual V* CreateLoad(void* src) = 0;
+    virtual void CreateStore(V* value, V* dest) = 0;
+    virtual V* CreateLoad(V* src) = 0;
     virtual void CreateRet(void* value) = 0;
     virtual void* CreateCall(void* func, std::vector<void*> args) = 0;
 
@@ -57,13 +57,13 @@ public:
     virtual void* CreateICmpLE(void* lhs, void* rhs) = 0;
     virtual void* CreateICmpGE(void* lhs, void* rhs) = 0;
     
-    virtual void SetInserPointer(void* ptr) = 0;
+    virtual void SetInserPointer(B* ptr) = 0;
 
-    virtual void* GetFunction() = 0;
-    virtual void* GetFunctionArg(int index) = 0;
+    virtual F* GetFunction() = 0;
+    virtual V* GetFunctionArg(int index) = 0;
 
-    virtual void* GetInt32Type() = 0;
-    virtual void* GetVoidType() = 0;
+    virtual T* GetInt32Type() = 0;
+    virtual T* GetVoidType() = 0;
 
     virtual void* GetInt32(int value) = 0;
 

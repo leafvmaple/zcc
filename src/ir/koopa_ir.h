@@ -7,6 +7,7 @@
 #include <cassert>
 
 #include "../libkoopa/include/koopa.h"
+#include "../libkoopa/include/function.h"
 
 #include "ir.h"
 
@@ -46,11 +47,11 @@ koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std
     return {buffer, static_cast<uint32_t>(vec.size()), kind};
 }
 
-koopa_raw_type_t inline koopa_type(koopa_raw_type_tag_t tag) {
+inline koopa::Type* koopa_type(koopa_raw_type_tag_t tag) {
     return new koopa_raw_type_kind_t { tag };
 }
 
-koopa_raw_type_t inline koopa_pointer(koopa_raw_type_tag_t tag) {
+inline koopa::Type* koopa_pointer(koopa_raw_type_tag_t tag) {
     return new koopa_raw_type_kind_t {
         .tag = KOOPA_RTT_POINTER,
         .data.pointer = {
@@ -76,8 +77,13 @@ koopa_raw_value_t inline koopa_int(int value) {
 const char* to_string(std::string name);
 const char* to_string(int value);
 
-class KoopaEnv : public Env<koopa_raw_value_data_t> {
+class KoopaEnv : public Env<koopa_raw_type_kind_t, koopa_raw_value_data, zcc_basic_block_data_t, zcc_function_data_t> {
 public:
+    using T = koopa_raw_type_kind_t;
+    using V = koopa_raw_value_data_t;
+    using B = zcc_basic_block_data_t;
+    using F = zcc_function_data_t;
+
     KoopaEnv();
     KoopaEnv(std::string input) : KoopaEnv() {}
 
@@ -86,34 +92,34 @@ public:
     void EnterScope() override;
     void ExitScope() override;
     
-    void EnterWhile(void* entry, void* end) override {
-        whiles.push_back({(koopa_raw_basic_block_t)entry, (koopa_raw_basic_block_t)end});
+    void EnterWhile(koopa::BasicBlock* entry, koopa::BasicBlock* end) override {
+        whiles.push_back({entry, end});
     }
 
     void ExitWhile() override {
         whiles.pop_back();
     }
 
-    void* GetWhileEntry() override {
-        return (void*)whiles.back().entry;
+    koopa::BasicBlock* GetWhileEntry() override {
+        return whiles.back().entry;
     }
 
-    void* GetWhileEnd() override {
-        return (void*)whiles.back().end;
+    koopa::BasicBlock* GetWhileEnd() override {
+        return whiles.back().end;
     }
 
     void Print() override;
     void Dump(const char* output) override;
 
-    void* CreateFuncType(void* retType, std::vector<void*> params) override;
-    void* CreateFunction(void* funcType, const std::string& name, std::vector<std::string> params) override;
-    void* CreateBasicBlock(const std::string& name, void* func) override;
+    koopa::Type* CreateFuncType(koopa::Type* retType, std::vector<koopa::Type*> params) override;
+    koopa::Function* CreateFunction(koopa::Type* funcType, const std::string& name, std::vector<std::string> params) override;
+    koopa::BasicBlock* CreateBasicBlock(const std::string& name, F* func) override;
 
-    void CreateCondBr(void* cond, void* trueBB, void* falseBB) override;
-    void CreateBr(void* desc) override;
+    void CreateCondBr(koopa::Value* cond, koopa::BasicBlock* trueBB, koopa::BasicBlock* falseBB) override;
+    void CreateBr(koopa::BasicBlock* desc) override;
 
-    void CreateStore(void* value, void* dest) override;
-    koopa_raw_value_data_t* CreateLoad(void* src) override;
+    void CreateStore(koopa::Value* value, koopa::Value* dest) override;
+    koopa::Value* CreateLoad(koopa::Value* src) override;
     void CreateRet(void* value) override;
     void* CreateCall(void* func, std::vector<void*> args) override;
 
@@ -134,13 +140,13 @@ public:
     void* CreateICmpLE(void* lhs, void* rhs) override;
     void* CreateICmpGE(void* lhs, void* rhs) override;
 
-    void SetInserPointer(void* ptr) override;
+    void SetInserPointer(koopa::BasicBlock* ptr) override;
 
-    void* GetFunction() override;
-    void* GetFunctionArg(int index) override;
+    koopa::Function* GetFunction() override;
+    koopa::Value* GetFunctionArg(int index) override;
 
-    void* GetInt32Type() override;
-    void* GetVoidType() override;
+    koopa::Type* GetInt32Type() override;
+    koopa::Type* GetVoidType() override;
 
     void* GetInt32(int value) override;
 
@@ -151,23 +157,9 @@ public:
     VAR_TYPE GetSymbolType(void* value) override;
 
 private:
-    typedef std::vector<koopa_raw_value_t> koopa_inst_vec_t;
-    struct zcc_basic_block_data_t {
-        koopa_inst_vec_t insts;
-        koopa_raw_basic_block_data_t* ptr;
-    };
-    typedef std::vector<zcc_basic_block_data_t> zcc_basic_block_vec_t;
-    struct zcc_function_data_t {
-        std::string name;
-        std::vector<koopa_raw_value_data_t*> params;
-        zcc_basic_block_vec_t bbs;
-        koopa_raw_function_data_t* ptr;
-    };
-    typedef std::vector<zcc_function_data_t> zcc_function_vec_t;
-
     struct zcc_while_data_t {
-        koopa_raw_basic_block_t entry;
-        koopa_raw_basic_block_t end;
+        koopa::BasicBlock* entry;
+        koopa::BasicBlock* end;
     };
 
     union koopa_raw_symobol_data_t {
@@ -183,7 +175,7 @@ private:
 
     koopa_raw_program_t* raw_program{};
     koopa_program_t program{};
-    koopa_inst_vec_t* insert_ptr{};
+    zcc_basic_block_data_t* insert_ptr{};
 
     void* _CreateInst(koopa_raw_value_t value);
     koopa_raw_basic_block_t _ParseBasicBlock(const zcc_basic_block_data_t& bbs);

@@ -77,7 +77,7 @@ void LLVMEnv::Dump(const char* output) {
     TheModule.print(rawOutFile, nullptr);
 }
 
-void* LLVMEnv::CreateFuncType(void* retType, std::vector<void*> params) {
+llvm::Type* LLVMEnv::CreateFuncType(llvm::Type* retType, std::vector<llvm::Type*> params) {
     auto paramTypes = std::vector<llvm::Type*>();
     for (auto& param : params) {
         paramTypes.push_back((llvm::Type*)param);
@@ -85,7 +85,7 @@ void* LLVMEnv::CreateFuncType(void* retType, std::vector<void*> params) {
     return llvm::FunctionType::get((llvm::Type*)retType, paramTypes, false);
 }
 
-void* LLVMEnv::CreateFunction(void* funcType, const std::string& name, std::vector<std::string> names) {
+llvm::Function* LLVMEnv::CreateFunction(llvm::Type* funcType, const std::string& name, std::vector<std::string> names) {
     auto func = llvm::Function::Create((llvm::FunctionType*)funcType, llvm::Function::ExternalLinkage, name, &TheModule);
     auto args = func->arg_begin();
     for (size_t i = 0; i < names.size(); ++i) {
@@ -96,26 +96,26 @@ void* LLVMEnv::CreateFunction(void* funcType, const std::string& name, std::vect
     return func;
 }
 
-void* LLVMEnv::CreateBasicBlock(const std::string& name, void* func) {
-    return llvm::BasicBlock::Create(TheContext, name, (llvm::Function*)func);
+llvm::BasicBlock* LLVMEnv::CreateBasicBlock(const std::string& name, llvm::Function* func) {
+    return llvm::BasicBlock::Create(TheContext, name, func);
 }
 
-void LLVMEnv::CreateCondBr(void* cond, void* trueBB, void* falseBB) {
+void LLVMEnv::CreateCondBr(llvm::Value* cond, llvm::BasicBlock* trueBB, llvm::BasicBlock* falseBB) {
     auto* logic_cond = CreateICmpNE((llvm::Value*)cond, GetInt32(0));
     Builder.CreateCondBr((llvm::Value*)logic_cond, (llvm::BasicBlock*)trueBB, (llvm::BasicBlock*)falseBB);
 }
 
-void LLVMEnv::CreateBr(void* desc) {
-    Builder.CreateBr((llvm::BasicBlock*)desc);
+void LLVMEnv::CreateBr(llvm::BasicBlock* desc) {
+    Builder.CreateBr(desc);
 }
 
-void LLVMEnv::CreateStore(void* value, void* dest) {
-    Builder.CreateStore((llvm::Value*)value, (llvm::Value*)dest);
+void LLVMEnv::CreateStore(llvm::Value* value, llvm::Value* dest) {
+    Builder.CreateStore(value, dest);
 }
 
-llvm::Value* LLVMEnv::CreateLoad(void* src) {
+llvm::Value* LLVMEnv::CreateLoad(llvm::Value* src) {
     // TODO
-    return Builder.CreateLoad(llvm::Type::getInt32Ty(TheContext), (llvm::Value*)src);
+    return Builder.CreateLoad(llvm::Type::getInt32Ty(TheContext), src);
 }
 
 void* LLVMEnv::CreateAlloca(void* type, const std::string& name) {
@@ -180,27 +180,27 @@ void* LLVMEnv::CreateICmpGE(void* lhs, void* rhs) {
     return Builder.CreateZExt(res, llvm::Type::getInt32Ty(TheContext));
 }
 
-void LLVMEnv::SetInserPointer(void* ptr) {
-    Builder.SetInsertPoint((llvm::BasicBlock*)ptr);
+void LLVMEnv::SetInserPointer(llvm::BasicBlock* ptr) {
+    Builder.SetInsertPoint(ptr);
 }
 
-void* LLVMEnv::GetFunction() {
+llvm::Function* LLVMEnv::GetFunction() {
     return Builder.GetInsertBlock()->getParent();
 }
 
-void* LLVMEnv::GetFunctionArg(int index) {
-    auto* func = (llvm::Function*)GetFunction();
+llvm::Value* LLVMEnv::GetFunctionArg(int index) {
+    auto* func = GetFunction();
     auto argIt = func->arg_begin();
     std::advance(argIt, index);
 
-    return (void*)&(*argIt);
+    return &(*argIt);
 }
 
-void* LLVMEnv::GetInt32Type() {
+llvm::Type* LLVMEnv::GetInt32Type() {
     return llvm::Type::getInt32Ty(TheContext);
 }
 
-void* LLVMEnv::GetVoidType() {
+llvm::Type* LLVMEnv::GetVoidType() {
     return llvm::Type::getVoidTy(TheContext);
 }
 

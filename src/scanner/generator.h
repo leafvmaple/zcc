@@ -3,10 +3,11 @@
 #include "ast/ast.h"
 #include "ir/ir.h"
 
-template<typename V>
+template<typename T, typename V, typename B, typename F>
 class Generator {
 public:
-    Generator(Env<V> *env) : env(env) {};
+    using EnvType = Env<T, V, B, F>;
+    Generator(EnvType *env) : env(env) {};
 
     void Generate(CompUnitAST& ast) {
         for (auto&& funcDef : ast.funcDefs) {
@@ -14,7 +15,7 @@ public:
         }
     }
     void Generate(FuncDefAST* funcDef) {
-        std::vector<void*> types;
+        std::vector<T*> types;
         std::vector<std::string> names;
         
         for (auto& param : funcDef->params) {
@@ -29,7 +30,7 @@ public:
         env->SetInserPointer(bb);
 
         for (size_t i = 0; i < funcDef->params.size(); ++i) {
-            env->CreateStore(env->GetFunctionArg(i), Generate(funcDef->params[i].get()));
+            env->CreateStore(env->GetFunctionArg(i), (V*)Generate(funcDef->params[i].get()));
         }
 
         Generate(funcDef->block.get());
@@ -56,17 +57,17 @@ public:
     }
     void Generate(StmtAST* stmt) {
         if (stmt->type == StmtAST::Type::Assign) {
-            env->CreateStore(Generate(stmt->lval.get()), Generate(stmt->expr.get()));
+            env->CreateStore((V*)Generate(stmt->expr.get()), (V*)Generate(stmt->lval.get()));
         } else if (stmt->type == StmtAST::Type::Expr) {
             if (stmt->expr)
                 Generate(stmt->expr.get());
         } else if (stmt->type == StmtAST::Type::Block) {
             Generate(stmt->block.get());
         } else if (stmt->type == StmtAST::Type::If) {
-            auto* cond = Generate(stmt->expr.get());
+            auto* cond = (V*)Generate(stmt->expr.get());
             auto* func = env->GetFunction();
             auto* thenBB = env->CreateBasicBlock("then", func);
-            void* endBB{};
+            B* endBB{};
 
             if (stmt->elseStmt) {
                 auto* elseBB = env->CreateBasicBlock("else", func);
@@ -90,17 +91,17 @@ public:
         } else if (stmt->type == StmtAST::Type::Ret) {
             Generate(stmt->expr.get());
         } else if (stmt->type == StmtAST::Type::While) {
-            void* func = env->GetFunction();
-            void* condBB = env->CreateBasicBlock("while_entry", func);
-            void* bodyBB = env->CreateBasicBlock("while_body", func);
-            void* endBB = env->CreateBasicBlock("end", func);
+            auto* func = env->GetFunction();
+            auto* condBB = env->CreateBasicBlock("while_entry", func);
+            auto* bodyBB = env->CreateBasicBlock("while_body", func);
+            auto* endBB = env->CreateBasicBlock("end", func);
 
             env->EnterWhile(condBB, endBB);
 
             env->CreateBr(condBB);
             env->SetInserPointer(condBB);
 
-            env->CreateCondBr(Generate(stmt->cond.get()), bodyBB, endBB);
+            env->CreateCondBr((V*)Generate(stmt->cond.get()), bodyBB, endBB);
 
             env->SetInserPointer(bodyBB);
             Generate(stmt->thenStmt.get());
@@ -126,7 +127,7 @@ public:
             auto symbol_type = env->GetSymbolType(val);
 
             if (symbol_type == VAR_TYPE::VAR) {
-                return env->CreateLoad(val);
+                return env->CreateLoad((V*)val);
             } else if (symbol_type == VAR_TYPE::CONST) {
                 return val;
             }
@@ -250,7 +251,7 @@ public:
         for (const auto& def : varDecl->varDefs) {
             auto* varAddr = env->CreateAlloca(varDecl->btype->Codegen(env), def->ident);
             if (def->initVal)
-                env->CreateStore(Generate(def->initVal.get()), varAddr);
+                env->CreateStore((V*)Generate(def->initVal.get()), (V*)varAddr);
             env->AddSymbol(def->ident, VAR_TYPE::VAR, varAddr);
         }
         return nullptr;  // Const declarations do not return a value
@@ -266,5 +267,5 @@ public:
     }
 
 private:
-    Env<V>* env;
+    EnvType* env;
 };

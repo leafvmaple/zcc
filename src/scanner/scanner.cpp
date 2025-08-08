@@ -2,6 +2,7 @@
 #include "generator.h"
 
 #include "../libkoopa/include/koopa.h"
+#include "../libkoopa/include/function.h"
 
 #include "sysy.tab.hpp"
 #include "sysy.lex.hpp"
@@ -18,12 +19,12 @@ Scanner::~Scanner() {
     yylex_destroy(lexer);
 }
 
-template<typename V>
-void Scanner::Parse(FILE* input, Env<V>* env) {
+template<typename T, typename V, typename B, typename F>
+void Scanner::Parse(FILE* input, Env<T, V, B, F>* env) {
     yyset_in(input, lexer);
     int ret = parser->parse();
     if (ret == 0) {
-        Generator<V> generator(env);
+        Generator<T, V, B, F> generator(env);
         generator.Generate(ast);
     } else {
         fprintf(stderr, "Parse error at %s:%d:%d\n",
@@ -32,5 +33,5 @@ void Scanner::Parse(FILE* input, Env<V>* env) {
     }
 }
 
-template void Scanner::Parse<llvm::Value>(FILE* input, Env<llvm::Value>* env);
-template void Scanner::Parse<koopa_raw_value_data>(FILE* input, Env<koopa_raw_value_data>* env);
+template void Scanner::Parse(FILE* input, Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>* env);
+template void Scanner::Parse(FILE* input, Env<koopa_raw_type_kind_t, koopa_raw_value_data, zcc_basic_block_data_t, zcc_function_data_t>* env);
