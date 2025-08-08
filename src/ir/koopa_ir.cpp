@@ -38,7 +38,7 @@ void KoopaEnv::Dump(const char* output) {
     }
 }
 
-void KoopaEnv::Pass() {
+void KoopaEnv::Optimize() {
     for (auto& func : funcs) {
         bool isEmpty = true;
         for (auto& bb : func.bbs) {

@@ -15,7 +15,7 @@ LLVMEnv::LLVMEnv(std::string moduleName)
     EnterScope();
 }
 
-void LLVMEnv::Pass() {
+void LLVMEnv::Optimize() {
 // #if LLVM_VERSION_MAJOR >= 18
 #if 0
     llvm::PassBuilder pb;

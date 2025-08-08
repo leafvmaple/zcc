@@ -8,8 +8,8 @@
 
 #include <cassert>
 
-template<typename T, typename V, typename B, typename F>
-T* BaseType::Codegen(Env<T, V, B, F>* env) {
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+Type* BaseType::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
         case TYPE::INT:
             return env->GetInt32Type();

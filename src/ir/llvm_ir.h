@@ -16,7 +16,7 @@ class LLVMEnv : public Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Func
 public:
     LLVMEnv(std::string moduleName);
 
-    void Pass() override;
+    void Optimize() override;
     void Print() override;
     void Dump(const char* output) override;
 

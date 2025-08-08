@@ -16,7 +16,7 @@ void processFile(const char* input, const char* output) {
     
     auto file = fopen(input, "r");
     scanner.Parse(file, &env);
-    env.Pass();
+    env.Optimize();
     env.Dump(output);
     env.Print();
 

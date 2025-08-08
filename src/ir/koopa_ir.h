@@ -22,15 +22,15 @@ koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind) {
     return {nullptr, 0, kind};
 }
 
-template<typename T>
-koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const T& vec, KoopaEnv* env) {
+template<typename Type>
+koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const Type& vec, KoopaEnv* env) {
     auto* buffer = new const void*[1];
     buffer[0] = vec->ToKoopa(env);
     return {buffer, 1, kind};
 }
 
-template<typename T>
-koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std::vector<T>& vec, KoopaEnv* env) {
+template<typename Type>
+koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std::vector<Type>& vec, KoopaEnv* env) {
     auto* buffer = new const void*[vec.size()];
     for (size_t i = 0; i < vec.size(); ++i) {
         buffer[i] = vec[i]->ToKoopa(env);
@@ -38,8 +38,8 @@ koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std
     return {buffer, static_cast<uint32_t>(vec.size()), kind};
 }
 
-template<typename T>
-koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std::vector<T>& vec) {
+template<typename Type>
+koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std::vector<Type>& vec) {
     auto* buffer = new const void*[vec.size()];
     for (size_t i = 0; i < vec.size(); ++i) {
         buffer[i] = vec[i];
@@ -86,7 +86,7 @@ public:
     KoopaEnv();
     KoopaEnv(std::string input) : KoopaEnv() {}
 
-    void Pass() override;
+    void Optimize() override;
     void Print() override;
     void Dump(const char* output) override;
 

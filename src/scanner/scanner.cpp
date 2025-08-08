@@ -19,12 +19,12 @@ Scanner::~Scanner() {
     yylex_destroy(lexer);
 }
 
-template<typename T, typename V, typename B, typename F>
-void Scanner::Parse(FILE* input, Env<T, V, B, F>* env) {
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+void Scanner::Parse(FILE* input, Env<Type, Value, BasicBlock, Function>* env) {
     yyset_in(input, lexer);
     int ret = parser->parse();
     if (ret == 0) {
-        Generator<T, V, B, F> generator(env);
+        Generator<Type, Value, BasicBlock, Function> generator(env);
         generator.Generate(ast);
     } else {
         fprintf(stderr, "Parse error at %s:%d:%d\n",

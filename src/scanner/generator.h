@@ -3,10 +3,10 @@
 #include "ast/ast.h"
 #include "ir/ir.h"
 
-template<typename T, typename V, typename B, typename F>
+template<typename Type, typename Value, typename BasicBlock, typename Function>
 class Generator {
 public:
-    using EnvType = Env<T, V, B, F>;
+    using EnvType = Env<Type, Value, BasicBlock, Function>;
     Generator(EnvType *env) : env(env) {};
 
     void Generate(CompUnitAST& ast) {
@@ -18,7 +18,7 @@ public:
         }
     }
     void Generate(FuncDefAST* funcDef) {
-        std::vector<T*> types;
+        std::vector<Type*> types;
         std::vector<std::string> names;
         
         for (auto& param : funcDef->params) {
@@ -70,7 +70,7 @@ public:
             auto* cond = Generate(stmt->expr.get());
             auto* func = env->GetFunction();
             auto* thenBB = env->CreateBasicBlock("then", func);
-            B* endBB{};
+            BasicBlock* endBB{};
 
             if (stmt->elseStmt) {
                 auto* elseBB = env->CreateBasicBlock("else", func);
@@ -119,10 +119,10 @@ public:
             env->CreateBr(env->GetWhileEntry());
         }
     }
-    V* Generate(ExprAST* expr) {
+    Value* Generate(ExprAST* expr) {
         return Generate(expr->lorExpr.get());
     }
-    V* Generate(PrimaryExprAST* primary) {
+    Value* Generate(PrimaryExprAST* primary) {
         if (primary->type == PrimaryExprAST::Type::Expr) {
             return Generate(primary->expr.get());
         } else if (primary->type == PrimaryExprAST::Type::LVal) {
@@ -139,13 +139,13 @@ public:
         }
         return nullptr;  // Should not reach here
     }
-    V* Generate(NumberAST* number) {
+    Value* Generate(NumberAST* number) {
         return env->GetInt32(number->value);
     }
-    V* Generate(LValAST* lval) {
+    Value* Generate(LValAST* lval) {
         return env->GetSymbolValue(lval->ident).value;
     }
-    V* Generate(LOrExprAST* lorExpr) {
+    Value* Generate(LOrExprAST* lorExpr) {
         if (lorExpr->left) {
             auto lg1 = env->CreateICmpNE(Generate(lorExpr->left.get()), env->GetInt32(0));
             auto lg2 = env->CreateICmpNE(Generate(lorExpr->right.get()), env->GetInt32(0));
@@ -154,7 +154,7 @@ public:
         }
         return Generate(lorExpr->landExpr.get());
     }
-    V* Generate(LAndExprAST* landExpr) {
+    Value* Generate(LAndExprAST* landExpr) {
         if (landExpr->left) {
             auto lg1 = env->CreateICmpNE(Generate(landExpr->left.get()), env->GetInt32(0));
             auto lg2 = env->CreateICmpNE(Generate(landExpr->right.get()), env->GetInt32(0));
@@ -163,7 +163,7 @@ public:
         }
         return Generate(landExpr->eqExpr.get());
     }
-    V* Generate(EqExprAST* eqExpr) {
+    Value* Generate(EqExprAST* eqExpr) {
         if (eqExpr->left) {
             auto left = Generate(eqExpr->left.get());
             auto right = Generate(eqExpr->right.get());
@@ -175,7 +175,7 @@ public:
         }
         return Generate(eqExpr->relExpr.get());
     }
-    V* Generate(RelExprAST* relExpr) {
+    Value* Generate(RelExprAST* relExpr) {
         if (relExpr->left) {
             auto left = Generate(relExpr->left.get());
             auto right = Generate(relExpr->right.get());
@@ -191,7 +191,7 @@ public:
         }
         return Generate(relExpr->addExpr.get());
     }
-    V* Generate(AddExprAST* addExpr) {
+    Value* Generate(AddExprAST* addExpr) {
         if (addExpr->left) {
             auto left = Generate(addExpr->left.get());
             auto right = Generate(addExpr->right.get());
@@ -203,7 +203,7 @@ public:
         }
         return Generate(addExpr->mulExpr.get());
     }
-    V* Generate(MulExprAST* mulExpr) {
+    Value* Generate(MulExprAST* mulExpr) {
         if (mulExpr->left) {
             auto left = Generate(mulExpr->left.get());
             auto right = Generate(mulExpr->right.get());
@@ -217,7 +217,7 @@ public:
         }
         return Generate(mulExpr->unaryExpr.get());
     }
-    V* Generate(UnaryExprAST* unaryExpr) {
+    Value* Generate(UnaryExprAST* unaryExpr) {
         if (unaryExpr->type == UnaryExprAST::Type::Primary) {
             return Generate(unaryExpr->primaryExpr.get());
         } else if (unaryExpr->type == UnaryExprAST::Type::Unary) {
@@ -230,7 +230,7 @@ public:
                 return env->CreateICmpEQ(expr, env->GetInt32(0));
             }
         } else if (unaryExpr->type == UnaryExprAST::Type::Call) {
-            std::vector<V*> args;
+            std::vector<Value*> args;
             for (auto& arg : unaryExpr->callArgs) {
                 args.push_back(Generate(arg.get()));
             }
@@ -239,7 +239,7 @@ public:
         }
         return nullptr;
     }
-    V* Generate(FuncFParamAST* param) {
+    Value* Generate(FuncFParamAST* param) {
         auto addr = env->CreateAlloca(param->btype->Codegen(env), param->ident);
         env->AddSymbol(param->ident, VAR_TYPE::VAR, { .value = addr });
         return addr;  // Return the address of the parameter
@@ -250,7 +250,7 @@ public:
         }
     }
     void Generate(VarDeclAST* varDecl) {
-        V* varAddr{};
+        Value* varAddr{};
         auto* type = varDecl->btype->Codegen(env);
         for (const auto& def : varDecl->varDefs) {
             if (env->IsGlobalScope()) {
@@ -264,13 +264,13 @@ public:
             env->AddSymbol(def->ident, VAR_TYPE::VAR, { .value = varAddr });
         }
     }
-    V* Generate(ConstInitValAST* initVal) {
+    Value* Generate(ConstInitValAST* initVal) {
         return Generate(initVal->constExpr.get());
     }
-    V* Generate(InitValAST* initVal) {
+    Value* Generate(InitValAST* initVal) {
         return Generate(initVal->constExpr.get());
     }
-    V* Generate(ConstExprAST* constExpr) {
+    Value* Generate(ConstExprAST* constExpr) {
         return Generate(constExpr->expr.get());
     }
 
