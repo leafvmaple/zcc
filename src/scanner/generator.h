@@ -89,7 +89,7 @@ public:
             env->SetInserPointer(endBB);
 
         } else if (stmt->type == StmtAST::Type::Ret) {
-            Generate(stmt->expr.get());
+            env->CreateRet(Generate(stmt->expr.get()));
         } else if (stmt->type == StmtAST::Type::While) {
             auto* func = env->GetFunction();
             auto* condBB = env->CreateBasicBlock("while_entry", func);

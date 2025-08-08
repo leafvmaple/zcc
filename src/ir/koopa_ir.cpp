@@ -208,16 +208,15 @@ void KoopaEnv::CreateRet(koopa::Value* value) {
     });
 }
 
-koopa::Value* KoopaEnv::CreateCall(void* func, std::vector<koopa::Value*> args) {
-    auto* function = (koopa_raw_function_t)func;
+koopa::Value* KoopaEnv::CreateCall(koopa::Function* func, std::vector<koopa::Value*> args) {
     return _CreateInst(new koopa_raw_value_data_t {
-        .ty = function->ty,
+        .ty = func->ptr->ty,
         .name = nullptr,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_CALL,
             .data.call = {
-                .callee = function,
+                .callee = func->ptr,
                 .args = koopa_slice(KOOPA_RSIK_VALUE, args)
             }
         }

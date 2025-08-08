@@ -191,7 +191,6 @@ void LLVMEnv::CreateRet(llvm::Value* value) {
     Builder.CreateRet(value);
 }
 
-llvm::Value* LLVMEnv::CreateCall(void* func, std::vector<llvm::Value*> args) {
-    auto* llvmFunc = (llvm::Function*)func;
-    return Builder.CreateCall(llvmFunc, args);
+llvm::Value* LLVMEnv::CreateCall(llvm::Function* func, std::vector<llvm::Value*> args) {
+    return Builder.CreateCall(func, args);
 }

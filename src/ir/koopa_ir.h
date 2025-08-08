@@ -118,7 +118,7 @@ public:
     void CreateStore(koopa::Value* value, koopa::Value* dest) override;
     koopa::Value* CreateLoad(koopa::Value* src) override;
     void CreateRet(koopa::Value* value) override;
-    koopa::Value* CreateCall(void* func, std::vector<koopa::Value*> args) override;
+    koopa::Value* CreateCall(koopa::Function* func, std::vector<koopa::Value*> args) override;
 
     koopa::Value* CreateAnd(koopa::Value* lhs, koopa::Value* rhs) override;
     koopa::Value* CreateOr(koopa::Value* lhs, koopa::Value* rhs) override;
