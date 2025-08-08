@@ -34,4 +34,4 @@ void Scanner::Parse(FILE* input, Env<T, V, B, F>* env) {
 }
 
 template void Scanner::Parse(FILE* input, Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>* env);
-template void Scanner::Parse(FILE* input, Env<koopa_raw_type_kind_t, koopa_raw_value_data, zcc_basic_block_data_t, zcc_function_data_t>* env);
+template void Scanner::Parse(FILE* input, Env<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>* env);

@@ -77,7 +77,7 @@ koopa_raw_value_t inline koopa_int(int value) {
 const char* to_string(std::string name);
 const char* to_string(int value);
 
-class KoopaEnv : public Env<koopa_raw_type_kind_t, koopa_raw_value_data, zcc_basic_block_data_t, zcc_function_data_t> {
+class KoopaEnv : public Env<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function> {
 public:
     using T = koopa_raw_type_kind_t;
     using V = koopa_raw_value_data_t;
