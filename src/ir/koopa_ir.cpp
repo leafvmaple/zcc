@@ -218,7 +218,7 @@ void KoopaEnv::CreateRet(koopa::Value* value) {
     });
 }
 
-koopa::Value* KoopaEnv::CreateCall(void* func, std::vector<void*> args) {
+koopa::Value* KoopaEnv::CreateCall(void* func, std::vector<koopa::Value*> args) {
     auto* function = (koopa_raw_function_t)func;
     return _CreateInst(new koopa_raw_value_data_t {
         .ty = function->ty,

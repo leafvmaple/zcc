@@ -220,41 +220,39 @@ public:
         } else if (unaryExpr->type == UnaryExprAST::Type::Unary) {
             auto* expr = Generate(unaryExpr->unaryExpr.get());
             if (unaryExpr->op == "+") {
-                return expr;  // Unary plus, no change
+                return expr;
             } else if (unaryExpr->op == "-") {
                 return env->CreateSub(env->GetInt32(0), expr);
             } else if (unaryExpr->op == "!") {
                 return env->CreateICmpEQ(expr, env->GetInt32(0));
             }
         } else if (unaryExpr->type == UnaryExprAST::Type::Call) {
-            std::vector<void*> args;
+            std::vector<V*> args;
             for (auto& arg : unaryExpr->callArgs) {
                 args.push_back(Generate(arg.get()));
             }
             auto* func = env->GetSymbolValue(unaryExpr->ident);
             return env->CreateCall(func, args);
         }
-        return nullptr;  // Should not reach here
+        return nullptr;
     }
     V* Generate(FuncFParamAST* param) {
         auto* addr = env->CreateAlloca(param->btype->Codegen(env), param->ident);
         env->AddSymbol(param->ident, VAR_TYPE::VAR, addr);
         return addr;  // Return the address of the parameter
     }
-    V* Generate(ConstDeclAST* constDecl) {
+    void Generate(ConstDeclAST* constDecl) {
         for (auto& def : constDecl->constDefs) {
             env->AddSymbol(def->ident, VAR_TYPE::CONST, Generate(def->initVal.get()));
         }
-        return nullptr;  // Const declarations do not return a value
     }
-    V* Generate(VarDeclAST* varDecl) {
+    void Generate(VarDeclAST* varDecl) {
         for (const auto& def : varDecl->varDefs) {
             auto* varAddr = env->CreateAlloca(varDecl->btype->Codegen(env), def->ident);
             if (def->initVal)
                 env->CreateStore(Generate(def->initVal.get()), varAddr);
             env->AddSymbol(def->ident, VAR_TYPE::VAR, varAddr);
         }
-        return nullptr;  // Const declarations do not return a value
     }
     V* Generate(ConstInitValAST* initVal) {
         return Generate(initVal->constExpr.get());

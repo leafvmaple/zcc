@@ -36,7 +36,7 @@ public:
     virtual void CreateStore(V* value, V* dest) = 0;
     virtual V* CreateLoad(V* src) = 0;
     virtual void CreateRet(V* value) = 0;
-    virtual V* CreateCall(void* func, std::vector<void*> args) = 0;
+    virtual V* CreateCall(void* func, std::vector<V*> args) = 0;
 
     virtual V* CreateAnd(V* lhs, V* rhs) = 0;
     virtual V* CreateOr(V* lhs, V* rhs) = 0;

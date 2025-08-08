@@ -217,13 +217,9 @@ void LLVMEnv::CreateRet(llvm::Value* value) {
     Builder.CreateRet(value);
 }
 
-llvm::Value* LLVMEnv::CreateCall(void* func, std::vector<void*> args) {
+llvm::Value* LLVMEnv::CreateCall(void* func, std::vector<llvm::Value*> args) {
     auto* llvmFunc = (llvm::Function*)func;
-    auto argValues = std::vector<llvm::Value*>();
-    for (auto& arg : args) {
-        argValues.push_back((llvm::Value*)arg);
-    }
-    return Builder.CreateCall(llvmFunc, argValues);
+    return Builder.CreateCall(llvmFunc, args);
 }
 
 VAR_TYPE LLVMEnv::GetSymbolType(void* value) {

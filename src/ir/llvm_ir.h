@@ -47,7 +47,7 @@ public:
     void CreateStore(llvm::Value* value, llvm::Value* dest) override;
     llvm::Value* CreateLoad(llvm::Value* src) override;
     void CreateRet(llvm::Value* value) override;
-    llvm::Value* CreateCall(void* func, std::vector<void*> args) override;
+    llvm::Value* CreateCall(void* func, std::vector<llvm::Value*> args) override;
     
     llvm::Value* CreateAlloca(llvm::Type* type, const std::string& name) override;
 
