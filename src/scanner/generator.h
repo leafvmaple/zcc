@@ -285,7 +285,7 @@ public:
         return Generate(initVal->constExpr.get());
     }
     Value* Generate(InitValAST* initVal) {
-        return Generate(initVal->constExpr.get());
+        return Generate(initVal->expr.get());
     }
     Value* Generate(ConstExprAST* constExpr) {
         return Generate(constExpr->expr.get());
@@ -296,7 +296,7 @@ public:
     }
     // Get NumberAST
     Value* Calculate(InitValAST* initVal) {
-        return Calculate(initVal->constExpr.get());
+        return Calculate(initVal->expr.get());
     }
     Value* Calculate(ConstExprAST* constExpr) {
         return Calculate(constExpr->expr.get());

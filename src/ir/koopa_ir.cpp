@@ -40,14 +40,12 @@ void KoopaEnv::Dump(const char* output) {
 
 void KoopaEnv::Optimize() {
     for (auto& func : funcs) {
-        bool isEmpty = true;
         for (auto& bb : func.bbs) {
             std::vector<koopa_raw_value_t> insts;
             bool isTerminator = false;
             for (const auto& inst : bb->insts) {
                 if (!isTerminator) {
                     insts.push_back(inst);
-                    isEmpty = false;
                 }
                 if (_IsTerminator(inst)) {
                     isTerminator = true;
@@ -55,7 +53,7 @@ void KoopaEnv::Optimize() {
             }
             std::swap(bb->insts, insts);
         }
-        if (isEmpty && !func.bbs.empty()) {
+        if (!func.bbs.empty() && (func.bbs.back()->insts.empty() || !_IsTerminator(func.bbs.back()->insts.back()))) {
             func.bbs.back()->insts.push_back(new koopa_raw_value_data_t {
                 .ty = koopa_type(KOOPA_RTT_UNIT),
                 .used_by = koopa_slice(KOOPA_RSIK_VALUE),

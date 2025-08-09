@@ -282,7 +282,7 @@ ConstInitVal : ConstExpr {
   $$ = std::make_unique<ConstInitValAST>(std::move($1));
 }
 
-InitVal : ConstExpr {
+InitVal : Expr {
   $$ = std::make_unique<InitValAST>(std::move($1));
 }
 

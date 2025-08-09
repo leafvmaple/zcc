@@ -297,10 +297,10 @@ public:
 
 class InitValAST {
 public:
-    InitValAST(unique_ptr<ConstExprAST>&& constExpr)
-        : constExpr(std::move(constExpr)) {}
+    InitValAST(unique_ptr<ExprAST>&& expr)
+        : expr(std::move(expr)) {}
 
-    unique_ptr<ConstExprAST> constExpr;
+    unique_ptr<ExprAST> expr;
 };
 
 class BlockItemAST {
