@@ -503,6 +503,11 @@ koopa::Value* KoopaEnv::GetInt32(int value) {
     };
 }
 
+koopa::Value* KoopaEnv::CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) {
+    int result = func(lhs->kind.data.integer.value, rhs->kind.data.integer.value);
+    return GetInt32(result);
+}
+
 bool KoopaEnv::EndWithTerminator() {
     auto* basic_block = (koopa_inst_vec_t*)insert_ptr;
     return !basic_block->empty() && _IsTerminator(basic_block->back());

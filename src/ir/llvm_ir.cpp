@@ -199,6 +199,14 @@ llvm::Value* LLVMEnv::GetInt32(int value) {
     return llvm::ConstantInt::get(GetInt32Type(), value);
 }
 
+llvm::Value* LLVMEnv::CaculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs) {
+    auto* lhsConst = llvm::dyn_cast<llvm::ConstantInt>(lhs);
+    auto* rhsConst = llvm::dyn_cast<llvm::ConstantInt>(rhs);
+
+    int result = func(lhsConst->getSExtValue(), rhsConst->getSExtValue());
+    return GetInt32(result);
+}
+
 bool LLVMEnv::EndWithTerminator() {
     auto* basic_block = Builder.GetInsertBlock();
     return !basic_block->empty() && basic_block->back().isTerminator();

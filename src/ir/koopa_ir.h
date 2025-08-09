@@ -134,6 +134,7 @@ public:
     koopa::Type* GetPointerType(koopa::Type* type) override;
 
     koopa::Value* GetInt32(int value) override;
+    koopa::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) override;
 
     bool EndWithTerminator() override;
 

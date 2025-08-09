@@ -65,6 +65,7 @@ public:
     llvm::Type* GetPointerType(llvm::Type* type) override;
 
     llvm::Value* GetInt32(int value) override;
+    llvm::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs) override;
 
     bool EndWithTerminator() override;
 

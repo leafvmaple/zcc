@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <functional>
 
 enum class VAR_TYPE {
     CONST,
@@ -73,6 +74,7 @@ public:
     virtual Type* GetPointerType(Type* type) = 0;
 
     virtual Value* GetInt32(int value) = 0;
+    virtual Value* CaculateBinaryOp(const std::function<int(int, int)>& func, Value* lhs, Value* rhs) = 0;
 
     virtual bool EndWithTerminator() = 0;
 

@@ -41,15 +41,19 @@ public:
 
         auto* type = env->CreateFuncType(funcDef->funcType->Codegen(env), types);
         auto* func = env->CreateFunction(type, funcDef->ident, names);
-        auto* bb = env->CreateBasicBlock("entry", func);
+        auto* bb = env->CreateBasicBlock("entry", func);        
 
         env->SetInserPointer(bb);
+
+        env->EnterScope();
 
         for (size_t i = 0; i < funcDef->params.size(); ++i) {
             env->CreateStore(env->GetFunctionArg(i), Generate(funcDef->params[i].get()));
         }
 
         Generate(funcDef->block.get());
+
+        env->ExitScope();
     }
     void Generate(BlockAST* block) {
         env->EnterScope();
@@ -80,7 +84,7 @@ public:
         } else if (stmt->type == StmtAST::Type::Block) {
             Generate(stmt->block.get());
         } else if (stmt->type == StmtAST::Type::If) {
-            auto* cond = Generate(stmt->expr.get());
+            auto* cond = Generate(stmt->cond.get());
             auto* func = env->GetFunction();
             auto* thenBB = env->CreateBasicBlock("then", func);
             BasicBlock* endBB{};
@@ -259,7 +263,7 @@ public:
     }
     void Generate(ConstDeclAST* constDecl) {
         for (auto& def : constDecl->constDefs) {
-            env->AddSymbol(def->ident, VAR_TYPE::CONST, { .value = Generate(def->constInitVal.get()) });
+            env->AddSymbol(def->ident, VAR_TYPE::CONST, { .value = Calculate(def->constInitVal.get()) });
         }
     }
     void Generate(VarDeclAST* varDecl) {
@@ -267,7 +271,7 @@ public:
         auto* type = varDecl->btype->Codegen(env);
         for (const auto& def : varDecl->varDefs) {
             if (env->IsGlobalScope()) {
-                auto* initVal = def->initVal ? Generate(def->initVal.get()) : env->CreateZero(type);
+                auto* initVal = def->initVal ? Calculate(def->initVal.get()) : env->CreateZero(type);
                 varAddr = env->CreateGlobal(type, def->ident, initVal);
             } else {
                 varAddr = env->CreateAlloca(type, def->ident);
@@ -285,6 +289,118 @@ public:
     }
     Value* Generate(ConstExprAST* constExpr) {
         return Generate(constExpr->expr.get());
+    }
+    // Get NumberAST
+    Value* Calculate(ConstInitValAST* initVal) {
+        return Calculate(initVal->constExpr.get());
+    }
+    // Get NumberAST
+    Value* Calculate(InitValAST* initVal) {
+        return Calculate(initVal->constExpr.get());
+    }
+    Value* Calculate(ConstExprAST* constExpr) {
+        return Calculate(constExpr->expr.get());
+    }
+    Value* Calculate(ExprAST* expr) {
+        return Calculate(expr->lorExpr.get());
+    }
+    Value* Calculate(LOrExprAST* lorExpr) {
+        if (lorExpr->left) {
+            auto left = Calculate(lorExpr->left.get());
+            auto right = Calculate(lorExpr->right.get());
+            return env->CaculateBinaryOp([](int a, int b) { return a || b; }, left, right);
+        }
+        return Calculate(lorExpr->landExpr.get());
+    }
+    Value* Calculate(LAndExprAST* landExpr) {
+        if (landExpr->left) {
+            auto left = Calculate(landExpr->left.get());
+            auto right = Calculate(landExpr->right.get());
+            return env->CaculateBinaryOp([](int a, int b) { return a && b; }, left, right);
+        }
+        return Calculate(landExpr->eqExpr.get());
+    }
+    Value* Calculate(EqExprAST* eqExpr) {
+        if (eqExpr->left) {
+            auto left = Calculate(eqExpr->left.get());
+            auto right = Calculate(eqExpr->right.get());
+            if (eqExpr->op == EqExprAST::Op::EQ) {
+                return env->CaculateBinaryOp([](int a, int b) { return a == b; }, left, right);
+            } else if (eqExpr->op == EqExprAST::Op::NE) {
+                return env->CaculateBinaryOp([](int a, int b) { return a != b; }, left, right);
+            }
+        }
+        return Calculate(eqExpr->relExpr.get());
+    }
+    Value* Calculate(RelExprAST* relExpr) {
+        if (relExpr->left) {
+            auto left = Calculate(relExpr->left.get());
+            auto right = Calculate(relExpr->right.get());
+            if (relExpr->op == RelExprAST::Op::LT) {
+                return env->CaculateBinaryOp([](int a, int b) { return a < b; }, left, right);
+            } else if (relExpr->op == RelExprAST::Op::GT) {
+                return env->CaculateBinaryOp([](int a, int b) { return a > b; }, left, right);
+            } else if (relExpr->op == RelExprAST::Op::LE) {
+                return env->CaculateBinaryOp([](int a, int b) { return a <= b; }, left, right);
+            } else if (relExpr->op == RelExprAST::Op::GE) {
+                return env->CaculateBinaryOp([](int a, int b) { return a >= b; }, left, right);
+            }
+        }
+        return Calculate(relExpr->addExpr.get());
+    }
+    Value* Calculate(AddExprAST* addExpr) {
+        if (addExpr->left) {
+            auto left = Calculate(addExpr->left.get());
+            auto right = Calculate(addExpr->right.get());
+            if (addExpr->op == "+") {
+                return env->CaculateBinaryOp([](int a, int b) { return a + b; }, left, right);
+            } else if (addExpr->op == "-") {
+                return env->CaculateBinaryOp([](int a, int b) { return a - b; }, left, right);
+            }
+        }
+        return Calculate(addExpr->mulExpr.get());
+    }
+    Value* Calculate(MulExprAST* mulExpr) {
+        if (mulExpr->left) {
+            auto left = Calculate(mulExpr->left.get());
+            auto right = Calculate(mulExpr->right.get());
+            if (mulExpr->op == "*") {
+                return env->CaculateBinaryOp([](int a, int b) { return a * b; }, left, right);
+            } else if (mulExpr->op == "/") {
+                return env->CaculateBinaryOp([](int a, int b) { return a / b; }, left, right);
+            } else if (mulExpr->op == "%") {
+                return env->CaculateBinaryOp([](int a, int b) { return a % b; }, left, right);
+            }
+        }
+        return Calculate(mulExpr->unaryExpr.get());
+    }
+    Value* Calculate(UnaryExprAST* unaryExpr) {
+        if (unaryExpr->type == UnaryExprAST::Type::Primary) {
+            return Calculate(unaryExpr->primaryExpr.get());
+        } else if (unaryExpr->type == UnaryExprAST::Type::Unary) {
+            auto* expr = Calculate(unaryExpr->unaryExpr.get());
+            if (unaryExpr->op == "+") {
+                return expr;
+            } else if (unaryExpr->op == "-") {
+                return env->CaculateBinaryOp([](int a, int b) { return b - a; }, env->GetInt32(0), expr);
+            } else if (unaryExpr->op == "!") {
+                return env->CaculateBinaryOp([](int a, int b) { return a == 0; }, expr, env->GetInt32(0));
+            }
+        } else if (unaryExpr->type == UnaryExprAST::Type::Call) {
+            assert(false);
+        }
+        return nullptr;  // Should not reach here
+    }
+    Value* Calculate(PrimaryExprAST* primary) {
+        if (primary->type == PrimaryExprAST::Type::Expr) {
+            return Calculate(primary->expr.get());
+        } else if (primary->type == PrimaryExprAST::Type::LVal) {
+            auto val = env->GetSymbolValue(primary->lval->ident);
+            return val.value;
+        } else if (primary->type == PrimaryExprAST::Type::Number) {
+            return env->GetInt32(primary->value->value);
+        }
+        return nullptr;  // Should not reach here
     }
 
 private:

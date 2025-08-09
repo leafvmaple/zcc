@@ -297,8 +297,8 @@ ConstExpr : Expr {
 FuncRParams : Expr {
   $$ = std::vector<std::unique_ptr<ExprAST>>();
   $$.emplace_back(std::move($1));
-} | FuncRParams Expr {
-  $1.emplace_back(std::move($2));
+} | FuncRParams ',' Expr {
+  $1.emplace_back(std::move($3));
   $$ = std::move($1);
 }
 
