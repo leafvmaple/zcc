@@ -164,19 +164,50 @@ public:
     }
     Value* Generate(LOrExprAST* lorExpr) {
         if (lorExpr->left) {
-            auto lg1 = env->CreateICmpNE(Generate(lorExpr->left.get()), env->GetInt32(0));
-            auto lg2 = env->CreateICmpNE(Generate(lorExpr->right.get()), env->GetInt32(0));
+            auto left = Generate(lorExpr->left.get());
+            auto func = env->GetFunction();
+            auto rightBB = env->CreateBasicBlock("lor_right", func);
+            auto endBB = env->CreateBasicBlock("lor_end", func);
+            auto result = env->CreateAlloca(env->GetInt32Type(), "lor_result");
+            auto cond = env->CreateICmpNE(left, env->GetInt32(0));
 
-            return env->CreateOr(lg1, lg2);
+            env->CreateStore(cond, result);
+            env->CreateCondBr(cond, endBB, rightBB);
+
+            // right
+            env->SetInserPointer(rightBB);
+            auto right = Generate(lorExpr->right.get());
+            cond = env->CreateICmpNE(right, env->GetInt32(0));
+            env->CreateStore(cond, result);
+            env->CreateBr(endBB);
+
+            // end
+            env->SetInserPointer(endBB);
+            return env->CreateLoad(result);
         }
         return Generate(lorExpr->landExpr.get());
     }
     Value* Generate(LAndExprAST* landExpr) {
         if (landExpr->left) {
-            auto lg1 = env->CreateICmpNE(Generate(landExpr->left.get()), env->GetInt32(0));
-            auto lg2 = env->CreateICmpNE(Generate(landExpr->right.get()), env->GetInt32(0));
+            auto left = Generate(landExpr->left.get());
+            auto func = env->GetFunction();
+            auto rightBB = env->CreateBasicBlock("land_right", func);
+            auto endBB = env->CreateBasicBlock("land_end", func);
+            auto result = env->CreateAlloca(env->GetInt32Type(), "land_result");
+            auto cond = env->CreateICmpNE(left, env->GetInt32(0));
 
-            return env->CreateAnd(lg1, lg2);
+            env->CreateStore(cond, result);
+            env->CreateCondBr(cond, rightBB, endBB);
+
+            env->SetInserPointer(rightBB);
+            auto right = Generate(landExpr->right.get());
+            cond = env->CreateICmpNE(right, env->GetInt32(0));
+            env->CreateStore(cond, result);
+            env->CreateBr(endBB);
+
+            // end
+            env->SetInserPointer(endBB);
+            return env->CreateLoad(result);
         }
         return Generate(landExpr->eqExpr.get());
     }
