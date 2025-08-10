@@ -32,6 +32,7 @@ public:
     virtual Type* CreateFuncType(Type* retType, std::vector<Type*> params) = 0;
     virtual BasicBlock* CreateBasicBlock(const std::string& name, Function* func) = 0;
     virtual Function* CreateFunction(Type* funcType, const std::string& name, std::vector<std::string> names) = 0;
+    virtual Value* CreateArray(Type* type, std::vector<Value*> values) = 0;
     virtual void CreateBuiltin(const std::string& name, Type* retType, std::vector<Type*> params) = 0;
 
     virtual void CreateCondBr(Value* cond, BasicBlock* trueBB, BasicBlock* falseBB) = 0;
@@ -70,11 +71,13 @@ public:
 
     virtual Type* GetInt32Type() = 0;
     virtual Type* GetVoidType() = 0;
-    virtual Type* GetArrayType(Type* type) = 0;
+    virtual Type* GetArrayType(Type* type, size_t size)= 0;
     virtual Type* GetPointerType(Type* type) = 0;
 
     virtual Value* GetInt32(int value) = 0;
     virtual Value* CaculateBinaryOp(const std::function<int(int, int)>& func, Value* lhs, Value* rhs) = 0;
+
+    virtual int GetValueInt(Value* value) = 0;
 
     virtual bool EndWithTerminator() = 0;
 

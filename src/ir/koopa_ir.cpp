@@ -116,6 +116,19 @@ koopa::Function* KoopaEnv::CreateFunction(koopa::Type* funcType, const std::stri
     return &funcs.back();
 }
 
+koopa::Value* KoopaEnv::CreateArray(koopa::Type* type, std::vector<koopa::Value*> values) {
+    return new koopa_raw_value_data_t {
+        .ty = GetArrayType(type, values.size()),
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+        .kind = {
+            .tag = KOOPA_RVT_AGGREGATE,
+            .data.aggregate = {
+                .elems = koopa_slice(KOOPA_RSIK_VALUE, values)
+            }
+        }
+    };
+}
+
 void KoopaEnv::CreateBuiltin(const std::string& name, koopa::Type* retType, std::vector<koopa::Type*> params) {
     koopa::Function func = {
         .name = name,
@@ -480,8 +493,14 @@ koopa::Type* KoopaEnv::GetVoidType() {
     return koopa_type(KOOPA_RTT_UNIT);
 }
 
-koopa::Type* KoopaEnv::GetArrayType(koopa::Type* type) {
-    return koopa_type(KOOPA_RTT_ARRAY);
+koopa::Type* KoopaEnv::GetArrayType(koopa::Type* type, size_t size) {
+    return new koopa_raw_type_kind_t {
+        .tag = KOOPA_RTT_ARRAY,
+        .data.array = {
+            .base = type,
+            .len = size
+        }
+    };
 }
 
 koopa::Type* KoopaEnv::GetPointerType(koopa::Type* type) {
@@ -504,6 +523,14 @@ koopa::Value* KoopaEnv::GetInt32(int value) {
 koopa::Value* KoopaEnv::CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) {
     int result = func(lhs->kind.data.integer.value, rhs->kind.data.integer.value);
     return GetInt32(result);
+}
+
+int KoopaEnv::GetValueInt(koopa::Value* value) {
+    if (value->kind.tag == KOOPA_RVT_INTEGER) {
+        return value->kind.data.integer.value;
+    }
+    std::cerr << "Error: Value is not an integer." << std::endl;
+    return 0; // or throw an exception
 }
 
 bool KoopaEnv::EndWithTerminator() {

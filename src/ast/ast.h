@@ -343,8 +343,6 @@ public:
     ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ConstExprAST> constExpr;
@@ -400,6 +398,8 @@ public:
     Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    int Evaluate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ExprAST> expr;
 };

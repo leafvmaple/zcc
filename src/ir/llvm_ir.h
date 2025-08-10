@@ -23,6 +23,7 @@ public:
     llvm::Type* CreateFuncType(llvm::Type* retType, std::vector<llvm::Type*> params) override;
     llvm::BasicBlock* CreateBasicBlock(const std::string& name, llvm::Function* func) override;
     llvm::Function* CreateFunction(llvm::Type* funcType, const std::string& name, std::vector<std::string> names) override;
+    llvm::Value* CreateArray(llvm::Type* type, std::vector<llvm::Value*> values) override {};
     void CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params) override;
 
     void CreateCondBr(llvm::Value* cond, llvm::BasicBlock* thenBB, llvm::BasicBlock* elseBB) override;
@@ -61,11 +62,13 @@ public:
 
     llvm::Type* GetInt32Type() override;
     llvm::Type* GetVoidType() override;
-    llvm::Type* GetArrayType(llvm::Type* type) override;
+    llvm::Type* GetArrayType(llvm::Type* type, size_t size) override;
     llvm::Type* GetPointerType(llvm::Type* type) override;
 
     llvm::Value* GetInt32(int value) override;
     llvm::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs) override;
+
+    int GetValueInt(llvm::Value* value) override { return 0; };
 
     bool EndWithTerminator() override;
 

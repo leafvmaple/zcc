@@ -187,8 +187,8 @@ llvm::Type* LLVMEnv::GetVoidType() {
     return llvm::Type::getVoidTy(TheContext);
 }
 
-llvm::Type* LLVMEnv::GetArrayType(llvm::Type* type) {
-    return llvm::ArrayType::get(type, 0); // 0 for dynamic size
+llvm::Type* LLVMEnv::GetArrayType(llvm::Type* type, size_t size) {
+    return llvm::ArrayType::get(type, size); // 0 for dynamic size
 }
 
 llvm::Type* LLVMEnv::GetPointerType(llvm::Type* type) {

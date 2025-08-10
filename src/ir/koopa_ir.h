@@ -25,7 +25,7 @@ koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind) {
 template<typename Type>
 koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const Type& vec, KoopaEnv* env) {
     auto* buffer = new const void*[1];
-    buffer[0] = vec->ToKoopa(env);
+    buffer[0] = vec->Codegen(env);
     return {buffer, 1, kind};
 }
 
@@ -33,7 +33,7 @@ template<typename Type>
 koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std::vector<Type>& vec, KoopaEnv* env) {
     auto* buffer = new const void*[vec.size()];
     for (size_t i = 0; i < vec.size(); ++i) {
-        buffer[i] = vec[i]->ToKoopa(env);
+        buffer[i] = vec[i]->Codegen(env);
     }
     return {buffer, static_cast<uint32_t>(vec.size()), kind};
 }
@@ -93,6 +93,7 @@ public:
     koopa::Type* CreateFuncType(koopa::Type* retType, std::vector<koopa::Type*> params) override;
     koopa::BasicBlock* CreateBasicBlock(const std::string& name, F* func) override;
     koopa::Function* CreateFunction(koopa::Type* funcType, const std::string& name, std::vector<std::string> params) override;
+    koopa::Value* CreateArray(koopa::Type* type, std::vector<koopa::Value*> values) override;
     void CreateBuiltin(const std::string& name, koopa::Type* retType, std::vector<koopa::Type*> params) override;
 
     void CreateCondBr(koopa::Value* cond, koopa::BasicBlock* trueBB, koopa::BasicBlock* falseBB) override;
@@ -130,11 +131,13 @@ public:
 
     koopa::Type* GetInt32Type() override;
     koopa::Type* GetVoidType() override;
-    koopa::Type* GetArrayType(koopa::Type* type) override;
+    koopa::Type* GetArrayType(koopa::Type* type, size_t size) override;
     koopa::Type* GetPointerType(koopa::Type* type) override;
 
     koopa::Value* GetInt32(int value) override;
     koopa::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) override;
+
+    int GetValueInt(koopa::Value* value) override;
 
     bool EndWithTerminator() override;
 
