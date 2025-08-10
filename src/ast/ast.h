@@ -160,17 +160,23 @@ public:
         Call
     };
 
+    enum class OP {
+        PLUS,
+        MINUS,
+        NOT
+    };
+
     UnaryExprAST(Type type, unique_ptr<PrimaryExprAST>&& primaryExpr) 
         : type(type), primaryExpr(std::move(primaryExpr)) {}
-    UnaryExprAST(Type type, string op, unique_ptr<UnaryExprAST>&& unaryExpr) 
-        : type(type), op(std::move(op)), unaryExpr(std::move(unaryExpr)) {}
+    UnaryExprAST(Type type, OP op, unique_ptr<UnaryExprAST>&& unaryExpr) 
+        : type(type), op(op), unaryExpr(std::move(unaryExpr)) {}
     UnaryExprAST(Type type, string ident)
         : type(type), ident(std::move(ident)) {}
     UnaryExprAST(Type type, string ident, vector<unique_ptr<ExprAST>>&& callArgs) 
         : type(type), ident(std::move(ident)), callArgs(std::move(callArgs)) {}
 
     Type type;
-    string op;
+    OP op;
     string ident;
     unique_ptr<PrimaryExprAST> primaryExpr;
     unique_ptr<UnaryExprAST> unaryExpr;
@@ -179,27 +185,29 @@ public:
 
 class MulExprAST {
 public:
+    enum class OP { MUL, DIV, MOD };
     MulExprAST(unique_ptr<UnaryExprAST>&& unaryExpr)
         : unaryExpr(std::move(unaryExpr)) {}
-    MulExprAST(unique_ptr<MulExprAST>&& left, string op, unique_ptr<UnaryExprAST>&& right) 
-        : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
+    MulExprAST(OP op, unique_ptr<MulExprAST>&& left, unique_ptr<UnaryExprAST>&& right) 
+        : op(op), left(std::move(left)), right(std::move(right)) {}
 
-    unique_ptr<MulExprAST> left;
-    string op;
     unique_ptr<UnaryExprAST> unaryExpr;
+    OP op;
+    unique_ptr<MulExprAST> left;
     unique_ptr<UnaryExprAST> right;
 };
 
 class AddExprAST {
 public:
+    enum class OP { ADD, SUB };
     AddExprAST(unique_ptr<MulExprAST>&& mulExpr)
         : mulExpr(std::move(mulExpr)) {}
-    AddExprAST(unique_ptr<AddExprAST>&& left, string op, unique_ptr<MulExprAST>&& right) 
-        : left(std::move(left)), op(std::move(op)), right(std::move(right)) {}
+    AddExprAST(OP op, unique_ptr<AddExprAST>&& left, unique_ptr<MulExprAST>&& right) 
+        : op(op), left(std::move(left)), right(std::move(right)) {}
 
-    unique_ptr<AddExprAST> left;
-    string op;
+    OP op;
     unique_ptr<MulExprAST> mulExpr;
+    unique_ptr<AddExprAST> left;
     unique_ptr<MulExprAST> right;
 };
 

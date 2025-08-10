@@ -81,7 +81,6 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %type <std::unique_ptr<BaseType>> BasicType
 %type <std::unique_ptr<ConstDefAST>> ConstDef
 %type <std::unique_ptr<VarDefAST>> VarDef
-%type <std::string> UnaryOp MulOp AddOp
 
 %%
 
@@ -186,8 +185,12 @@ Number : INT_CONST {
 
 UnaryExpr : PrimaryExpr {
   $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Primary, std::move($1));
-} | UnaryOp UnaryExpr {
-  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Unary, $1, std::move($2));
+} | '+' UnaryExpr {
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Unary, UnaryExprAST::OP::PLUS, std::move($2));
+} | '-' UnaryExpr {
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Unary, UnaryExprAST::OP::MINUS, std::move($2));
+} | '!' UnaryExpr {
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Unary, UnaryExprAST::OP::NOT, std::move($2));
 } | IDENT '(' ')' {
   $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Call, $1);
 } | IDENT '(' FuncRParams ')' {
@@ -196,15 +199,21 @@ UnaryExpr : PrimaryExpr {
 
 MulExpr : UnaryExpr {
   $$ = std::make_unique<MulExprAST>(std::move($1));
-} | MulExpr MulOp UnaryExpr {
-  $$ = std::make_unique<MulExprAST>(std::move($1), $2, std::move($3));
+} | MulExpr '*' UnaryExpr {
+  $$ = std::make_unique<MulExprAST>(MulExprAST::OP::MUL, std::move($1), std::move($3));
+} | MulExpr '/' UnaryExpr {
+  $$ = std::make_unique<MulExprAST>(MulExprAST::OP::DIV, std::move($1), std::move($3));
+} | MulExpr '%' UnaryExpr {
+  $$ = std::make_unique<MulExprAST>(MulExprAST::OP::MOD, std::move($1), std::move($3));
 };
 
 AddExpr : MulExpr {
   $$ = std::make_unique<AddExprAST>(std::move($1));
-} | AddExpr AddOp MulExpr {
-  $$ = std::make_unique<AddExprAST>(std::move($1), $2, std::move($3));
-};
+} | AddExpr '+' MulExpr {
+  $$ = std::make_unique<AddExprAST>(AddExprAST::OP::ADD, std::move($1), std::move($3));
+} | AddExpr '-' MulExpr {
+  $$ = std::make_unique<AddExprAST>(AddExprAST::OP::SUB, std::move($1), std::move($3));
+}
 
 RelExpr : AddExpr {
   $$ = std::make_unique<RelExprAST>(std::move($1));
@@ -301,28 +310,6 @@ FuncRParams : Expr {
   $1.emplace_back(std::move($3));
   $$ = std::move($1);
 }
-
-UnaryOp : '+'  {
-  $$ = "+";
-} | '-' {
-  $$ = "-";
-} | '!' {
-  $$ = "!";
-};
-
-MulOp : '*' {
-  $$ = "*";
-} | '/' {
-  $$ = "/";
-} | '%' {
-  $$ = "%";
-};
-
-AddOp : '+' {
-  $$ = "+";
-} | '-' {
-  $$ = "-";
-};
 
 %%
 

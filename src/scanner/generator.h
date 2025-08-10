@@ -243,9 +243,9 @@ public:
         if (addExpr->left) {
             auto left = Generate(addExpr->left.get());
             auto right = Generate(addExpr->right.get());
-            if (addExpr->op == "+") {
+            if (addExpr->op == AddExprAST::OP::ADD) {
                 return env->CreateAdd(left, right);
-            } else if (addExpr->op == "-") {
+            } else if (addExpr->op == AddExprAST::OP::SUB) {
                 return env->CreateSub(left, right);
             }
         }
@@ -255,11 +255,11 @@ public:
         if (mulExpr->left) {
             auto left = Generate(mulExpr->left.get());
             auto right = Generate(mulExpr->right.get());
-            if (mulExpr->op == "*") {
+            if (mulExpr->op == MulExprAST::OP::MUL) {
                 return env->CreateMul(left, right);
-            } else if (mulExpr->op == "/") {
+            } else if (mulExpr->op == MulExprAST::OP::DIV) {
                 return env->CreateDiv(left, right);
-            } else if (mulExpr->op == "%") {
+            } else if (mulExpr->op == MulExprAST::OP::MOD) {
                 return env->CreateMod(left, right);
             }
         }
@@ -270,11 +270,11 @@ public:
             return Generate(unaryExpr->primaryExpr.get());
         } else if (unaryExpr->type == UnaryExprAST::Type::Unary) {
             auto* expr = Generate(unaryExpr->unaryExpr.get());
-            if (unaryExpr->op == "+") {
+            if (unaryExpr->op == UnaryExprAST::OP::PLUS) {
                 return expr;
-            } else if (unaryExpr->op == "-") {
+            } else if (unaryExpr->op == UnaryExprAST::OP::MINUS) {
                 return env->CreateSub(env->GetInt32(0), expr);
-            } else if (unaryExpr->op == "!") {
+            } else if (unaryExpr->op == UnaryExprAST::OP::NOT) {
                 return env->CreateICmpEQ(expr, env->GetInt32(0));
             }
         } else if (unaryExpr->type == UnaryExprAST::Type::Call) {
@@ -383,9 +383,9 @@ public:
         if (addExpr->left) {
             auto left = Calculate(addExpr->left.get());
             auto right = Calculate(addExpr->right.get());
-            if (addExpr->op == "+") {
+            if (addExpr->op == AddExprAST::OP::ADD) {
                 return env->CaculateBinaryOp([](int a, int b) { return a + b; }, left, right);
-            } else if (addExpr->op == "-") {
+            } else if (addExpr->op == AddExprAST::OP::SUB) {
                 return env->CaculateBinaryOp([](int a, int b) { return a - b; }, left, right);
             }
         }
@@ -395,11 +395,11 @@ public:
         if (mulExpr->left) {
             auto left = Calculate(mulExpr->left.get());
             auto right = Calculate(mulExpr->right.get());
-            if (mulExpr->op == "*") {
+            if (mulExpr->op == MulExprAST::OP::MUL) {
                 return env->CaculateBinaryOp([](int a, int b) { return a * b; }, left, right);
-            } else if (mulExpr->op == "/") {
+            } else if (mulExpr->op == MulExprAST::OP::DIV) {
                 return env->CaculateBinaryOp([](int a, int b) { return a / b; }, left, right);
-            } else if (mulExpr->op == "%") {
+            } else if (mulExpr->op == MulExprAST::OP::MOD) {
                 return env->CaculateBinaryOp([](int a, int b) { return a % b; }, left, right);
             }
         }
@@ -410,11 +410,11 @@ public:
             return Calculate(unaryExpr->primaryExpr.get());
         } else if (unaryExpr->type == UnaryExprAST::Type::Unary) {
             auto* expr = Calculate(unaryExpr->unaryExpr.get());
-            if (unaryExpr->op == "+") {
+            if (unaryExpr->op == UnaryExprAST::OP::PLUS) {
                 return expr;
-            } else if (unaryExpr->op == "-") {
+            } else if (unaryExpr->op == UnaryExprAST::OP::MINUS) {
                 return env->CaculateBinaryOp([](int a, int b) { return b - a; }, env->GetInt32(0), expr);
-            } else if (unaryExpr->op == "!") {
+            } else if (unaryExpr->op == UnaryExprAST::OP::NOT) {
                 return env->CaculateBinaryOp([](int a, int b) { return a == 0; }, expr, env->GetInt32(0));
             }
         } else if (unaryExpr->type == UnaryExprAST::Type::Call) {
