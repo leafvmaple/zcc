@@ -29,12 +29,15 @@ class DeclAST;
 
 class ConstDefAST {
 public:
-    ConstDefAST(string ident)
-        : ident(std::move(ident)) {}
+
     ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal)
         : ident(std::move(ident)), constInitVal(std::move(constInitVal)) {}
+    
+    ConstDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<ConstInitValAST>&& constInitVal)
+        : ident(std::move(ident)), size(std::move(size)), constInitVal(std::move(constInitVal)) {}
 
     string ident;
+    unique_ptr<ConstExprAST> size;
     unique_ptr<ConstInitValAST> constInitVal;
 };
 
@@ -42,10 +45,18 @@ class VarDefAST {
 public:
     VarDefAST(string ident)
         : ident(std::move(ident)) {}
+
+    VarDefAST(string ident, unique_ptr<ConstExprAST>&& size)
+        : ident(std::move(ident)), size(std::move(size)) {}
+
     VarDefAST(string ident, unique_ptr<InitValAST>&& initVal)
         : ident(std::move(ident)), initVal(std::move(initVal)) {}
 
+    VarDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<InitValAST>&& initVal)
+        : ident(std::move(ident)), size(std::move(size)), initVal(std::move(initVal)) {}
+
     string ident;
+    unique_ptr<ConstExprAST> size;
     unique_ptr<InitValAST> initVal;
 };
 
@@ -235,7 +246,6 @@ public:
     EqExprAST(unique_ptr<EqExprAST>&& left, Op op, unique_ptr<RelExprAST>&& right) 
         : left(std::move(left)), op(op), right(std::move(right)) {}
 
-    
     unique_ptr<RelExprAST> relExpr;
     unique_ptr<EqExprAST> left;
     Op op;
@@ -298,17 +308,33 @@ public:
 class ConstInitValAST {
 public:
     ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr)
-        : constExpr(std::move(constExpr)) {}
+        : constExpr(std::move(constExpr)), isArray(false) {}
+    
+    ConstInitValAST()
+        : isArray(true) {}
+    
+    ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs)
+        : constExprs(std::move(constExprs)), isArray(true) {}
 
     unique_ptr<ConstExprAST> constExpr;
+    vector<unique_ptr<ConstExprAST>> constExprs;
+    bool isArray;
 };
 
 class InitValAST {
 public:
     InitValAST(unique_ptr<ExprAST>&& expr)
-        : expr(std::move(expr)) {}
+        : expr(std::move(expr)), isArray(false) {}
+    
+    InitValAST()
+        : isArray(true) {}
+
+    InitValAST(vector<unique_ptr<ExprAST>>&& exprs)
+        : exprs(std::move(exprs)), isArray(true) {}
 
     unique_ptr<ExprAST> expr;
+    vector<unique_ptr<ExprAST>> exprs;
+    bool isArray;
 };
 
 class BlockItemAST {
@@ -324,7 +350,11 @@ class LValAST {
 public:
     LValAST(string ident) : ident(std::move(ident)) {}
 
+    LValAST(string ident, unique_ptr<ExprAST>&& index)
+        : ident(std::move(ident)), index(std::move(index)) {}
+
     string ident;
+    unique_ptr<ExprAST> index;
 };
 
 class ConstExprAST {

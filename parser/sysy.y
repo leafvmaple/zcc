@@ -44,10 +44,11 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %token END 0
 
-%type <std::vector<std::unique_ptr<ExprAST>>> FuncRParams
+%type <std::vector<std::unique_ptr<ExprAST>>> Exprs FuncRParams
 %type <std::vector<std::unique_ptr<ConstDefAST>>> ConstDefs
 %type <std::vector<std::unique_ptr<VarDefAST>>> VarDefs
 %type <std::vector<std::unique_ptr<FuncFParamAST>>> FuncFParams
+%type <std::vector<std::unique_ptr<ConstExprAST>>> ConstExprs
 
 %type <std::unique_ptr<ExprAST>> OptExpr
 
@@ -167,6 +168,14 @@ OptExpr : Expr {
   $$ = std::unique_ptr<ExprAST>();
 };
 
+Exprs : Expr {
+  $$ = std::vector<std::unique_ptr<ExprAST>>();
+  $$.emplace_back(std::move($1));
+} | Exprs ',' Expr {
+  $1.emplace_back(std::move($3));
+  $$ = std::move($1);
+};
+
 Expr : LOrExpr {
   $$ = std::make_unique<ExprAST>(std::move($1));
 };
@@ -271,6 +280,8 @@ ConstDefs : ConstDef {
 
 ConstDef : IDENT '=' ConstInitVal {
   $$ = std::make_unique<ConstDefAST>($1, std::move($3));
+} | IDENT '[' ConstExpr ']' '=' ConstInitVal {
+  $$ = std::make_unique<ConstDefAST>($1, std::move($3), std::move($6));
 }
 
 VarDefs : VarDef {
@@ -283,21 +294,43 @@ VarDefs : VarDef {
 
 VarDef : IDENT {
   $$ = std::make_unique<VarDefAST>($1);
+} | IDENT '[' ConstExpr ']' {
+  $$ = std::make_unique<VarDefAST>($1, std::move($3));
 } | IDENT '=' InitVal {
   $$ = std::make_unique<VarDefAST>($1, std::move($3));
-}
+} | IDENT '[' ConstExpr ']' '=' InitVal {
+  $$ = std::make_unique<VarDefAST>($1, std::move($3), std::move($6));
+};
 
 ConstInitVal : ConstExpr {
   $$ = std::make_unique<ConstInitValAST>(std::move($1));
-}
+} | '{' '}' {
+  $$ = std::make_unique<ConstInitValAST>();
+} | '{' ConstExprs '}' {
+  $$ = std::make_unique<ConstInitValAST>(std::move($2));
+};
+
+ConstExprs : ConstExpr {
+  $$ = std::vector<std::unique_ptr<ConstExprAST>>();
+  $$.emplace_back(std::move($1));
+} | ConstExprs ',' ConstExpr {
+  $1.emplace_back(std::move($3));
+  $$ = std::move($1);
+};
 
 InitVal : Expr {
   $$ = std::make_unique<InitValAST>(std::move($1));
-}
+} | '{' '}' {
+  $$ = std::make_unique<InitValAST>();
+} | '{' Exprs '}' {
+  $$ = std::make_unique<InitValAST>(std::move($2));
+};
 
 LVal : IDENT {
   $$ = std::make_unique<LValAST>($1);
-}
+} | IDENT '[' Expr ']' {
+  $$ = std::make_unique<LValAST>($1, std::move($3));
+};
 
 ConstExpr : Expr {
   $$ = std::make_unique<ConstExprAST>(std::move($1));
