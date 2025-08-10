@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "llvm/IR/Function.h"
 #include "type.h"
+#include "ir/ir.h"
 
 using std::unique_ptr;
 using std::vector;
@@ -26,15 +26,19 @@ class ConstDeclAST;
 class VarDeclAST;
 class ConstExprAST;
 class DeclAST;
+class PrimaryExprAST;
+class UnaryExprAST;
+class MulExprAST;
+class AddExprAST;
+class RelExprAST;
+class EqExprAST;
+class LAndExprAST;
+class FuncRParamAST;
 
 class ConstDefAST {
 public:
-
-    ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal)
-        : ident(std::move(ident)), constInitVal(std::move(constInitVal)) {}
-    
-    ConstDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<ConstInitValAST>&& constInitVal)
-        : ident(std::move(ident)), size(std::move(size)), constInitVal(std::move(constInitVal)) {}
+    ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal);
+    ConstDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<ConstInitValAST>&& constInitVal);
 
     string ident;
     unique_ptr<ConstExprAST> size;
@@ -43,17 +47,10 @@ public:
 
 class VarDefAST {
 public:
-    VarDefAST(string ident)
-        : ident(std::move(ident)) {}
-
-    VarDefAST(string ident, unique_ptr<ConstExprAST>&& size)
-        : ident(std::move(ident)), size(std::move(size)) {}
-
-    VarDefAST(string ident, unique_ptr<InitValAST>&& initVal)
-        : ident(std::move(ident)), initVal(std::move(initVal)) {}
-
-    VarDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<InitValAST>&& initVal)
-        : ident(std::move(ident)), size(std::move(size)), initVal(std::move(initVal)) {}
+    VarDefAST(string ident);
+    VarDefAST(string ident, unique_ptr<ConstExprAST>&& size);
+    VarDefAST(string ident, unique_ptr<InitValAST>&& initVal);
+    VarDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<InitValAST>&& initVal);
 
     string ident;
     unique_ptr<ConstExprAST> size;
@@ -62,12 +59,11 @@ public:
 
 struct CompUnitAST {
 public:
-    void AddFuncDef(unique_ptr<FuncDefAST>&& funcDef) {
-        funcDefs.emplace_back(std::move(funcDef));
-    }
-    void AddDecl(unique_ptr<DeclAST>&& decl) {
-        decls.emplace_back(std::move(decl));
-    }
+    void AddFuncDef(unique_ptr<FuncDefAST>&& funcDef);
+    void AddDecl(unique_ptr<DeclAST>&& decl);
+    
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     vector<unique_ptr<FuncDefAST>> funcDefs;
     vector<unique_ptr<DeclAST>> decls;
@@ -75,10 +71,11 @@ public:
 
 class FuncDefAST {
 public:
-    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, unique_ptr<BlockAST>&& block)
-        : funcType(std::move(funcType)), ident(std::move(ident)), block(std::move(block)) {}
-    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncFParamAST>>&& params, unique_ptr<BlockAST>&& block)
-        : funcType(std::move(funcType)), ident(std::move(ident)), params(std::move(params)), block(std::move(block)) {}
+    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, unique_ptr<BlockAST>&& block);
+    FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncFParamAST>>&& params, unique_ptr<BlockAST>&& block);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<BaseType> funcType;
     string ident;
@@ -88,14 +85,17 @@ public:
 
 class BlockAST {
 public:
-    BlockAST(vector<unique_ptr<BlockItemAST>>&& items) : items(std::move(items)) {}
+    BlockAST(vector<unique_ptr<BlockItemAST>>&& items);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     vector<unique_ptr<BlockItemAST>> items;
 };
 
 class StmtAST {
 public:
-    enum class Type {
+    enum class TYPE {
         Assign,
         Expr,
         Block,
@@ -106,20 +106,17 @@ public:
         Continue
     };
 
-    StmtAST(Type type)
-        : type(type) {}
-    StmtAST(Type type, unique_ptr<ExprAST>&& expr)
-        : type(type), expr(std::move(expr)) {}
-    StmtAST(Type type, unique_ptr<BlockAST>&& block)
-        : type(type), block(std::move(block)) {}
-    StmtAST(Type type, unique_ptr<LValAST>&& lval, unique_ptr<ExprAST>&& expr) 
-        : type(type), lval(std::move(lval)), expr(std::move(expr)) {}
-    StmtAST(Type type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt) 
-        : type(type), cond(std::move(cond)), thenStmt(std::move(thenStmt)) {}
-    StmtAST(Type type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt, unique_ptr<StmtAST>&& elseStmt) 
-        : type(type), cond(std::move(cond)), thenStmt(std::move(thenStmt)), elseStmt(std::move(elseStmt)) {}
+    StmtAST(TYPE type);
+    StmtAST(TYPE type, unique_ptr<ExprAST>&& expr);
+    StmtAST(TYPE type, unique_ptr<BlockAST>&& block);
+    StmtAST(TYPE type, unique_ptr<LValAST>&& lval, unique_ptr<ExprAST>&& expr);
+    StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt);
+    StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt, unique_ptr<StmtAST>&& elseStmt);
 
-    Type type;
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
+
+    TYPE type;
     unique_ptr<LValAST> lval;
     unique_ptr<ExprAST> expr;
     unique_ptr<BlockAST> block;
@@ -130,27 +127,34 @@ public:
 
 class ExprAST {
 public:
-    ExprAST(unique_ptr<LOrExprAST>&& lorExpr) : lorExpr(std::move(lorExpr)) {}
+    ExprAST(unique_ptr<LOrExprAST>&& lorExpr);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<LOrExprAST> lorExpr;
 };
 
 class PrimaryExprAST {
 public:
-    enum class Type {
+    enum class TYPE {
         Expr,
         LVal,
         Number
     };
 
-    PrimaryExprAST(Type type, unique_ptr<ExprAST>&& expr)
-        : type(type), expr(std::move(expr)) {}
-    PrimaryExprAST(Type type, unique_ptr<LValAST>&& lval)
-        : type(type), lval(std::move(lval)) {}
-    PrimaryExprAST(Type type, unique_ptr<NumberAST>&& value)
-        : type(type), value(std::move(value)) {}
+    PrimaryExprAST(TYPE type, unique_ptr<ExprAST>&& expr);
+    PrimaryExprAST(TYPE type, unique_ptr<LValAST>&& lval);
+    PrimaryExprAST(TYPE type, unique_ptr<NumberAST>&& value);
 
-    Type type;
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+
+    TYPE type;
     unique_ptr<ExprAST> expr;
     unique_ptr<LValAST> lval;
     unique_ptr<NumberAST> value;
@@ -158,14 +162,17 @@ public:
 
 class NumberAST {
 public:
-    NumberAST(int value) : value(value) {}
+    NumberAST(int value);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     int value;
 };
 
 class UnaryExprAST {
 public:
-    enum class Type {
+    enum class TYPE {
         Primary,
         Unary,
         Call
@@ -177,16 +184,17 @@ public:
         NOT
     };
 
-    UnaryExprAST(Type type, unique_ptr<PrimaryExprAST>&& primaryExpr) 
-        : type(type), primaryExpr(std::move(primaryExpr)) {}
-    UnaryExprAST(Type type, OP op, unique_ptr<UnaryExprAST>&& unaryExpr) 
-        : type(type), op(op), unaryExpr(std::move(unaryExpr)) {}
-    UnaryExprAST(Type type, string ident)
-        : type(type), ident(std::move(ident)) {}
-    UnaryExprAST(Type type, string ident, vector<unique_ptr<ExprAST>>&& callArgs) 
-        : type(type), ident(std::move(ident)), callArgs(std::move(callArgs)) {}
+    UnaryExprAST(TYPE type, unique_ptr<PrimaryExprAST>&& primaryExpr);
+    UnaryExprAST(TYPE type, OP op, unique_ptr<UnaryExprAST>&& unaryExpr);
+    UnaryExprAST(TYPE type, string ident);
+    UnaryExprAST(TYPE type, string ident, vector<unique_ptr<ExprAST>>&& callArgs);
 
-    Type type;
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+
+    TYPE type;
     OP op;
     string ident;
     unique_ptr<PrimaryExprAST> primaryExpr;
@@ -197,10 +205,13 @@ public:
 class MulExprAST {
 public:
     enum class OP { MUL, DIV, MOD };
-    MulExprAST(unique_ptr<UnaryExprAST>&& unaryExpr)
-        : unaryExpr(std::move(unaryExpr)) {}
-    MulExprAST(OP op, unique_ptr<MulExprAST>&& left, unique_ptr<UnaryExprAST>&& right) 
-        : op(op), left(std::move(left)), right(std::move(right)) {}
+    MulExprAST(unique_ptr<UnaryExprAST>&& unaryExpr);
+    MulExprAST(OP op, unique_ptr<MulExprAST>&& left, unique_ptr<UnaryExprAST>&& right);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<UnaryExprAST> unaryExpr;
     OP op;
@@ -211,10 +222,13 @@ public:
 class AddExprAST {
 public:
     enum class OP { ADD, SUB };
-    AddExprAST(unique_ptr<MulExprAST>&& mulExpr)
-        : mulExpr(std::move(mulExpr)) {}
-    AddExprAST(OP op, unique_ptr<AddExprAST>&& left, unique_ptr<MulExprAST>&& right) 
-        : op(op), left(std::move(left)), right(std::move(right)) {}
+    AddExprAST(unique_ptr<MulExprAST>&& mulExpr);
+    AddExprAST(OP op, unique_ptr<AddExprAST>&& left, unique_ptr<MulExprAST>&& right);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     OP op;
     unique_ptr<MulExprAST> mulExpr;
@@ -226,11 +240,14 @@ class RelExprAST {
 public:
     enum class Op { LT, GT, LE, GE };
 
-    RelExprAST(unique_ptr<AddExprAST>&& addExpr)
-        : addExpr(std::move(addExpr)) {}
-    RelExprAST(unique_ptr<RelExprAST>&& left, Op op, unique_ptr<AddExprAST>&& right) 
-        : left(std::move(left)), op(op), right(std::move(right)) {}
+    RelExprAST(unique_ptr<AddExprAST>&& addExpr);
+    RelExprAST(unique_ptr<RelExprAST>&& left, Op op, unique_ptr<AddExprAST>&& right);
     
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+
     unique_ptr<AddExprAST> addExpr;
     unique_ptr<RelExprAST> left;
     Op op;
@@ -241,10 +258,13 @@ class EqExprAST {
 public:
     enum class Op { EQ, NE };
 
-    EqExprAST(unique_ptr<RelExprAST>&& relExpr)
-        : relExpr(std::move(relExpr)) {}
-    EqExprAST(unique_ptr<EqExprAST>&& left, Op op, unique_ptr<RelExprAST>&& right) 
-        : left(std::move(left)), op(op), right(std::move(right)) {}
+    EqExprAST(unique_ptr<RelExprAST>&& relExpr);
+    EqExprAST(unique_ptr<EqExprAST>&& left, Op op, unique_ptr<RelExprAST>&& right);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<RelExprAST> relExpr;
     unique_ptr<EqExprAST> left;
@@ -254,10 +274,13 @@ public:
 
 class LAndExprAST {
 public:
-    LAndExprAST(unique_ptr<EqExprAST>&& eqExpr)
-        : eqExpr(std::move(eqExpr)) {}
-    LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<EqExprAST>&& right) 
-        : left(std::move(left)), right(std::move(right)) {}
+    LAndExprAST(unique_ptr<EqExprAST>&& eqExpr);
+    LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<EqExprAST>&& right);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<EqExprAST> eqExpr;
     unique_ptr<LAndExprAST> left;
@@ -266,10 +289,13 @@ public:
 
 class LOrExprAST {
 public:
-    LOrExprAST(unique_ptr<LAndExprAST>&& landExpr)
-        : landExpr(std::move(landExpr)) {}
-    LOrExprAST(unique_ptr<LOrExprAST>&& left, unique_ptr<LAndExprAST>&& right) 
-        : left(std::move(left)), right(std::move(right)) {}
+    LOrExprAST(unique_ptr<LAndExprAST>&& landExpr);
+    LOrExprAST(unique_ptr<LOrExprAST>&& left, unique_ptr<LAndExprAST>&& right);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<LAndExprAST> landExpr;
     unique_ptr<LOrExprAST> left;
@@ -278,10 +304,11 @@ public:
 
 class DeclAST {
 public:
-    DeclAST(unique_ptr<ConstDeclAST>&& constDecl)
-        : constDecl(std::move(constDecl)) {}
-    DeclAST(unique_ptr<VarDeclAST>&& varDecl)
-        : varDecl(std::move(varDecl)) {}
+    DeclAST(unique_ptr<ConstDeclAST>&& constDecl);
+    DeclAST(unique_ptr<VarDeclAST>&& varDecl);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ConstDeclAST> constDecl;
     unique_ptr<VarDeclAST> varDecl;
@@ -289,8 +316,10 @@ public:
 
 class ConstDeclAST {
 public:
-    ConstDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<ConstDefAST>>&& constDefs)
-        : btype(std::move(btype)), constDefs(std::move(constDefs)) {}
+    ConstDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<ConstDefAST>>&& constDefs);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<BaseType> btype;
     vector<unique_ptr<ConstDefAST>> constDefs;
@@ -298,8 +327,10 @@ public:
 
 class VarDeclAST {
 public:
-    VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<VarDefAST>>&& varDefs)
-        : btype(std::move(btype)), varDefs(std::move(varDefs)) {}
+    VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<VarDefAST>>&& varDefs);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<BaseType> btype;
     vector<unique_ptr<VarDefAST>> varDefs;
@@ -307,14 +338,14 @@ public:
 
 class ConstInitValAST {
 public:
-    ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr)
-        : constExpr(std::move(constExpr)), isArray(false) {}
-    
-    ConstInitValAST()
-        : isArray(true) {}
-    
-    ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs)
-        : constExprs(std::move(constExprs)), isArray(true) {}
+    ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr);
+    ConstInitValAST();
+    ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ConstExprAST> constExpr;
     vector<unique_ptr<ConstExprAST>> constExprs;
@@ -323,14 +354,14 @@ public:
 
 class InitValAST {
 public:
-    InitValAST(unique_ptr<ExprAST>&& expr)
-        : expr(std::move(expr)), isArray(false) {}
-    
-    InitValAST()
-        : isArray(true) {}
+    InitValAST(unique_ptr<ExprAST>&& expr);
+    InitValAST();
+    InitValAST(vector<unique_ptr<ExprAST>>&& exprs);
 
-    InitValAST(vector<unique_ptr<ExprAST>>&& exprs)
-        : exprs(std::move(exprs)), isArray(true) {}
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ExprAST> expr;
     vector<unique_ptr<ExprAST>> exprs;
@@ -339,8 +370,11 @@ public:
 
 class BlockItemAST {
 public:
-    BlockItemAST(unique_ptr<DeclAST>&& decl) : decl(std::move(decl)) {}
-    BlockItemAST(unique_ptr<StmtAST>&& stmt) : stmt(std::move(stmt)) {}
+    BlockItemAST(unique_ptr<DeclAST>&& decl);
+    BlockItemAST(unique_ptr<StmtAST>&& stmt);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<DeclAST> decl;
     unique_ptr<StmtAST> stmt;
@@ -348,10 +382,11 @@ public:
 
 class LValAST {
 public:
-    LValAST(string ident) : ident(std::move(ident)) {}
+    LValAST(string ident);
+    LValAST(string ident, unique_ptr<ExprAST>&& index);
 
-    LValAST(string ident, unique_ptr<ExprAST>&& index)
-        : ident(std::move(ident)), index(std::move(index)) {}
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     string ident;
     unique_ptr<ExprAST> index;
@@ -359,15 +394,22 @@ public:
 
 class ConstExprAST {
 public:
-    ConstExprAST(unique_ptr<ExprAST>&& expr) : expr(std::move(expr)) {}
+    ConstExprAST(unique_ptr<ExprAST>&& expr);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ExprAST> expr;
 };
 
 class FuncFParamAST {
 public:
-    FuncFParamAST(unique_ptr<BaseType>&& btype, string ident)
-        : btype(std::move(btype)), ident(std::move(ident)) {}
+    FuncFParamAST(unique_ptr<BaseType>&& btype, string ident);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<BaseType> btype;
     string ident;
@@ -375,7 +417,10 @@ public:
 
 class FuncRParamAST {
 public:
-    FuncRParamAST(unique_ptr<ExprAST>&& expr) : expr(std::move(expr)) {}
+    FuncRParamAST(unique_ptr<ExprAST>&& expr);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ExprAST> expr;
 };

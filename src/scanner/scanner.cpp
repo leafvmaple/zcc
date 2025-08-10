@@ -1,8 +1,7 @@
 #include "scanner.h"
-#include "generator.h"
 
-#include "../libkoopa/include/koopa.h"
 #include "../libkoopa/include/function.h"
+#include "llvm/IR/Function.h"
 
 #include "sysy.tab.hpp"
 #include "sysy.lex.hpp"
@@ -24,8 +23,7 @@ void Scanner::Parse(FILE* input, Env<Type, Value, BasicBlock, Function>* env) {
     yyset_in(input, lexer);
     int ret = parser->parse();
     if (ret == 0) {
-        Generator<Type, Value, BasicBlock, Function> generator(env);
-        generator.Generate(ast);
+        ast.Codegen(env);
     } else {
         fprintf(stderr, "Parse error at %s:%d:%d\n",
                 loc->begin.filename ? loc->begin.filename->c_str() : "unknown",

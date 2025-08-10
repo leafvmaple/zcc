@@ -139,27 +139,27 @@ Stmt : MatchedStmt {
 };
 
 MatchedStmt : LVal '=' Expr ';'{
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::Assign, std::move($1), std::move($3));
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Assign, std::move($1), std::move($3));
 } | OptExpr ';' {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::Expr, std::move($1));
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Expr, std::move($1));
 } | Block {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::Block, std::move($1));
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Block, std::move($1));
 } | IF '(' Expr ')' MatchedStmt ELSE MatchedStmt {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5), std::move($7));
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::If, std::move($3), std::move($5), std::move($7));
 } | RETURN Expr ';' {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::Ret, std::move($2));
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Ret, std::move($2));
 } | WHILE '(' Expr ')' MatchedStmt {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::While, std::move($3), std::move($5));
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::While, std::move($3), std::move($5));
 } | BREAK ';' {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::Break);
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Break);
 } | CONTINUE ';' {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::Continue);
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Continue);
 };
 
 UnmatchedStmt: IF '(' Expr ')' Stmt {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5));
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::If, std::move($3), std::move($5));
 } | IF '(' Expr ')' MatchedStmt ELSE UnmatchedStmt {
-  $$ = std::make_unique<StmtAST>(StmtAST::Type::If, std::move($3), std::move($5), std::move($7));
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::If, std::move($3), std::move($5), std::move($7));
 };
 
 OptExpr : Expr {
@@ -181,11 +181,11 @@ Expr : LOrExpr {
 };
 
 PrimaryExpr : '(' Expr ')' {
-  $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::Type::Expr, std::move($2));
+  $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::TYPE::Expr, std::move($2));
 } | LVal {
-  $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::Type::LVal, std::move($1));
+  $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::TYPE::LVal, std::move($1));
 } | Number {
-  $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::Type::Number, std::move($1));
+  $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::TYPE::Number, std::move($1));
 };
 
 Number : INT_CONST {
@@ -193,17 +193,17 @@ Number : INT_CONST {
 };
 
 UnaryExpr : PrimaryExpr {
-  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Primary, std::move($1));
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Primary, std::move($1));
 } | '+' UnaryExpr {
-  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Unary, UnaryExprAST::OP::PLUS, std::move($2));
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Unary, UnaryExprAST::OP::PLUS, std::move($2));
 } | '-' UnaryExpr {
-  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Unary, UnaryExprAST::OP::MINUS, std::move($2));
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Unary, UnaryExprAST::OP::MINUS, std::move($2));
 } | '!' UnaryExpr {
-  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Unary, UnaryExprAST::OP::NOT, std::move($2));
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Unary, UnaryExprAST::OP::NOT, std::move($2));
 } | IDENT '(' ')' {
-  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Call, $1);
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Call, $1);
 } | IDENT '(' FuncRParams ')' {
-  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::Type::Call, $1, std::move($3));
+  $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Call, $1, std::move($3));
 }
 
 MulExpr : UnaryExpr {
