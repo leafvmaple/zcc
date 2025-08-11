@@ -427,3 +427,5 @@ public:
 
     unique_ptr<ExprAST> expr;
 };
+
+#include "ast/ast.tpp"
