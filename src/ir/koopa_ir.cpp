@@ -548,8 +548,8 @@ int KoopaEnv::GetValueInt(koopa::Value* value) {
 }
 
 bool KoopaEnv::EndWithTerminator() {
-    auto* basic_block = (koopa_inst_vec_t*)insert_ptr;
-    return !basic_block->empty() && _IsTerminator(basic_block->back());
+    auto insts = insert_ptr->insts;
+    return !insts.empty() && _IsTerminator(insts.back());
 }
 
 koopa::Value* KoopaEnv::_CreateInst(koopa::Value* value) {

@@ -124,7 +124,9 @@ void StmtAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 
             env->SetInserPointer(thenBB);
             thenStmt->Codegen(env);
-            env->CreateBr(endBB);
+            if (!env->EndWithTerminator()) {
+                env->CreateBr(endBB);
+            }
 
             env->SetInserPointer(endBB);
             break;
@@ -246,7 +248,7 @@ Value* UnaryExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
             switch (op) {
                 case OP::PLUS: return exprVal;
                 case OP::MINUS: return env->CaculateBinaryOp([](int a, int b) { return a - b; }, env->GetInt32(0), exprVal);
-                case OP::NOT: return env->CaculateBinaryOp([](int a, int b) { return a == 0; }, exprVal, env->GetInt32(0));
+                case OP::NOT: return env->CaculateBinaryOp([](int a, int b) { return a == b; }, exprVal, env->GetInt32(0));
             }
         }
         case TYPE::Call: {
