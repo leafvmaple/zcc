@@ -86,7 +86,9 @@ llvm::Value* LLVMEnv::CreateArray(llvm::Type* type, std::vector<llvm::Value*> va
 }
 
 void LLVMEnv::CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params) {
-    
+    auto* funcType = llvm::FunctionType::get(retType, params, false);
+    auto* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, TheModule);
+    AddSymbol(name, VAR_TYPE::FUNC, { func });
 }
 
 void LLVMEnv::CreateCondBr(llvm::Value* cond, llvm::BasicBlock* trueBB, llvm::BasicBlock* falseBB) {
@@ -112,8 +114,8 @@ llvm::Value* LLVMEnv::CreateAlloca(llvm::Type* type, const std::string& name) {
 }
 
 llvm::Value* LLVMEnv::CreateGlobal(llvm::Type* type, const std::string& name, llvm::Value* init) {
-    // TODO - handle initialization
-    return new llvm::GlobalVariable(TheModule, type, false, llvm::GlobalValue::ExternalLinkage, nullptr, name);
+    llvm::Constant* initVal = init ? llvm::dyn_cast<llvm::Constant>(init) : llvm::Constant::getNullValue(type);
+    return new llvm::GlobalVariable(TheModule, type, false, llvm::GlobalValue::ExternalLinkage, initVal, name);
 }
 
 llvm::Value* LLVMEnv::CreateAnd(llvm::Value* lhs, llvm::Value* rhs) {
