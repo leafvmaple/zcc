@@ -14,12 +14,15 @@ Value* VarDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* typ
     } else if(!size) {
         var = env->CreateAlloca(type, ident);
         if (initVal) {
-            env->CreateStore(initVal->Codegen(env), var);
+            initVal->Codegen(env, var);
         }
     } else {
         auto arrSize = size->Evaluate(env);
         auto arryType = env->GetArrayType(type, arrSize);
         var = env->CreateAlloca(arryType, ident);
+        if (initVal) {
+            initVal->Codegen(env, var, arrSize);
+        }
     }
 
     return var;
@@ -443,7 +446,7 @@ void DeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
 void ConstDeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
-    for (auto& def : constDefs) {
+    for (const auto& def : constDefs) {
         auto* initVal = def->constInitVal->Calculate(env);
         env->AddSymbol(def->ident, VAR_TYPE::CONST, {.value = initVal});
     }
@@ -453,7 +456,7 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 void VarDeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     auto* type = btype->Codegen(env);
     for (const auto& def : varDefs) {
-        Value* var = def->Codegen(env, type);
+        auto* var = def->Codegen(env, type);
         env->AddSymbol(def->ident, VAR_TYPE::VAR, {.value = var});
     }
 }
@@ -469,13 +472,20 @@ Value* ConstInitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
-    if (!isArray) return expr->Codegen(env);
-    vector<Value*> values;
-    for (auto& expr : exprs) {
-        values.push_back(expr->Codegen(env));
+void InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr) {
+    assert(!isArray);
+    env->CreateStore(addr, expr->Codegen(env));
+}
+
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+void InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, int size) {
+    assert(isArray);
+    for (size_t i = 0; i < size; ++i) {
+        auto* value = i < exprs.size() ? exprs[i]->Calculate(env) : env->GetInt32(0);
+        auto* index = env->GetInt32(i);
+        auto* gep = env->CreateGEP(env->GetInt32Type(), addr, index);
+        env->CreateStore(value, gep);
     }
-    return env->CreateArray(env->GetInt32Type(), values);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
@@ -501,8 +511,8 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* LValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     auto symbol = env->GetSymbolValue(ident);
     if (index) {
-        // auto* indexVal = index->Codegen(env);
-        // return env->CreateGEP(env->GetInt32Type(), symbol.value, indexVal);
+        auto* indexVal = index->Codegen(env);
+        return env->CreateGEP(env->GetInt32Type(), symbol.value, indexVal);
     }
     return symbol.value;
 }

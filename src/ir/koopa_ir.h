@@ -135,6 +135,8 @@ public:
     koopa::Type* GetPointerType(koopa::Type* type) override;
 
     koopa::Value* GetInt32(int value) override;
+    koopa::Value* CreateGEP(koopa::Type* type, koopa::Value* array, koopa::Value* index) override;
+
     koopa::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) override;
 
     int GetValueInt(koopa::Value* value) override;

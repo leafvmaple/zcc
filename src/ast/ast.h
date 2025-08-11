@@ -341,8 +341,8 @@ public:
 
 class ConstInitValAST {
 public:
-    ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr);
     ConstInitValAST();
+    ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr);
     ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
@@ -360,7 +360,9 @@ public:
     InitValAST(vector<unique_ptr<ExprAST>>&& exprs);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr);
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, int size);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 

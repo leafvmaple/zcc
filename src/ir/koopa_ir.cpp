@@ -520,6 +520,20 @@ koopa::Value* KoopaEnv::GetInt32(int value) {
     };
 }
 
+koopa::Value* KoopaEnv::CreateGEP(koopa::Type* type, koopa::Value* array, koopa::Value* index) {
+    return _CreateInst(new koopa_raw_value_data_t {
+        .ty = type,
+        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+        .kind = {
+            .tag = KOOPA_RVT_GET_ELEM_PTR,
+            .data.get_elem_ptr = {
+                .src = array,
+                .index = index
+            }
+        }
+    });
+}
+
 koopa::Value* KoopaEnv::CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) {
     int result = func(lhs->kind.data.integer.value, rhs->kind.data.integer.value);
     return GetInt32(result);
