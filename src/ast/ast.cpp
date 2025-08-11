@@ -21,6 +21,27 @@ VarDefAST::VarDefAST(string ident, unique_ptr<InitValAST>&& initVal)
 VarDefAST::VarDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<InitValAST>&& initVal)
     : ident(std::move(ident)), size(std::move(size)), initVal(std::move(initVal)) {}
 
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+Value* VarDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
+    Value* var{};
+
+    if (env->IsGlobalScope()) {
+        auto* value = initVal ? initVal->Calculate(env) : env->CreateZero(type);
+        var = env->CreateGlobal(type, ident, value);
+    } else if(!size) {
+        var = env->CreateAlloca(type, ident);
+        if (initVal) {
+            env->CreateStore(initVal->Codegen(env), var);
+        }
+    } else {
+        auto arrSize = size->Evaluate(env);
+        auto arryType = env->GetArrayType(type, arrSize);
+        var = env->CreateAlloca(arryType, ident);
+    }
+
+    return var;
+}
+
 void CompUnitAST::AddFuncDef(unique_ptr<FuncDefAST>&& funcDef) {
     funcDefs.emplace_back(std::move(funcDef));
 }
@@ -556,21 +577,8 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 void VarDeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     auto* type = btype->Codegen(env);
     for (const auto& def : varDefs) {
-        Value* varAddr;
-        if (env->IsGlobalScope()) {
-            auto* initVal = def->initVal ? def->initVal->Calculate(env) : env->CreateZero(type);
-            varAddr = env->CreateGlobal(type, def->ident, initVal);
-        } else if(!def->size) {
-            varAddr = env->CreateAlloca(type, def->ident);
-            if (def->initVal) {
-                env->CreateStore(def->initVal->Codegen(env), varAddr);
-            }
-        } else {
-            auto arrSize = def->size->Evaluate(env);
-            auto arryType = env->GetArrayType(type, arrSize);
-            varAddr = env->CreateAlloca(arryType, def->ident);
-        }
-        env->AddSymbol(def->ident, VAR_TYPE::VAR, {.value = varAddr});
+        Value* var = def->Codegen(env, type);
+        env->AddSymbol(def->ident, VAR_TYPE::VAR, {.value = var});
     }
 }
 
@@ -712,6 +720,7 @@ template llvm::Value* LValAST::Codegen<llvm::Type, llvm::Value, llvm::BasicBlock
 template llvm::Value* ConstExprAST::Codegen<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>(Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>*);
 template llvm::Value* FuncFParamAST::Codegen<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>(Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>*);
 template llvm::Value* FuncRParamAST::Codegen<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>(Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>*);
+template llvm::Value* VarDefAST::Codegen<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>(Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>*, llvm::Type*);
 
 template void CompUnitAST::Codegen<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>(Env<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>*);
 template void FuncDefAST::Codegen<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>(Env<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>*);
@@ -736,6 +745,7 @@ template koopa::Value* LValAST::Codegen<koopa::Type, koopa::Value, koopa::BasicB
 template koopa::Value* ConstExprAST::Codegen<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>(Env<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>*);
 template koopa::Value* FuncFParamAST::Codegen<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>(Env<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>*);
 template koopa::Value* FuncRParamAST::Codegen<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>(Env<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>*);
+template koopa::Value* VarDefAST::Codegen<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>(Env<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function>*, koopa::Type*);
 
 template llvm::Value* ExprAST::Calculate<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>(Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>*);
 template llvm::Value* PrimaryExprAST::Calculate<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>(Env<llvm::Type, llvm::Value, llvm::BasicBlock, llvm::Function>*);

@@ -52,6 +52,9 @@ public:
     VarDefAST(string ident, unique_ptr<InitValAST>&& initVal);
     VarDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<InitValAST>&& initVal);
 
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type);
+
     string ident;
     unique_ptr<ConstExprAST> size;
     unique_ptr<InitValAST> initVal;
