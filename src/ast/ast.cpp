@@ -6,21 +6,21 @@
 ConstDefAST::ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal)
     : ident(std::move(ident)), constInitVal(std::move(constInitVal)) {}
 
-ConstDefAST::ConstDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<ConstInitValAST>&& constInitVal)
-    : ident(std::move(ident)), size(std::move(size)), constInitVal(std::move(constInitVal)) {}
+ConstDefAST::ConstDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr, unique_ptr<ConstInitValAST>&& constInitVal)
+    : ident(std::move(ident)), sizeExpr(std::move(sizeExpr)), constInitVal(std::move(constInitVal)) {}
 
 
 VarDefAST::VarDefAST(string ident)
     : ident(std::move(ident)) {}
 
-VarDefAST::VarDefAST(string ident, unique_ptr<ConstExprAST>&& size)
-    : ident(std::move(ident)), size(std::move(size)) {}
+VarDefAST::VarDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr)
+    : ident(std::move(ident)), sizeExpr(std::move(sizeExpr)) {}
 
 VarDefAST::VarDefAST(string ident, unique_ptr<InitValAST>&& initVal)
     : ident(std::move(ident)), initVal(std::move(initVal)) {}
 
-VarDefAST::VarDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<InitValAST>&& initVal)
-    : ident(std::move(ident)), size(std::move(size)), initVal(std::move(initVal)) {}
+VarDefAST::VarDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr, unique_ptr<InitValAST>&& initVal)
+    : ident(std::move(ident)), sizeExpr(std::move(sizeExpr)), initVal(std::move(initVal)) {}
 
 
 void CompUnitAST::AddFuncDef(unique_ptr<FuncDefAST>&& funcDef) {

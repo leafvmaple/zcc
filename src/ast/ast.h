@@ -38,10 +38,10 @@ class FuncRParamAST;
 class ConstDefAST {
 public:
     ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal);
-    ConstDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<ConstInitValAST>&& constInitVal);
+    ConstDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr, unique_ptr<ConstInitValAST>&& constInitVal);
 
     string ident;
-    unique_ptr<ConstExprAST> size;
+    unique_ptr<ConstExprAST> sizeExpr;
     unique_ptr<ConstInitValAST> constInitVal;
 };
 
@@ -50,13 +50,13 @@ public:
     VarDefAST(string ident);
     VarDefAST(string ident, unique_ptr<ConstExprAST>&& size);
     VarDefAST(string ident, unique_ptr<InitValAST>&& initVal);
-    VarDefAST(string ident, unique_ptr<ConstExprAST>&& size, unique_ptr<InitValAST>&& initVal);
+    VarDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr, unique_ptr<InitValAST>&& initVal);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type);
 
     string ident;
-    unique_ptr<ConstExprAST> size;
+    unique_ptr<ConstExprAST> sizeExpr;
     unique_ptr<InitValAST> initVal;
 };
 
@@ -360,8 +360,6 @@ public:
     InitValAST(vector<unique_ptr<ExprAST>>&& exprs);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
     void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, int size);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
@@ -404,7 +402,7 @@ public:
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    int Evaluate(Env<Type, Value, BasicBlock, Function>* env);
+    int ToInteger(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ExprAST> expr;
 };

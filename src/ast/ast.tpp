@@ -7,23 +7,18 @@
 template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* VarDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
     Value* var{};
+    int arrSize{};
+
+    if (sizeExpr) {
+        arrSize = sizeExpr->ToInteger(env);
+        type = env->GetArrayType(type, arrSize);
+    }
 
     if (env->IsGlobalScope()) {
         auto* value = initVal ? initVal->Calculate(env) : env->CreateZero(type);
-        if (size) {
-            auto arrSize = size->Evaluate(env);
-            type = env->GetArrayType(type, arrSize);
-        }
         var = env->CreateGlobal(type, ident, value);
-    } else if(!size) {
-        var = env->CreateAlloca(type, ident);
-        if (initVal) {
-            initVal->Codegen(env, var);
-        }
     } else {
-        auto arrSize = size->Evaluate(env);
-        auto arryType = env->GetArrayType(type, arrSize);
-        var = env->CreateAlloca(arryType, ident);
+        var = env->CreateAlloca(type, ident);
         if (initVal) {
             initVal->Codegen(env, var, arrSize);
         }
@@ -476,19 +471,16 @@ Value* ConstInitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-void InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr) {
-    assert(!isArray);
-    env->CreateStore(addr, expr->Codegen(env));
-}
-
-template<typename Type, typename Value, typename BasicBlock, typename Function>
 void InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, int size) {
-    assert(isArray);
-    for (size_t i = 0; i < size; ++i) {
-        auto* value = i < exprs.size() ? exprs[i]->Calculate(env) : env->GetInt32(0);
-        auto* index = env->GetInt32(i);
-        auto* gep = env->CreateGEP(env->GetInt32Type(), addr, index);
-        env->CreateStore(value, gep);
+    if (!size) {
+        env->CreateStore(expr->Codegen(env), addr);
+    } else {
+        for (size_t i = 0; i < size; ++i) {
+            auto* value = i < exprs.size() ? exprs[i]->Calculate(env) : env->GetInt32(0);
+            auto* index = env->GetInt32(i);
+            auto* gep = env->CreateGEP(env->GetInt32Type(), addr, index);
+            env->CreateStore(value, gep);
+        }
     }
 }
 
@@ -532,7 +524,7 @@ Value* ConstExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-int ConstExprAST::Evaluate(Env<Type, Value, BasicBlock, Function>* env) {
+int ConstExprAST::ToInteger(Env<Type, Value, BasicBlock, Function>* env) {
     auto value = expr->Calculate(env);
     return env->GetValueInt(value);
 }
