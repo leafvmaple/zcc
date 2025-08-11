@@ -476,7 +476,7 @@ void InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* add
         env->CreateStore(expr->Codegen(env), addr);
     } else {
         for (size_t i = 0; i < size; ++i) {
-            auto* value = i < exprs.size() ? exprs[i]->Calculate(env) : env->GetInt32(0);
+            auto* value = i < exprs.size() ? exprs[i]->Codegen(env) : env->GetInt32(0);
             auto* index = env->GetInt32(i);
             auto* gep = env->CreateGEP(env->GetInt32Type(), addr, index);
             env->CreateStore(value, gep);
