@@ -394,7 +394,7 @@ Value* LAndExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
         auto* leftVal = left->Calculate(env);
         auto* rightVal = right->Calculate(env);
-        return env->CaculateBinaryOp([](int a, int b) { return a || b; }, leftVal, rightVal);
+        return env->CaculateBinaryOp([](int a, int b) { return a && b; }, leftVal, rightVal);
     }
     return eqExpr->Calculate(env);
 }
