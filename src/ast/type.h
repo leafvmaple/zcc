@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cassert>
 
 using std::string;
 
@@ -21,3 +22,18 @@ struct BaseType {
 private:
     TYPE type;
 };
+
+// template
+
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+Type* BaseType::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+    switch (type) {
+        case TYPE::INT:
+            return env->GetInt32Type();
+        case TYPE::VOID:
+            return env->GetVoidType();
+        default:
+            assert(false && "Unknown type");
+            return nullptr;
+    }
+}
