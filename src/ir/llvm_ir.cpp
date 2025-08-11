@@ -74,6 +74,17 @@ llvm::Function* LLVMEnv::CreateFunction(llvm::Type* funcType, const std::string&
     return func;
 }
 
+llvm::Value* LLVMEnv::CreateArray(llvm::Type* type, std::vector<llvm::Value*> values) {
+    auto arrayType = llvm::ArrayType::get(type, values.size());
+    std::vector<llvm::Constant*> constants;
+    for (auto* val : values) {
+        if (auto* c = llvm::dyn_cast<llvm::Constant>(val)) {
+            constants.push_back(c);
+        }
+    }
+    return llvm::ConstantArray::get(arrayType, constants);
+}
+
 void LLVMEnv::CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params) {
     
 }
@@ -101,7 +112,7 @@ llvm::Value* LLVMEnv::CreateAlloca(llvm::Type* type, const std::string& name) {
 }
 
 llvm::Value* LLVMEnv::CreateGlobal(llvm::Type* type, const std::string& name, llvm::Value* init) {
-    // TODO
+    // TODO - handle initialization
     return new llvm::GlobalVariable(TheModule, type, false, llvm::GlobalValue::ExternalLinkage, nullptr, name);
 }
 
@@ -187,7 +198,7 @@ llvm::Type* LLVMEnv::GetVoidType() {
     return llvm::Type::getVoidTy(TheContext);
 }
 
-llvm::Type* LLVMEnv::GetArrayType(llvm::Type* type, size_t size) {
+llvm::Type* LLVMEnv::GetArrayType(llvm::Type* type, int size) {
     return llvm::ArrayType::get(type, size); // 0 for dynamic size
 }
 
@@ -199,12 +210,24 @@ llvm::Value* LLVMEnv::GetInt32(int value) {
     return llvm::ConstantInt::get(GetInt32Type(), value);
 }
 
+llvm::Value* LLVMEnv::CreateGEP(llvm::Type* type, llvm::Value* array, llvm::Value* index) {
+    return Builder.CreateGEP(type, array, index);
+}
+
 llvm::Value* LLVMEnv::CaculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs) {
     auto* lhsConst = llvm::dyn_cast<llvm::ConstantInt>(lhs);
     auto* rhsConst = llvm::dyn_cast<llvm::ConstantInt>(rhs);
 
     int result = func(lhsConst->getSExtValue(), rhsConst->getSExtValue());
     return GetInt32(result);
+}
+
+int LLVMEnv::GetValueInt(llvm::Value* value) {
+    auto* constInt = llvm::dyn_cast<llvm::ConstantInt>(value);
+    if (constInt) {
+        return constInt->getSExtValue();
+    }
+    return 0;
 }
 
 bool LLVMEnv::EndWithTerminator() {

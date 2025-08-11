@@ -10,6 +10,10 @@ Value* VarDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* typ
 
     if (env->IsGlobalScope()) {
         auto* value = initVal ? initVal->Calculate(env) : env->CreateZero(type);
+        if (size) {
+            auto arrSize = size->Evaluate(env);
+            type = env->GetArrayType(type, arrSize);
+        }
         var = env->CreateGlobal(type, ident, value);
     } else if(!size) {
         var = env->CreateAlloca(type, ident);

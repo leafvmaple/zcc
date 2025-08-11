@@ -493,12 +493,12 @@ koopa::Type* KoopaEnv::GetVoidType() {
     return koopa_type(KOOPA_RTT_UNIT);
 }
 
-koopa::Type* KoopaEnv::GetArrayType(koopa::Type* type, size_t size) {
+koopa::Type* KoopaEnv::GetArrayType(koopa::Type* type, int size) {
     return new koopa_raw_type_kind_t {
         .tag = KOOPA_RTT_ARRAY,
         .data.array = {
             .base = type,
-            .len = size
+            .len = (size_t)size
         }
     };
 }

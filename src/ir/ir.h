@@ -71,7 +71,7 @@ public:
 
     virtual Type* GetInt32Type() = 0;
     virtual Type* GetVoidType() = 0;
-    virtual Type* GetArrayType(Type* type, size_t size)= 0;
+    virtual Type* GetArrayType(Type* type, int size)= 0;
     virtual Type* GetPointerType(Type* type) = 0;
 
     virtual Value* GetInt32(int value) = 0;

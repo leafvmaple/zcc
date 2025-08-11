@@ -131,7 +131,7 @@ public:
 
     koopa::Type* GetInt32Type() override;
     koopa::Type* GetVoidType() override;
-    koopa::Type* GetArrayType(koopa::Type* type, size_t size) override;
+    koopa::Type* GetArrayType(koopa::Type* type, int size) override;
     koopa::Type* GetPointerType(koopa::Type* type) override;
 
     koopa::Value* GetInt32(int value) override;
