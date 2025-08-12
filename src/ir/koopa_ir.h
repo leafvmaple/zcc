@@ -78,11 +78,6 @@ const char* to_string(int value);
 
 class KoopaEnv : public Env<koopa::Type, koopa::Value, koopa::BasicBlock, koopa::Function> {
 public:
-    using T = koopa_raw_type_kind_t;
-    using V = koopa_raw_value_data_t;
-    using B = zcc_basic_block_data_t;
-    using F = zcc_function_data_t;
-
     KoopaEnv();
     KoopaEnv(std::string input) : KoopaEnv() {}
 
@@ -91,7 +86,7 @@ public:
     void Dump(const char* output) override;
 
     koopa::Type* CreateFuncType(koopa::Type* retType, std::vector<koopa::Type*> params) override;
-    koopa::BasicBlock* CreateBasicBlock(const std::string& name, F* func) override;
+    koopa::BasicBlock* CreateBasicBlock(const std::string& name, koopa::Function* func) override;
     koopa::Function* CreateFunction(koopa::Type* funcType, const std::string& name, std::vector<std::string> params) override;
     koopa::Value* CreateArray(koopa::Type* type, std::vector<koopa::Value*> values) override;
     void CreateBuiltin(const std::string& name, koopa::Type* retType, std::vector<koopa::Type*> params) override;

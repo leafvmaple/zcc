@@ -118,6 +118,10 @@ llvm::Value* LLVMEnv::CreateGlobal(llvm::Type* type, const std::string& name, ll
     return new llvm::GlobalVariable(TheModule, type, false, llvm::GlobalValue::ExternalLinkage, initVal, name);
 }
 
+llvm::Value* LLVMEnv::CreateZero(llvm::Type* type) {
+    return llvm::Constant::getNullValue(type);
+}
+
 llvm::Value* LLVMEnv::CreateAnd(llvm::Value* lhs, llvm::Value* rhs) {
     return Builder.CreateAnd(lhs, rhs);
 }
