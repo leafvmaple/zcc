@@ -38,25 +38,28 @@ class FuncRParamAST;
 class ConstDefAST {
 public:
     ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal);
-    ConstDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr, unique_ptr<ConstInitValAST>&& constInitVal);
+    ConstDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<ConstInitValAST>&& constInitVal);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type);
 
     string ident;
-    unique_ptr<ConstExprAST> sizeExpr;
+    vector<unique_ptr<ConstExprAST>> sizeExprs;
     unique_ptr<ConstInitValAST> constInitVal;
 };
 
 class VarDefAST {
 public:
     VarDefAST(string ident);
-    VarDefAST(string ident, unique_ptr<ConstExprAST>&& size);
     VarDefAST(string ident, unique_ptr<InitValAST>&& initVal);
-    VarDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr, unique_ptr<InitValAST>&& initVal);
+    VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs);
+    VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<InitValAST>&& initVal);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type);
 
     string ident;
-    unique_ptr<ConstExprAST> sizeExpr;
+    vector<unique_ptr<ConstExprAST>> sizeExprs;
     unique_ptr<InitValAST> initVal;
 };
 
@@ -344,28 +347,33 @@ public:
     ConstInitValAST();
     ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr);
     ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs);
+    ConstInitValAST(vector<unique_ptr<ConstInitValAST>>&& subVals);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim);
 
     unique_ptr<ConstExprAST> constExpr;
     vector<unique_ptr<ConstExprAST>> constExprs;
+    vector<unique_ptr<ConstInitValAST>> subVals;
     bool isArray;
 };
 
 class InitValAST {
 public:
-    InitValAST(unique_ptr<ExprAST>&& expr);
     InitValAST();
+    InitValAST(unique_ptr<ExprAST>&& expr);
     InitValAST(vector<unique_ptr<ExprAST>>&& exprs);
+    InitValAST(vector<unique_ptr<InitValAST>>&& subVals);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, int size);
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, vector<Type*> types, vector<int> shape, int dim);
+
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim);
 
     unique_ptr<ExprAST> expr;
     vector<unique_ptr<ExprAST>> exprs;
+    vector<unique_ptr<InitValAST>> subVals;
     bool isArray;
 };
 
@@ -384,13 +392,13 @@ public:
 class LValAST {
 public:
     LValAST(string ident);
-    LValAST(string ident, unique_ptr<ExprAST>&& index);
+    LValAST(string ident, vector<unique_ptr<ExprAST>>&& indies);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
 
     string ident;
-    unique_ptr<ExprAST> index;
+    vector<unique_ptr<ExprAST>> indies;
 };
 
 class ConstExprAST {

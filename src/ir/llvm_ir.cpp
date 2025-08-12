@@ -75,14 +75,13 @@ llvm::Function* LLVMEnv::CreateFunction(llvm::Type* funcType, const std::string&
 }
 
 llvm::Value* LLVMEnv::CreateArray(llvm::Type* type, std::vector<llvm::Value*> values) {
-    auto arrayType = llvm::ArrayType::get(type, values.size());
     std::vector<llvm::Constant*> constants;
     for (auto* val : values) {
         if (auto* c = llvm::dyn_cast<llvm::Constant>(val)) {
             constants.push_back(c);
         }
     }
-    return llvm::ConstantArray::get(arrayType, constants);
+    return llvm::ConstantArray::get((llvm::ArrayType*)type, constants);
 }
 
 void LLVMEnv::CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params) {
@@ -216,7 +215,7 @@ llvm::Value* LLVMEnv::GetInt32(int value) {
     return llvm::ConstantInt::get(GetInt32Type(), value);
 }
 
-llvm::Value* LLVMEnv::CreateGEP(llvm::Type* type, llvm::Value* array, llvm::Value* index) {
+llvm::Value* LLVMEnv::CreateGEP(llvm::Type* type, llvm::Value* array, vector<llvm::Value*> index) {
     return Builder.CreateGEP(type, array, index);
 }
 

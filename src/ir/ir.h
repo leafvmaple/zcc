@@ -5,6 +5,9 @@
 #include <map>
 #include <functional>
 
+using std::string;
+using std::vector;
+
 enum class VAR_TYPE {
     CONST,
     VAR,
@@ -29,11 +32,11 @@ public:
     virtual void Print() = 0;
     virtual void Dump(const char* output) = 0;
 
-    virtual Type* CreateFuncType(Type* retType, std::vector<Type*> params) = 0;
+    virtual Type* CreateFuncType(Type* retType, vector<Type*> params) = 0;
     virtual BasicBlock* CreateBasicBlock(const std::string& name, Function* func) = 0;
-    virtual Function* CreateFunction(Type* funcType, const std::string& name, std::vector<std::string> names) = 0;
-    virtual Value* CreateArray(Type* type, std::vector<Value*> values) = 0;
-    virtual void CreateBuiltin(const std::string& name, Type* retType, std::vector<Type*> params) = 0;
+    virtual Function* CreateFunction(Type* funcType, const std::string& name, vector<std::string> names) = 0;
+    virtual Value* CreateArray(Type* type, vector<Value*> values) = 0;
+    virtual void CreateBuiltin(const std::string& name, Type* retType, vector<Type*> params) = 0;
 
     virtual void CreateCondBr(Value* cond, BasicBlock* trueBB, BasicBlock* falseBB) = 0;
     virtual void CreateBr(BasicBlock* desc) = 0;
@@ -41,7 +44,7 @@ public:
     virtual void CreateStore(Value* value, Value* dest) = 0;
     virtual Value* CreateLoad(Value* src) = 0;
     virtual void CreateRet(Value* value) = 0;
-    virtual Value* CreateCall(Function* func, std::vector<Value*> args) = 0;
+    virtual Value* CreateCall(Function* func, vector<Value*> args) = 0;
 
     virtual Value* CreateAnd(Value* lhs, Value* rhs) = 0;
     virtual Value* CreateOr(Value* lhs, Value* rhs) = 0;
@@ -73,9 +76,10 @@ public:
     virtual Type* GetVoidType() = 0;
     virtual Type* GetArrayType(Type* type, int size)= 0;
     virtual Type* GetPointerType(Type* type) = 0;
+    virtual Type* GetValueType(Value* value) = 0;
 
     virtual Value* GetInt32(int value) = 0;
-    virtual Value* CreateGEP(Type* type, Value* array, Value* index) = 0;
+    virtual Value* CreateGEP(Type* type, Value* array, vector<Value*> index) = 0;
 
     virtual Value* CaculateBinaryOp(const std::function<int(int, int)>& func, Value* lhs, Value* rhs) = 0;
 
@@ -144,7 +148,7 @@ private:
         BasicBlock* end;
     };
 
-    std::vector<std::map<std::string, Symbol_Value>> locals;
-    std::vector<std::map<Symbol_Value, VAR_TYPE>> types;
-    std::vector<while_data_t> whiles;
+    vector<std::map<std::string, Symbol_Value>> locals;
+    vector<std::map<Symbol_Value, VAR_TYPE>> types;
+    vector<while_data_t> whiles;
 };

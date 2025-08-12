@@ -118,7 +118,7 @@ koopa::Function* KoopaEnv::CreateFunction(koopa::Type* funcType, const std::stri
 
 koopa::Value* KoopaEnv::CreateArray(koopa::Type* type, std::vector<koopa::Value*> values) {
     return new koopa_raw_value_data_t {
-        .ty = GetArrayType(type, values.size()),
+        .ty = type,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_AGGREGATE,
@@ -507,6 +507,10 @@ koopa::Type* KoopaEnv::GetPointerType(koopa::Type* type) {
     return koopa_pointer(type);
 }
 
+koopa::Type* KoopaEnv::GetValueType(koopa::Value* value) {
+    return const_cast<koopa::Type*>(value->ty);
+}
+
 koopa::Value* KoopaEnv::GetInt32(int value) {
     return new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
@@ -520,18 +524,22 @@ koopa::Value* KoopaEnv::GetInt32(int value) {
     };
 }
 
-koopa::Value* KoopaEnv::CreateGEP(koopa::Type* type, koopa::Value* array, koopa::Value* index) {
-    return _CreateInst(new koopa_raw_value_data_t {
-        .ty = type,
-        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-        .kind = {
-            .tag = KOOPA_RVT_GET_ELEM_PTR,
-            .data.get_elem_ptr = {
-                .src = array,
-                .index = index
+koopa::Value* KoopaEnv::CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies) {
+    koopa::Value* res = array;
+    for (const auto& index : indies) {
+        res = _CreateInst(new koopa_raw_value_data_t{
+            .ty = type,
+            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+            .kind = {
+                .tag = KOOPA_RVT_GET_ELEM_PTR,
+                .data.get_elem_ptr = {
+                    .src = res,
+                    .index = index
+                }
             }
-        }
-    });
+        });
+    }
+    return res;
 }
 
 koopa::Value* KoopaEnv::CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) {

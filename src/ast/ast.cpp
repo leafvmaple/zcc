@@ -6,21 +6,21 @@
 ConstDefAST::ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal)
     : ident(std::move(ident)), constInitVal(std::move(constInitVal)) {}
 
-ConstDefAST::ConstDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr, unique_ptr<ConstInitValAST>&& constInitVal)
-    : ident(std::move(ident)), sizeExpr(std::move(sizeExpr)), constInitVal(std::move(constInitVal)) {}
+ConstDefAST::ConstDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<ConstInitValAST>&& constInitVal)
+    : ident(std::move(ident)), sizeExprs(std::move(sizeExprs)), constInitVal(std::move(constInitVal)) {}
 
 
 VarDefAST::VarDefAST(string ident)
     : ident(std::move(ident)) {}
 
-VarDefAST::VarDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr)
-    : ident(std::move(ident)), sizeExpr(std::move(sizeExpr)) {}
-
 VarDefAST::VarDefAST(string ident, unique_ptr<InitValAST>&& initVal)
     : ident(std::move(ident)), initVal(std::move(initVal)) {}
 
-VarDefAST::VarDefAST(string ident, unique_ptr<ConstExprAST>&& sizeExpr, unique_ptr<InitValAST>&& initVal)
-    : ident(std::move(ident)), sizeExpr(std::move(sizeExpr)), initVal(std::move(initVal)) {}
+VarDefAST::VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs)
+    : ident(std::move(ident)), sizeExprs(std::move(sizeExprs)) {}
+
+VarDefAST::VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<InitValAST>&& initVal)
+    : ident(std::move(ident)), sizeExprs(std::move(sizeExprs)), initVal(std::move(initVal)) {}
 
 
 void CompUnitAST::AddFuncDef(unique_ptr<FuncDefAST>&& funcDef) {
@@ -159,15 +159,20 @@ ConstInitValAST::ConstInitValAST()
 ConstInitValAST::ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs)
     : constExprs(std::move(constExprs)), isArray(true) {}
 
-
-InitValAST::InitValAST(unique_ptr<ExprAST>&& expr)
-    : expr(std::move(expr)), isArray(false) {}
+ConstInitValAST::ConstInitValAST(vector<unique_ptr<ConstInitValAST>>&& subVals)
+    : subVals(std::move(subVals)), isArray(true) {}
 
 InitValAST::InitValAST()
     : isArray(true) {}
 
+InitValAST::InitValAST(unique_ptr<ExprAST>&& expr)
+    : expr(std::move(expr)), isArray(false) {}
+
 InitValAST::InitValAST(vector<unique_ptr<ExprAST>>&& exprs)
     : exprs(std::move(exprs)), isArray(true) {}
+
+InitValAST::InitValAST(vector<unique_ptr<InitValAST>>&& subVals)
+    : subVals(std::move(subVals)), isArray(true) {}
 
 
 BlockItemAST::BlockItemAST(unique_ptr<DeclAST>&& decl)
@@ -180,8 +185,8 @@ BlockItemAST::BlockItemAST(unique_ptr<StmtAST>&& stmt)
 LValAST::LValAST(string ident)
     : ident(std::move(ident)) {}
 
-LValAST::LValAST(string ident, unique_ptr<ExprAST>&& index)
-    : ident(std::move(ident)), index(std::move(index)) {}
+LValAST::LValAST(string ident, vector<unique_ptr<ExprAST>>&& indies)
+    : ident(std::move(ident)), indies(std::move(indies)) {}
 
 
 ConstExprAST::ConstExprAST(unique_ptr<ExprAST>&& expr)

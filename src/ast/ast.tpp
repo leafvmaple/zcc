@@ -5,22 +5,42 @@
 #include "llvm/IR/Function.h"
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
+void ConstDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
+    vector<int> shape{};
+    if (!sizeExprs.empty()) {
+        for (auto& sizeExpr : sizeExprs) {
+            int size = sizeExpr->ToInteger(env);
+            shape.push_back(size);
+        }
+    }
+    auto var = constInitVal->Calculate(env, shape, 0);
+    env->AddSymbol(ident, VAR_TYPE::CONST, {.value = var});
+}
+
+template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* VarDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
     Value* var{};
-    int arrSize{};
+    vector<int> shape{};
+    vector<Type*> types{};
 
-    if (sizeExpr) {
-        arrSize = sizeExpr->ToInteger(env);
-        type = env->GetArrayType(type, arrSize);
+    types.push_back(type);
+    if (!sizeExprs.empty()) {
+        for (auto it = sizeExprs.rbegin(); it != sizeExprs.rend(); ++it) {
+            int size = (*it)->ToInteger(env);
+            shape.push_back(size);
+            type = env->GetArrayType(type, size);
+            types.push_back(type);
+        }
     }
+    std::reverse(shape.begin(), shape.end());
 
     if (env->IsGlobalScope()) {
-        auto* value = initVal ? initVal->Calculate(env) : env->CreateZero(type);
+        auto* value = initVal ? initVal->Calculate(env, shape, 0) : env->CreateZero(type);
         var = env->CreateGlobal(type, ident, value);
     } else {
         var = env->CreateAlloca(type, ident);
         if (initVal) {
-            initVal->Codegen(env, var, arrSize);
+            initVal->Codegen(env, var, types, shape, 0);
         }
     }
 
@@ -447,9 +467,10 @@ void DeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
 void ConstDeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+    auto* type = btype->Codegen(env);
     for (const auto& def : constDefs) {
-        auto* initVal = def->constInitVal->Calculate(env);
-        env->AddSymbol(def->ident, VAR_TYPE::CONST, {.value = initVal});
+        def->Codegen(env, type);
+        // env->AddSymbol(def->ident, VAR_TYPE::CONST, {.value = var});
     }
 }
 
@@ -463,37 +484,77 @@ void VarDeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* ConstInitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* ConstInitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim) {
     if (!isArray) return constExpr->Calculate(env);
     vector<Value*> values;
-    for (auto& expr : constExprs) {
-        values.push_back(expr->Calculate(env));
+    Type* type{};
+    auto size = shape[dim];
+    if (!subVals.empty()) {
+        for (int i = 0; i < size; ++i) {
+            auto* val = i < subVals.size() ? subVals[i]->Calculate(env, shape, dim + 1) : env->CreateZero(type);
+            values.push_back(val);
+            type = env->GetValueType(val);
+        }
+    } else {
+        for (int i = 0; i < size; ++i) {
+            auto* val = i < constExprs.size() ? constExprs[i]->Calculate(env) : env->GetInt32(0);
+            values.push_back(val);
+        }
     }
-    return env->CreateArray(env->GetInt32Type(), values);
+
+    auto* arrType = env->GetArrayType(type, size);
+    return env->CreateArray(arrType, values);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-void InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, int size) {
-    if (!size) {
+void InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, vector<Type*> types, vector<int> shape, int dim) {
+    if (!isArray) {
         env->CreateStore(expr->Codegen(env), addr);
     } else {
-        for (size_t i = 0; i < size; ++i) {
-            auto* value = i < exprs.size() ? exprs[i]->Codegen(env) : env->GetInt32(0);
-            auto* index = env->GetInt32(i);
-            auto* gep = env->CreateGEP(env->GetInt32Type(), addr, index);
-            env->CreateStore(value, gep);
+        auto size = shape[dim];
+        auto type = types[types.size() - 2 - dim];
+        if (!subVals.empty()) {
+            for (int i = 0; i < size; ++i) {
+                auto* subAddr = env->CreateGEP(type, addr, { env->GetInt32(i) });
+                if (i < subVals.size()) {
+                    subVals[i]->Codegen(env, subAddr, types, shape, dim + 1);
+                } else {
+                    // If there are not enough subVals, we initialize with zero
+                    env->CreateStore(env->CreateZero(type), subAddr);
+                }
+            }
+        } else {
+            for (int i = 0; i < size; ++i) {
+                auto* val = i < exprs.size() ? exprs[i]->Codegen(env) : env->GetInt32(0);
+                auto* index = env->GetInt32(i);
+                auto* gep = env->CreateGEP(type, addr, { env->GetInt32(i) });
+                env->CreateStore(val, gep);
+            }
         }
     }
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* InitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* InitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim) {
     if (!isArray) return expr->Calculate(env);
     vector<Value*> values;
-    for (auto& expr : exprs) {
-        values.push_back(expr->Calculate(env));
+    Type* type{};
+    auto size = shape[dim];
+    if (!subVals.empty()) {
+        for (int i = 0; i < size; ++i) {
+            auto* val = i < subVals.size() ? subVals[i]->Calculate(env, shape, dim + 1) : env->CreateZero(type);
+            values.push_back(val);
+            type = env->GetValueType(val);
+        }
+    } else {
+        for (int i = 0; i < size; ++i) {
+            auto* val = i < exprs.size() ? exprs[i]->Calculate(env) : env->GetInt32(0);
+            values.push_back(val);
+        }
     }
-    return env->CreateArray(env->GetInt32Type(), values);
+
+    auto* arrType = env->GetArrayType(type, size);
+    return env->CreateArray(arrType, values);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
@@ -508,9 +569,12 @@ void BlockItemAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* LValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     auto symbol = env->GetSymbolValue(ident);
-    if (index) {
-        auto* indexVal = index->Codegen(env);
-        return env->CreateGEP(env->GetInt32Type(), symbol.value, indexVal);
+    if (!indies.empty()) {
+        vector<Value*> indexVals;
+        for (auto& index : indies) {
+            indexVals.push_back(index->Codegen(env));
+        }
+        return env->CreateGEP(env->GetInt32Type(), symbol.value, indexVals);
     }
     return symbol.value;
 }
