@@ -3,11 +3,11 @@
 #include "../libkoopa/include/function.h"
 #include "llvm/IR/Function.h"
 
-ConstDefAST::ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal)
-    : ident(std::move(ident)), constInitVal(std::move(constInitVal)) {}
+ConstDefAST::ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& initVal)
+    : ident(std::move(ident)), initVal(std::move(initVal)) {}
 
-ConstDefAST::ConstDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<ConstInitValAST>&& constInitVal)
-    : ident(std::move(ident)), sizeExprs(std::move(sizeExprs)), constInitVal(std::move(constInitVal)) {}
+ConstDefAST::ConstDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<ConstInitValAST>&& initVal)
+    : ident(std::move(ident)), sizeExprs(std::move(sizeExprs)), initVal(std::move(initVal)) {}
 
 
 VarDefAST::VarDefAST(string ident)

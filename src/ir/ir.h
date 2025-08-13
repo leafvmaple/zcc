@@ -84,6 +84,7 @@ public:
     virtual Value* CaculateBinaryOp(const std::function<int(int, int)>& func, Value* lhs, Value* rhs) = 0;
 
     virtual int GetValueInt(Value* value) = 0;
+    virtual Value* GetArrayElement(Value* array, int index) = 0;
 
     virtual bool EndWithTerminator() = 0;
 

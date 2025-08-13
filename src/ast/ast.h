@@ -37,15 +37,15 @@ class FuncRParamAST;
 
 class ConstDefAST {
 public:
-    ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& constInitVal);
-    ConstDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<ConstInitValAST>&& constInitVal);
+    ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& initVal);
+    ConstDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<ConstInitValAST>&& initVal);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     void Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type);
 
     string ident;
     vector<unique_ptr<ConstExprAST>> sizeExprs;
-    unique_ptr<ConstInitValAST> constInitVal;
+    unique_ptr<ConstInitValAST> initVal;
 };
 
 class VarDefAST {
@@ -56,7 +56,10 @@ public:
     VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<InitValAST>&& initVal);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env, Type* type);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* ToArrayValue(Env<Type, Value, BasicBlock, Function>* env, Type* type);
 
     string ident;
     vector<unique_ptr<ConstExprAST>> sizeExprs;
@@ -371,7 +374,7 @@ public:
     void Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, vector<Type*> types, vector<int> shape, int dim);
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim);

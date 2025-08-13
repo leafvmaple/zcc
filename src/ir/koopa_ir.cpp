@@ -555,6 +555,11 @@ int KoopaEnv::GetValueInt(koopa::Value* value) {
     return 0; // or throw an exception
 }
 
+koopa::Value* KoopaEnv::GetArrayElement(koopa::Value* array, int index) {
+    // TODO assert
+    return (koopa::Value*)array->kind.data.aggregate.elems.buffer[index];
+}
+
 bool KoopaEnv::EndWithTerminator() {
     auto insts = insert_ptr->insts;
     return !insts.empty() && _IsTerminator(insts.back());

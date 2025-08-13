@@ -71,6 +71,7 @@ public:
     llvm::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs) override;
 
     int GetValueInt(llvm::Value* value) override;
+    llvm::Value* GetArrayElement(llvm::Value* array, int index) override {};
 
     bool EndWithTerminator() override;
 

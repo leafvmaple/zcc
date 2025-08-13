@@ -137,6 +137,7 @@ public:
     koopa::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) override;
 
     int GetValueInt(koopa::Value* value) override;
+    koopa::Value* GetArrayElement(koopa::Value* array, int index) override;
 
     bool EndWithTerminator() override;
 
