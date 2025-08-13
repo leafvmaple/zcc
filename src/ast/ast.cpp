@@ -150,14 +150,11 @@ VarDeclAST::VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<VarDefAST
     : btype(std::move(btype)), varDefs(std::move(varDefs)) {}
 
 
-ConstInitValAST::ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr)
-    : constExpr(std::move(constExpr)), isArray(false) {}
-
 ConstInitValAST::ConstInitValAST()
     : isArray(true) {}
-
-ConstInitValAST::ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs)
-    : constExprs(std::move(constExprs)), isArray(true) {}
+    
+ConstInitValAST::ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr)
+    : constExpr(std::move(constExpr)), isArray(false) {}
 
 ConstInitValAST::ConstInitValAST(vector<unique_ptr<ConstInitValAST>>&& subVals)
     : subVals(std::move(subVals)), isArray(true) {}
@@ -167,9 +164,6 @@ InitValAST::InitValAST()
 
 InitValAST::InitValAST(unique_ptr<ExprAST>&& expr)
     : expr(std::move(expr)), isArray(false) {}
-
-InitValAST::InitValAST(vector<unique_ptr<ExprAST>>&& exprs)
-    : exprs(std::move(exprs)), isArray(true) {}
 
 InitValAST::InitValAST(vector<unique_ptr<InitValAST>>&& subVals)
     : subVals(std::move(subVals)), isArray(true) {}

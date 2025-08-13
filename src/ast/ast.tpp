@@ -489,17 +489,10 @@ Value* ConstInitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env, v
     vector<Value*> values;
     Type* type{};
     auto size = shape[dim];
-    if (!subVals.empty()) {
-        for (int i = 0; i < size; ++i) {
-            auto* val = i < subVals.size() ? subVals[i]->Calculate(env, shape, dim + 1) : env->CreateZero(type);
-            values.push_back(val);
-            type = env->GetValueType(val);
-        }
-    } else {
-        for (int i = 0; i < size; ++i) {
-            auto* val = i < constExprs.size() ? constExprs[i]->Calculate(env) : env->GetInt32(0);
-            values.push_back(val);
-        }
+    for (int i = 0; i < size; ++i) {
+        auto* val = i < subVals.size() ? subVals[i]->Calculate(env, shape, dim + 1) : env->CreateZero(type);
+        values.push_back(val);
+        type = env->GetValueType(val);
     }
 
     auto* arrType = env->GetArrayType(type, size);
@@ -513,22 +506,13 @@ void InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* add
     } else {
         auto size = shape[dim];
         auto type = types[types.size() - 2 - dim];
-        if (!subVals.empty()) {
-            for (int i = 0; i < size; ++i) {
-                auto* subAddr = env->CreateGEP(type, addr, { env->GetInt32(i) });
-                if (i < subVals.size()) {
-                    subVals[i]->Codegen(env, subAddr, types, shape, dim + 1);
-                } else {
-                    // If there are not enough subVals, we initialize with zero
-                    env->CreateStore(env->CreateZero(type), subAddr);
-                }
-            }
-        } else {
-            for (int i = 0; i < size; ++i) {
-                auto* val = i < exprs.size() ? exprs[i]->Codegen(env) : env->GetInt32(0);
-                auto* index = env->GetInt32(i);
-                auto* gep = env->CreateGEP(type, addr, { env->GetInt32(i) });
-                env->CreateStore(val, gep);
+        for (int i = 0; i < size; ++i) {
+            auto* subAddr = env->CreateGEP(type, addr, { env->GetInt32(i) });
+            if (i < subVals.size()) {
+                subVals[i]->Codegen(env, subAddr, types, shape, dim + 1);
+            } else {
+                // If there are not enough subVals, we initialize with zero
+                env->CreateStore(env->CreateZero(type), subAddr);
             }
         }
     }
@@ -540,17 +524,10 @@ Value* InitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env, vector
     vector<Value*> values;
     Type* type{};
     auto size = shape[dim];
-    if (!subVals.empty()) {
-        for (int i = 0; i < size; ++i) {
-            auto* val = i < subVals.size() ? subVals[i]->Calculate(env, shape, dim + 1) : env->CreateZero(type);
-            values.push_back(val);
-            type = env->GetValueType(val);
-        }
-    } else {
-        for (int i = 0; i < size; ++i) {
-            auto* val = i < exprs.size() ? exprs[i]->Calculate(env) : env->GetInt32(0);
-            values.push_back(val);
-        }
+    for (int i = 0; i < size; ++i) {
+        auto* val = i < subVals.size() ? subVals[i]->Calculate(env, shape, dim + 1) : env->CreateZero(type);
+        values.push_back(val);
+        type = env->GetValueType(val);
     }
 
     auto* arrType = env->GetArrayType(type, size);

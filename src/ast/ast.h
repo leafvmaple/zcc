@@ -353,7 +353,6 @@ public:
     Value* Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim);
 
     unique_ptr<ConstExprAST> constExpr;
-    vector<unique_ptr<ConstExprAST>> constExprs;
     vector<unique_ptr<ConstInitValAST>> subVals;
     bool isArray;
 };
@@ -372,7 +371,6 @@ public:
     Value* Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim);
 
     unique_ptr<ExprAST> expr;
-    vector<unique_ptr<ExprAST>> exprs;
     vector<unique_ptr<InitValAST>> subVals;
     bool isArray;
 };

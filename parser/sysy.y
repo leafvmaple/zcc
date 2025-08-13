@@ -44,11 +44,10 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 
 %token END 0
 
-%type <std::vector<std::unique_ptr<ExprAST>>> Exprs FuncRParams
+%type <std::vector<std::unique_ptr<ExprAST>>> FuncRParams
 %type <std::vector<std::unique_ptr<ConstDefAST>>> ConstDefs
 %type <std::vector<std::unique_ptr<VarDefAST>>> VarDefs
 %type <std::vector<std::unique_ptr<FuncFParamAST>>> FuncFParams
-%type <std::vector<std::unique_ptr<ConstExprAST>>> ConstExprs
 %type <std::vector<std::unique_ptr<ConstExprAST>>> ArrayDims
 %type <std::vector<std::unique_ptr<ExprAST>>> Indies
 %type <std::vector<std::unique_ptr<InitValAST>>> InitVals
@@ -170,14 +169,6 @@ OptExpr : Expr {
   $$ = std::move($1);
 } | {
   $$ = std::unique_ptr<ExprAST>();
-};
-
-Exprs : Expr {
-  $$ = std::vector<std::unique_ptr<ExprAST>>();
-  $$.emplace_back(std::move($1));
-} | Exprs ',' Expr {
-  $1.emplace_back(std::move($3));
-  $$ = std::move($1);
 };
 
 Expr : LOrExpr {
@@ -364,14 +355,6 @@ ConstInitVals
     $$ = std::move($1);
   }
 ;
-
-ConstExprs : ConstExpr {
-  $$ = std::vector<std::unique_ptr<ConstExprAST>>();
-  $$.emplace_back(std::move($1));
-} | ConstExprs ',' ConstExpr {
-  $1.emplace_back(std::move($3));
-  $$ = std::move($1);
-};
 
 InitVal
 : Expr {
