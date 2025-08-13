@@ -65,6 +65,7 @@
         "thread": "cpp",
         "unordered_set": "cpp",
         "cassert": "cpp",
-        "*.tpp": "cpp"
+        "*.tpp": "cpp",
+        "queue": "cpp"
     }
 }

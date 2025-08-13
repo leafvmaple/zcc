@@ -5,15 +5,41 @@
 #include "llvm/IR/Function.h"
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-void ConstDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
-    vector<int> shape{};
-    if (!sizeExprs.empty()) {
-        for (auto& sizeExpr : sizeExprs) {
-            int size = sizeExpr->ToInteger(env);
-            shape.push_back(size);
-        }
+Value* ToArray(Env<Type, Value, BasicBlock, Function>* env, vector<int>::iterator shape, Value**& init) {
+    auto size = *shape;
+    if (!size) {
+        return *init++;
     }
-    auto var = constInitVal->Calculate(env, shape, 0);
+    Type* type{};
+    vector<Value*> values;
+    for (int i = 0; i < size; ++i) {
+        auto* val = ToArray(env, shape + 1, init);
+        values.push_back(val);
+        type = env->GetValueType(val);
+    }
+
+    auto* arrType = env->GetArrayType(type, size);
+    return env->CreateArray(arrType, values);
+}
+
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+void ConstDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
+    Value* var{};
+    if (sizeExprs.empty()) {
+        var = constInitVal->Calculate(env);
+    } else {
+        vector<int> shape{};
+        for (auto& size : sizeExprs) {
+            shape.push_back(size->ToInteger(env));
+        }
+
+        vector<Value*> flatValues;
+        constInitVal->Flatten(env, flatValues, shape, 0);
+
+        shape.push_back(0);
+        auto values_ptr = flatValues.data();
+        var = ToArray(env, shape.begin(), values_ptr);
+    }
     env->AddSymbol(ident, VAR_TYPE::CONST, {.value = var});
 }
 
@@ -35,7 +61,17 @@ Value* VarDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* typ
     std::reverse(shape.begin(), shape.end());
 
     if (env->IsGlobalScope()) {
-        auto* value = initVal ? initVal->Calculate(env, shape, 0) : env->CreateZero(type);
+        vector<int> shape{};
+        for (auto& size : sizeExprs) {
+            shape.push_back(size->ToInteger(env));
+        }
+
+        vector<Value*> flatValues;
+        initVal->Flatten(env, flatValues, shape, 0);
+
+        shape.push_back(0);
+        auto values_ptr = flatValues.data();
+        auto value = ToArray(env, shape.begin(), values_ptr);
         var = env->CreateGlobal(type, ident, value);
     } else {
         var = env->CreateAlloca(type, ident);
@@ -484,19 +520,63 @@ void VarDeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* ConstInitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim) {
-    if (!isArray) return constExpr->Calculate(env);
-    vector<Value*> values;
-    Type* type{};
-    auto size = shape[dim];
-    for (int i = 0; i < size; ++i) {
-        auto* val = i < subVals.size() ? subVals[i]->Calculate(env, shape, dim + 1) : env->CreateZero(type);
-        values.push_back(val);
-        type = env->GetValueType(val);
+void ConstInitValAST::Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim) {
+    if (!isArray) {
+        flatValues.push_back(constExpr->Calculate(env));
+        return;
+    }
+    
+    int startIndex = flatValues.size();
+    int totalElements = 1;
+    for (int i = shape.size() - 1; i >= dim; i--) {
+        if (startIndex % (totalElements * shape[i]) == 0) {
+            totalElements *= shape[i];
+        }
+    }
+    
+    for (auto& val : subVals) {
+        val->Flatten(env, flatValues, shape, dim + 1);
     }
 
-    auto* arrType = env->GetArrayType(type, size);
-    return env->CreateArray(arrType, values);
+    int filledElements = flatValues.size() - startIndex;
+    if (filledElements < totalElements) {
+        for (int i = filledElements; i < totalElements; i++) {
+            flatValues.push_back(env->GetInt32(0));
+        }
+    }
+}
+
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+Value* ConstInitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+    assert(!isArray);
+    return constExpr->Calculate(env);
+}
+
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+void InitValAST::Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim) {
+    if (!isArray) {
+        flatValues.push_back(expr->Calculate(env));
+        return;
+    }
+    
+    int startIndex = flatValues.size();
+    int totalElements = 1;
+    for (int i = shape.size() - 1; i >= dim; i--) {
+        if (startIndex % (totalElements * shape[i]) == 0) {
+            totalElements *= shape[i];
+        }
+    }
+    
+    for (auto& val : subVals) {
+        val->Flatten(env, flatValues, shape, dim + 1);
+    }
+
+    int filledElements = flatValues.size() - startIndex;
+    if (filledElements < totalElements) {
+        for (int i = filledElements; i < totalElements; i++) {
+            flatValues.push_back(env->GetInt32(0));
+        }
+    }
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>

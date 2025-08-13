@@ -350,7 +350,10 @@ public:
     ConstInitValAST(vector<unique_ptr<ConstInitValAST>>&& subVals);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim);
+    void Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ConstExprAST> constExpr;
     vector<unique_ptr<ConstInitValAST>> subVals;
@@ -363,6 +366,9 @@ public:
     InitValAST(unique_ptr<ExprAST>&& expr);
     InitValAST(vector<unique_ptr<ExprAST>>&& exprs);
     InitValAST(vector<unique_ptr<InitValAST>>&& subVals);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    void Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr, vector<Type*> types, vector<int> shape, int dim);
