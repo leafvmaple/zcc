@@ -153,8 +153,8 @@ VarDeclAST::VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<VarDefAST
 ConstInitValAST::ConstInitValAST()
     : isArray(true) {}
     
-ConstInitValAST::ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr)
-    : constExpr(std::move(constExpr)), isArray(false) {}
+ConstInitValAST::ConstInitValAST(unique_ptr<ConstExprAST>&& expr)
+    : expr(std::move(expr)), isArray(false) {}
 
 ConstInitValAST::ConstInitValAST(vector<unique_ptr<ConstInitValAST>>&& subVals)
     : subVals(std::move(subVals)), isArray(true) {}

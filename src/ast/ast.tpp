@@ -4,6 +4,33 @@
 #include "../libkoopa/include/function.h"
 #include "llvm/IR/Function.h"
 
+template<typename Type, typename Value, typename BasicBlock, typename Function, typename T>
+void _Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim, T& initVal) {
+        if (!initVal->isArray) {
+        flatValues.push_back(initVal->expr->ToNumber(env));
+        return;
+    }
+    
+    int startIndex = flatValues.size();
+    int totalElements = 1;
+    for (int i = shape.size() - 2; i >= dim; i--) {
+        if (startIndex % (totalElements * shape[i]) == 0) {
+            totalElements *= shape[i];
+        }
+    }
+    
+    for (auto& val : initVal->subVals) {
+        _Flatten(env, flatValues, shape, dim + 1, val);
+    }
+
+    int filledElements = flatValues.size() - startIndex;
+    if (filledElements < totalElements) {
+        for (int i = filledElements; i < totalElements; i++) {
+            flatValues.push_back(env->GetInt32(0));
+        }
+    }
+}
+
 template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* _ToArray(Env<Type, Value, BasicBlock, Function>* env, vector<int>::iterator shape, Value**& init) {
     auto size = *shape;
@@ -23,13 +50,28 @@ Value* _ToArray(Env<Type, Value, BasicBlock, Function>* env, vector<int>::iterat
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function, typename T>
-Value* _ToArrayValue(Env<Type, Value, BasicBlock, Function>* env, vector<int>& shape, T&& initVal) {
+Value* _FlattenToArray(Env<Type, Value, BasicBlock, Function>* env, vector<int>& shape, T& initVal) {
     vector<Value*> flatValues;
-    initVal->Flatten(env, flatValues, shape, 0);
+    _Flatten(env, flatValues, shape, 0, initVal);
 
-    shape.push_back(0);
     auto values_ptr = flatValues.data();
     return _ToArray(env, shape.begin(), values_ptr);
+}
+
+template<typename Type, typename Value, typename BasicBlock, typename Function, typename T>
+Value* _GetArrayInitValue(Env<Type, Value, BasicBlock, Function>* env, vector<int>& shape, Type* type, T* def) {
+    Value* var{};
+    if (def->initVal) {
+        var = _FlattenToArray(env, shape, def->initVal);
+        type = env->GetValueType(var);
+    } else {
+        for (auto it = shape.rbegin() + 1; *it; ++it) {
+            type = env->GetArrayType(type, *it);
+        }
+        var = env->CreateZero(type);
+    }
+
+    return var;
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
@@ -49,58 +91,66 @@ void _StoreArray(Env<Type, Value, BasicBlock, Function>* env, Value* addr, vecto
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
 void ConstDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
-    Value* var{};
-    if (sizeExprs.empty()) {
-        var = initVal->Calculate(env);
-    } else {
-        vector<int> shape{};
-        for (auto& size : sizeExprs) {
-            shape.push_back(size->ToInteger(env));
-        }
-
-        var = _ToArrayValue(env, shape, initVal);
+    vector<int> shape{};
+    int elementCount = 1;
+    for (auto& sizeExpr : sizeExprs) {
+        int size = sizeExpr->ToInteger(env);
+        shape.push_back(size);
+        elementCount *= size;
     }
+    shape.push_back(0);
+
+    Value* init{};
+    if (!sizeExprs.empty()) {
+        init = _GetArrayInitValue(env, shape, type, this);
+    } else {
+        init = initVal->ToNumber(env);
+    }
+
+    Value* var{};
+    if (env->IsGlobalScope()) {
+        var = env->CreateGlobal(type, ident, init);
+    } else if (!sizeExprs.empty()) {
+        var = env->CreateAlloca(type, ident);
+        if (initVal) {
+            _StoreArray(env, var, shape.begin(), init);
+        }
+    } else {
+        var = init;
+    }
+
     env->AddSymbol(ident, VAR_TYPE::CONST, {.value = var});
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* VarDefAST::ToValue(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
-    if (!sizeExprs.empty()) {
-        return ToArrayValue(env, type);
-    }
-
-    auto* var = env->CreateAlloca(type, ident);
-    if (initVal) {
-        initVal->Codegen(env, var);
-    }
-
-    return var;
-}
-
-template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* VarDefAST::ToArrayValue(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
+void VarDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
+    Value* init{};
     vector<int> shape{};
     for (auto& sizeExpr : sizeExprs) {
         int size = sizeExpr->ToInteger(env);
         shape.push_back(size);
     }
+    shape.push_back(0);
 
-    if (initVal) {
-        auto value = _ToArrayValue(env, shape, initVal);
-        auto type = env->GetValueType(value);
-        if (env->IsGlobalScope()) {
-            return env->CreateGlobal(env->GetValueType(value), ident, value);
-        } else {
-            auto arr = env->CreateAlloca(type, ident);
-            _StoreArray(env, arr, shape.begin(), value);
-            return arr;
-        }
+    if (!sizeExprs.empty()) {
+        init = _GetArrayInitValue(env, shape, type, this);
     } else {
-        for (auto it = shape.rbegin() + 1; it != shape.rend(); ++it) {
-            type = env->GetArrayType(type, *it);
+        if (initVal) {
+            init = initVal->ToValue(env, init);
         }
-        return env->CreateAlloca(type, ident);
     }
+
+    Value* var{};
+    if (env->IsGlobalScope()) {
+        var = env->CreateGlobal(type, ident, init);
+    } else {
+        var = env->CreateAlloca(type, ident);
+        if (initVal) {
+            _StoreArray(env, var, shape.begin(), init);
+        }
+    }
+
+    env->AddSymbol(ident, VAR_TYPE::VAR, {.value = var});
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
@@ -145,7 +195,7 @@ void FuncDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     env->EnterScope();
 
     for (size_t i = 0; i < params.size(); ++i) {
-        env->CreateStore(env->GetFunctionArg(i), params[i]->Codegen(env));
+        env->CreateStore(env->GetFunctionArg(i), params[i]->ToValue(env));
     }
 
     block->Codegen(env);
@@ -157,7 +207,7 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 void BlockAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     env->EnterScope();
     for (auto&& item : items) {
-        item->Codegen(env);
+        item->ToValue(env);
     }
     env->ExitScope();
 }
@@ -166,13 +216,13 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 void StmtAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
         case TYPE::Assign: {
-            auto* val = expr->Codegen(env);
-            auto* addr = lval->Codegen(env);
+            auto* val = expr->ToValue(env);
+            auto* addr = lval->ToValue(env);
             env->CreateStore(val, addr);
             break;
         }
         case TYPE::Expr: {
-            if (expr) expr->Codegen(env);
+            if (expr) expr->ToValue(env);
             break;
         }
         case TYPE::Block: {
@@ -180,7 +230,7 @@ void StmtAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
             break;
         }
         case TYPE::If: {
-            auto* condVal = cond->Codegen(env);
+            auto* condVal = cond->ToValue(env);
             auto* func = env->GetFunction();
             auto* thenBB = env->CreateBasicBlock("then", func);
             BasicBlock* endBB{};
@@ -208,7 +258,7 @@ void StmtAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
             break;
         }
         case TYPE::Ret: {
-            auto* retVal = expr->Codegen(env);
+            auto* retVal = expr->ToValue(env);
             env->CreateRet(retVal);
             break;
         }
@@ -222,7 +272,7 @@ void StmtAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
             env->CreateBr(condBB);
 
             env->SetInserPointer(condBB);
-            auto* condVal = cond->Codegen(env);
+            auto* condVal = cond->ToValue(env);
             env->CreateCondBr(condVal, bodyBB, endBB);
 
             env->SetInserPointer(bodyBB);
@@ -245,57 +295,57 @@ void StmtAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* ExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
-    return lorExpr->Codegen(env);
+Value* ExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
+    return lorExpr->ToValue(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* ExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
-    return lorExpr->Calculate(env);
+Value* ExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
+    return lorExpr->ToNumber(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* PrimaryExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* PrimaryExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
-        case TYPE::Expr: return expr->Codegen(env);
+        case TYPE::Expr: return expr->ToValue(env);
         case TYPE::LVal: {
-            auto* val = lval->Codegen(env);
+            auto* val = lval->ToValue(env);
             auto symbolType = env->GetSymbolType({.value = val});
             if (symbolType == VAR_TYPE::VAR) return env->CreateLoad(val);
             else return val;
         }
-        case TYPE::Number: return value->Codegen(env);
+        case TYPE::Number: return value->ToValue(env);
     }
     return nullptr;
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* PrimaryExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* PrimaryExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
-        case TYPE::Expr: return expr->Calculate(env);
+        case TYPE::Expr: return expr->ToNumber(env);
         case TYPE::LVal: {
-            auto* val = lval->Codegen(env);
+            auto* val = lval->ToValue(env);
             auto symbolType = env->GetSymbolType({.value = val});
             if (symbolType == VAR_TYPE::VAR) return env->CreateLoad(val);
             else return val;
         }
-        case TYPE::Number: return value->Codegen(env);
+        case TYPE::Number: return value->ToValue(env);
     }
     return nullptr;
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* NumberAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* NumberAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     return env->GetInt32(value);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* UnaryExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* UnaryExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
         case TYPE::Primary:
-            return primaryExpr->Codegen(env);
+            return primaryExpr->ToValue(env);
         case TYPE::Unary: {
-            auto* exprVal = unaryExpr->Codegen(env);
+            auto* exprVal = unaryExpr->ToValue(env);
             switch (op) {
                 case OP::PLUS: return exprVal;
                 case OP::MINUS: return env->CreateSub(env->GetInt32(0), exprVal);
@@ -305,7 +355,7 @@ Value* UnaryExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
         case TYPE::Call: {
             std::vector<Value*> args;
             for (auto& arg : callArgs) {
-                args.push_back(arg->Codegen(env));
+                args.push_back(arg->ToValue(env));
             }
             auto symbol = env->GetSymbolValue(ident);
             return env->CreateCall(symbol.function, args);
@@ -315,12 +365,12 @@ Value* UnaryExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* UnaryExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* UnaryExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
         case TYPE::Primary:
-            return primaryExpr->Calculate(env);
+            return primaryExpr->ToNumber(env);
         case TYPE::Unary: {
-            auto* exprVal = unaryExpr->Calculate(env);
+            auto* exprVal = unaryExpr->ToNumber(env);
             switch (op) {
                 case OP::PLUS: return exprVal;
                 case OP::MINUS: return env->CaculateBinaryOp([](int a, int b) { return a - b; }, env->GetInt32(0), exprVal);
@@ -335,63 +385,63 @@ Value* UnaryExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* MulExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* MulExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Codegen(env);
-        auto* rightVal = right->Codegen(env);
+        auto* leftVal = left->ToValue(env);
+        auto* rightVal = right->ToValue(env);
         switch (op) {
             case OP::MUL: return env->CreateMul(leftVal, rightVal);
             case OP::DIV: return env->CreateDiv(leftVal, rightVal);
             case OP::MOD: return env->CreateMod(leftVal, rightVal);
         }
     }
-    return unaryExpr->Codegen(env);
+    return unaryExpr->ToValue(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* MulExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* MulExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Calculate(env);
-        auto* rightVal = right->Calculate(env);
+        auto* leftVal = left->ToNumber(env);
+        auto* rightVal = right->ToNumber(env);
         switch (op) {
             case OP::MUL: return env->CaculateBinaryOp([](int a, int b) { return a * b; }, leftVal, rightVal);
             case OP::DIV: return env->CaculateBinaryOp([](int a, int b) { return a / b; }, leftVal, rightVal);
             case OP::MOD: return env->CaculateBinaryOp([](int a, int b) { return a % b; }, leftVal, rightVal);
         }
     }
-    return unaryExpr->Calculate(env);
+    return unaryExpr->ToNumber(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* AddExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* AddExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Codegen(env);
-        auto* rightVal = right->Codegen(env);
+        auto* leftVal = left->ToValue(env);
+        auto* rightVal = right->ToValue(env);
         if (op == OP::ADD) return env->CreateAdd(leftVal, rightVal);
         else return env->CreateSub(leftVal, rightVal);
     }
-    return mulExpr->Codegen(env);
+    return mulExpr->ToValue(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* AddExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* AddExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Calculate(env);
-        auto* rightVal = right->Calculate(env);
+        auto* leftVal = left->ToNumber(env);
+        auto* rightVal = right->ToNumber(env);
         if (op == OP::ADD) {
             return env->CaculateBinaryOp([](int a, int b) { return a + b; }, leftVal, rightVal);
         } else {
             return env->CaculateBinaryOp([](int a, int b) { return a - b; }, leftVal, rightVal);
         }
     }
-    return mulExpr->Calculate(env);
+    return mulExpr->ToNumber(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* RelExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* RelExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Codegen(env);
-        auto* rightVal = right->Codegen(env);
+        auto* leftVal = left->ToValue(env);
+        auto* rightVal = right->ToValue(env);
         switch (op) {
             case Op::LT: return env->CreateICmpLT(leftVal, rightVal);
             case Op::GT: return env->CreateICmpGT(leftVal, rightVal);
@@ -399,14 +449,14 @@ Value* RelExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
             case Op::GE: return env->CreateICmpGE(leftVal, rightVal);
         }
     }
-    return addExpr->Codegen(env);
+    return addExpr->ToValue(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* RelExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* RelExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Calculate(env);
-        auto* rightVal = right->Calculate(env);
+        auto* leftVal = left->ToNumber(env);
+        auto* rightVal = right->ToNumber(env);
         switch (op) {
             case Op::LT: return env->CaculateBinaryOp([](int a, int b) { return a < b; }, leftVal, rightVal);
             case Op::GT: return env->CaculateBinaryOp([](int a, int b) { return a > b; }, leftVal, rightVal);
@@ -414,38 +464,38 @@ Value* RelExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
             case Op::GE: return env->CaculateBinaryOp([](int a, int b) { return a >= b; }, leftVal, rightVal);
         }
     }
-    return addExpr->Calculate(env);
+    return addExpr->ToNumber(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* EqExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* EqExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Codegen(env);
-        auto* rightVal = right->Codegen(env);
+        auto* leftVal = left->ToValue(env);
+        auto* rightVal = right->ToValue(env);
         if (op == Op::EQ) return env->CreateICmpEQ(leftVal, rightVal);
         else return env->CreateICmpNE(leftVal, rightVal);
     }
-    return relExpr->Codegen(env);
+    return relExpr->ToValue(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* EqExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* EqExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Calculate(env);
-        auto* rightVal = right->Calculate(env);
+        auto* leftVal = left->ToNumber(env);
+        auto* rightVal = right->ToNumber(env);
         if (op == EqExprAST::Op::EQ) {
             return env->CaculateBinaryOp([](int a, int b) { return a == b; }, leftVal, rightVal);
         } else if (op == EqExprAST::Op::NE) {
             return env->CaculateBinaryOp([](int a, int b) { return a != b; }, leftVal, rightVal);
         }
     }
-    return relExpr->Calculate(env);
+    return relExpr->ToNumber(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* LAndExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* LAndExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Codegen(env);
+        auto* leftVal = left->ToValue(env);
         auto* func = env->GetFunction();
         auto* rightBB = env->CreateBasicBlock("land_right", func);
         auto* endBB = env->CreateBasicBlock("land_end", func);
@@ -456,7 +506,7 @@ Value* LAndExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
         env->CreateCondBr(cond, rightBB, endBB);
 
         env->SetInserPointer(rightBB);
-        auto* rightVal = right->Codegen(env);
+        auto* rightVal = right->ToValue(env);
         cond = env->CreateICmpNE(rightVal, env->GetInt32(0));
         env->CreateStore(cond, result);
         env->CreateBr(endBB);
@@ -464,23 +514,23 @@ Value* LAndExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
         env->SetInserPointer(endBB);
         return env->CreateLoad(result);
     }
-    return eqExpr->Codegen(env);
+    return eqExpr->ToValue(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* LAndExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* LAndExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Calculate(env);
-        auto* rightVal = right->Calculate(env);
+        auto* leftVal = left->ToNumber(env);
+        auto* rightVal = right->ToNumber(env);
         return env->CaculateBinaryOp([](int a, int b) { return a && b; }, leftVal, rightVal);
     }
-    return eqExpr->Calculate(env);
+    return eqExpr->ToNumber(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* LOrExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* LOrExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Codegen(env);
+        auto* leftVal = left->ToValue(env);
         auto* func = env->GetFunction();
         auto* rightBB = env->CreateBasicBlock("lor_right", func);
         auto* endBB = env->CreateBasicBlock("lor_end", func);
@@ -491,7 +541,7 @@ Value* LOrExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
         env->CreateCondBr(cond, endBB, rightBB);
 
         env->SetInserPointer(rightBB);
-        auto* rightVal = right->Codegen(env);
+        auto* rightVal = right->ToValue(env);
         cond = env->CreateICmpNE(rightVal, env->GetInt32(0));
         env->CreateStore(cond, result);
         env->CreateBr(endBB);
@@ -499,17 +549,17 @@ Value* LOrExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
         env->SetInserPointer(endBB);
         return env->CreateLoad(result);
     }
-    return landExpr->Codegen(env);
+    return landExpr->ToValue(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* LOrExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* LOrExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     if (left) {
-        auto* leftVal = left->Calculate(env);
-        auto* rightVal = right->Calculate(env);
+        auto* leftVal = left->ToNumber(env);
+        auto* rightVal = right->ToNumber(env);
         return env->CaculateBinaryOp([](int a, int b) { return a || b; }, leftVal, rightVal);
     }
-    return landExpr->Calculate(env);
+    return landExpr->ToNumber(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
@@ -526,7 +576,6 @@ void ConstDeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     auto* type = btype->Codegen(env);
     for (const auto& def : constDefs) {
         def->Codegen(env, type);
-        // env->AddSymbol(def->ident, VAR_TYPE::CONST, {.value = var});
     }
 }
 
@@ -534,86 +583,29 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 void VarDeclAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     auto* type = btype->Codegen(env);
     for (const auto& def : varDefs) {
-        auto* var = def->ToValue(env, type);
-        env->AddSymbol(def->ident, VAR_TYPE::VAR, {.value = var});
+        def->Codegen(env, type);
     }
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-void ConstInitValAST::Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim) {
-    if (!isArray) {
-        flatValues.push_back(constExpr->Calculate(env));
-        return;
-    }
-    
-    int startIndex = flatValues.size();
-    int totalElements = 1;
-    for (int i = shape.size() - 1; i >= dim; i--) {
-        if (startIndex % (totalElements * shape[i]) == 0) {
-            totalElements *= shape[i];
-        }
-    }
-    
-    for (auto& val : subVals) {
-        val->Flatten(env, flatValues, shape, dim + 1);
-    }
-
-    int filledElements = flatValues.size() - startIndex;
-    if (filledElements < totalElements) {
-        for (int i = filledElements; i < totalElements; i++) {
-            flatValues.push_back(env->GetInt32(0));
-        }
-    }
-}
-
-template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* ConstInitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
+Value* ConstInitValAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     assert(!isArray);
-    return constExpr->Calculate(env);
+    return expr->ToNumber(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-void InitValAST::Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim) {
-    if (!isArray) {
-        flatValues.push_back(expr->Calculate(env));
-        return;
-    }
-    
-    int startIndex = flatValues.size();
-    int totalElements = 1;
-    for (int i = shape.size() - 1; i >= dim; i--) {
-        if (startIndex % (totalElements * shape[i]) == 0) {
-            totalElements *= shape[i];
-        }
-    }
-    
-    for (auto& val : subVals) {
-        val->Flatten(env, flatValues, shape, dim + 1);
-    }
-
-    int filledElements = flatValues.size() - startIndex;
-    if (filledElements < totalElements) {
-        for (int i = filledElements; i < totalElements; i++) {
-            flatValues.push_back(env->GetInt32(0));
-        }
-    }
+Value* InitValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env, Value* addr) {
+    return expr->ToValue(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-void InitValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr) {
-    if (!isArray) {
-        env->CreateStore(expr->Codegen(env), addr);
-    }
-}
-
-template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* InitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim) {
-    if (!isArray) return expr->Calculate(env);
+Value* InitValAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim) {
+    if (!isArray) return expr->ToNumber(env);
     vector<Value*> values;
     Type* type{};
     auto size = shape[dim];
     for (int i = 0; i < size; ++i) {
-        auto* val = i < subVals.size() ? subVals[i]->Calculate(env, shape, dim + 1) : env->CreateZero(type);
+        auto* val = i < subVals.size() ? subVals[i]->ToNumber(env, shape, dim + 1) : env->CreateZero(type);
         values.push_back(val);
         type = env->GetValueType(val);
     }
@@ -623,7 +615,7 @@ Value* InitValAST::Calculate(Env<Type, Value, BasicBlock, Function>* env, vector
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-void BlockItemAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+void BlockItemAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     if (decl) {
         decl->Codegen(env);
     } else if (stmt) {
@@ -632,12 +624,12 @@ void BlockItemAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* LValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     auto symbol = env->GetSymbolValue(ident);
     if (!indies.empty()) {
         vector<Value*> indexVals;
         for (auto& index : indies) {
-            indexVals.push_back(index->Codegen(env));
+            indexVals.push_back(index->ToValue(env));
         }
         return env->CreateGEP(env->GetInt32Type(), symbol.value, indexVals);
     }
@@ -645,29 +637,29 @@ Value* LValAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* ConstExprAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
-    return expr->Codegen(env);
+Value* ConstExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
+    return expr->ToValue(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* ConstExprAST::Calculate(Env<Type, Value, BasicBlock, Function>* env) {
-    return expr->Calculate(env);
+Value* ConstExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
+    return expr->ToNumber(env);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
 int ConstExprAST::ToInteger(Env<Type, Value, BasicBlock, Function>* env) {
-    auto value = expr->Calculate(env);
+    auto value = expr->ToNumber(env);
     return env->GetValueInt(value);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* FuncFParamAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
+Value* FuncFParamAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     auto* addr = env->CreateAlloca(btype->Codegen(env), ident);
     env->AddSymbol(ident, VAR_TYPE::VAR, {.value = addr});
     return addr;
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* FuncRParamAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
-    return expr->Codegen(env);
+Value* FuncRParamAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
+    return expr->ToValue(env);
 }

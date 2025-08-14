@@ -56,10 +56,7 @@ public:
     VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<InitValAST>&& initVal);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env, Type* type);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToArrayValue(Env<Type, Value, BasicBlock, Function>* env, Type* type);
+    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type);
 
     string ident;
     vector<unique_ptr<ConstExprAST>> sizeExprs;
@@ -139,9 +136,9 @@ public:
     ExprAST(unique_ptr<LOrExprAST>&& lorExpr);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<LOrExprAST> lorExpr;
 };
@@ -159,9 +156,9 @@ public:
     PrimaryExprAST(TYPE type, unique_ptr<NumberAST>&& value);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
     TYPE type;
     unique_ptr<ExprAST> expr;
@@ -174,7 +171,7 @@ public:
     NumberAST(int value);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
 
     int value;
 };
@@ -199,9 +196,9 @@ public:
     UnaryExprAST(TYPE type, string ident, vector<unique_ptr<ExprAST>>&& callArgs);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
     TYPE type;
     OP op;
@@ -218,9 +215,9 @@ public:
     MulExprAST(OP op, unique_ptr<MulExprAST>&& left, unique_ptr<UnaryExprAST>&& right);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<UnaryExprAST> unaryExpr;
     OP op;
@@ -235,9 +232,9 @@ public:
     AddExprAST(OP op, unique_ptr<AddExprAST>&& left, unique_ptr<MulExprAST>&& right);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
     OP op;
     unique_ptr<MulExprAST> mulExpr;
@@ -253,9 +250,9 @@ public:
     RelExprAST(unique_ptr<RelExprAST>&& left, Op op, unique_ptr<AddExprAST>&& right);
     
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<AddExprAST> addExpr;
     unique_ptr<RelExprAST> left;
@@ -271,9 +268,9 @@ public:
     EqExprAST(unique_ptr<EqExprAST>&& left, Op op, unique_ptr<RelExprAST>&& right);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<RelExprAST> relExpr;
     unique_ptr<EqExprAST> left;
@@ -287,9 +284,9 @@ public:
     LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<EqExprAST>&& right);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<EqExprAST> eqExpr;
     unique_ptr<LAndExprAST> left;
@@ -302,9 +299,9 @@ public:
     LOrExprAST(unique_ptr<LOrExprAST>&& left, unique_ptr<LAndExprAST>&& right);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<LAndExprAST> landExpr;
     unique_ptr<LOrExprAST> left;
@@ -348,17 +345,14 @@ public:
 class ConstInitValAST {
 public:
     ConstInitValAST();
-    ConstInitValAST(unique_ptr<ConstExprAST>&& constExpr);
+    ConstInitValAST(unique_ptr<ConstExprAST>&& expr);
     ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs);
     ConstInitValAST(vector<unique_ptr<ConstInitValAST>>&& subVals);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
-
-    unique_ptr<ConstExprAST> constExpr;
+    unique_ptr<ConstExprAST> expr;
     vector<unique_ptr<ConstInitValAST>> subVals;
     bool isArray;
 };
@@ -370,14 +364,12 @@ public:
     InitValAST(vector<unique_ptr<ExprAST>>&& exprs);
     InitValAST(vector<unique_ptr<InitValAST>>&& subVals);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Flatten(Env<Type, Value, BasicBlock, Function>* env, vector<Value*>& flatValues, const vector<int>& shape, int dim);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Value* addr);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env, Value* addr);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim);
 
     unique_ptr<ExprAST> expr;
     vector<unique_ptr<InitValAST>> subVals;
@@ -390,7 +382,7 @@ public:
     BlockItemAST(unique_ptr<StmtAST>&& stmt);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    void ToValue(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<DeclAST> decl;
     unique_ptr<StmtAST> stmt;
@@ -402,7 +394,7 @@ public:
     LValAST(string ident, vector<unique_ptr<ExprAST>>&& indies);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
 
     string ident;
     vector<unique_ptr<ExprAST>> indies;
@@ -413,9 +405,9 @@ public:
     ConstExprAST(unique_ptr<ExprAST>&& expr);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Calculate(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     int ToInteger(Env<Type, Value, BasicBlock, Function>* env);
 
@@ -427,7 +419,7 @@ public:
     FuncFParamAST(unique_ptr<BaseType>&& btype, string ident);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<BaseType> btype;
     string ident;
@@ -438,7 +430,7 @@ public:
     FuncRParamAST(unique_ptr<ExprAST>&& expr);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
 
     unique_ptr<ExprAST> expr;
 };
