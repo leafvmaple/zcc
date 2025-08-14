@@ -114,9 +114,17 @@ FuncFParams : FuncFParam {
   $$ = std::move($1);
 };
 
-FuncFParam : BasicType IDENT {
-  $$ = std::make_unique<FuncFParamAST>(std::move($1), $2);
-};
+FuncFParam
+: BasicType IDENT '[' ']' ArrayDims {
+    $$ = std::make_unique<FuncFParamAST>(std::move($1), $2, std::move($5));
+  }
+| BasicType IDENT '[' ']' {
+    $$ = std::make_unique<FuncFParamAST>(std::move($1), $2, true);
+  }
+| BasicType IDENT {
+    $$ = std::make_unique<FuncFParamAST>(std::move($1), $2);
+  }
+;
 
 Block : '{' BlockItems '}' {
   $$ = std::make_unique<BlockAST>(std::move($2));

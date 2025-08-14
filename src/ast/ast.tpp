@@ -181,9 +181,9 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 void FuncDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     std::vector<Type*> paramTypes;
     std::vector<std::string> paramNames;
-    
+
     for (auto& param : params) {
-        paramTypes.push_back(param->btype->Codegen(env));
+        paramTypes.push_back(param->ToType(env));
         paramNames.push_back(param->ident);
     }
 
@@ -195,7 +195,7 @@ void FuncDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     env->EnterScope();
 
     for (size_t i = 0; i < params.size(); ++i) {
-        env->CreateStore(env->GetFunctionArg(i), params[i]->ToValue(env));
+        env->CreateStore(env->GetFunctionArg(i), params[i]->Alloca(env, paramTypes[i]));
     }
 
     block->Codegen(env);
@@ -653,8 +653,21 @@ int ConstExprAST::ToInteger(Env<Type, Value, BasicBlock, Function>* env) {
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
-Value* FuncFParamAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
-    auto* addr = env->CreateAlloca(btype->Codegen(env), ident);
+Type* FuncFParamAST::ToType(Env<Type, Value, BasicBlock, Function>* env) {
+    Type* type = btype->Codegen(env);
+    if (isArray) {
+        for (auto& sizeExpr : sizeExprs) {
+            int size = sizeExpr->ToInteger(env);
+            type = env->GetArrayType(type, size);
+        }
+        type = env->GetPointerType(type);
+    }
+    return type;
+}
+
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+Value* FuncFParamAST::Alloca(Env<Type, Value, BasicBlock, Function>* env, Type* type) {
+    auto* addr = env->CreateAlloca(type, ident);
     env->AddSymbol(ident, VAR_TYPE::VAR, {.value = addr});
     return addr;
 }

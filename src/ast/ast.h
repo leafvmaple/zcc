@@ -416,13 +416,19 @@ public:
 
 class FuncFParamAST {
 public:
-    FuncFParamAST(unique_ptr<BaseType>&& btype, string ident);
+    FuncFParamAST(unique_ptr<BaseType>&& btype, string ident, bool isArray = false);
+    FuncFParamAST(unique_ptr<BaseType>&& btype, string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
+    Type* ToType(Env<Type, Value, BasicBlock, Function>* env);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* Alloca(Env<Type, Value, BasicBlock, Function>* env, Type* type);
 
     unique_ptr<BaseType> btype;
     string ident;
+    vector<unique_ptr<ConstExprAST>> sizeExprs; // For array parameters
+    bool isArray;
 };
 
 class FuncRParamAST {

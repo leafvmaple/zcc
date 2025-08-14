@@ -188,7 +188,7 @@ void KoopaEnv::CreateBr(koopa::BasicBlock* desc) {
 
 void KoopaEnv::CreateStore(koopa::Value* value, koopa::Value* dest) {
     _CreateInst(new koopa_raw_value_data_t {
-        .ty = koopa_type(KOOPA_RTT_INT32),
+        .ty = GetValueType(value),
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
             .tag = KOOPA_RVT_STORE,
@@ -347,7 +347,7 @@ koopa::Value* KoopaEnv::CreateMod(koopa::Value* lhs, koopa::Value* rhs) {
 
 koopa::Value* KoopaEnv::CreateAlloca(koopa::Type* type, const std::string& name) {
     return _CreateInst(new koopa_raw_value_data_t {
-        .ty = type,
+        .ty = koopa_pointer(type),
         .name = to_string("@" + name),
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {

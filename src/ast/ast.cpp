@@ -187,8 +187,11 @@ ConstExprAST::ConstExprAST(unique_ptr<ExprAST>&& expr)
     : expr(std::move(expr)) {}
 
 
-FuncFParamAST::FuncFParamAST(unique_ptr<BaseType>&& btype, string ident)
-    : btype(std::move(btype)), ident(std::move(ident)) {}
+FuncFParamAST::FuncFParamAST(unique_ptr<BaseType>&& btype, string ident, bool isArray)
+    : btype(std::move(btype)), ident(std::move(ident)), isArray(isArray) {}
+
+FuncFParamAST::FuncFParamAST(unique_ptr<BaseType>&& btype, string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs)
+    : btype(std::move(btype)), ident(std::move(ident)), sizeExprs(std::move(sizeExprs)), isArray(true) {}
 
 
 FuncRParamAST::FuncRParamAST(unique_ptr<ExprAST>&& expr)
