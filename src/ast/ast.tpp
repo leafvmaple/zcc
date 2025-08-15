@@ -84,7 +84,7 @@ void _StoreArray(Env<Type, Value, BasicBlock, Function>* env, Value* addr, vecto
     for (int i = 0; i < *shape; ++i) {
         auto element = env->GetArrayElement(val, i);
         auto type = env->GetValueType(element);
-        auto* subAddr = env->CreateGEP(type, addr, { env->GetInt32(i) }, false );
+        auto* subAddr = env->CreateGEP(type, addr, { env->GetInt32(i) });
         _StoreArray(env, subAddr, shape + 1, element);
     }
 }
@@ -621,7 +621,7 @@ Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
         auto type = env->GetValueType(value);
         type = env->GetElementType(type);
         if (env->IsArrayType(type) && indies.empty()) {
-            return env->CreateGEP(env->GetInt32Type(), value, { env->GetInt32(0) }, false);
+            return env->CreateGEP(env->GetInt32Type(), value, { env->GetInt32(0) });
         }
     }
     if (!indies.empty()) {
@@ -629,7 +629,8 @@ Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
         for (auto& index : indies) {
             indexVals.push_back(index->ToValue(env));
         }
-        value = env->CreateGEP(env->GetInt32Type(), value, indexVals, true);
+        // value = env->CreateLoad(value);
+        value = env->CreateGEP(env->GetInt32Type(), value, indexVals);
     }
     return env->CreateLoad(value);
 }

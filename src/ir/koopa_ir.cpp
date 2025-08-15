@@ -592,19 +592,18 @@ koopa::Value* KoopaEnv::GetInt32(int value) {
     };
 }
 
-koopa::Value* KoopaEnv::CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies, bool isPointer) {
+koopa::Value* KoopaEnv::CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies) {
     koopa::Value* res = array;
     for (const auto& index : indies) {
         type = GetValueType(res);
         assert(type->tag == KOOPA_RTT_POINTER);
         auto elem_type = koopa_element_type(type);
         auto tag = KOOPA_RVT_GET_ELEM_PTR;
-        if (isPointer) {
+        if (elem_type->tag == KOOPA_RTT_POINTER) {
+            res = CreateLoad(res);
             tag = KOOPA_RVT_GET_PTR;
-            isPointer = false;
-        } else {
-            type = koopa_pointer(koopa_element_type(elem_type));
         }
+        type = koopa_pointer(koopa_element_type(elem_type));
 
         res = _CreateInst(new koopa_raw_value_data_t{
             .ty = type,
@@ -641,7 +640,9 @@ koopa::Value* KoopaEnv::GetArrayElement(koopa::Value* array, int index) {
 }
 
 koopa::Value* KoopaEnv::GetBaseValue(koopa::Value* value) {
-    // assert(value->kind.tag == KOOPA_RTT_POINTER || value->kind.tag == KOOPA_RVT_GET_ELEM_PTR);
+    if (value->kind.tag == KOOPA_RVT_INTEGER) {
+        return value;
+    }
     if (value->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
         return const_cast<koopa::Value*>(value->kind.data.global_alloc.init);
     }

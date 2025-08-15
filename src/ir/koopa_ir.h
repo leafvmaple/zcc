@@ -76,7 +76,7 @@ public:
     koopa::Type* GetElementType(koopa::Type* value) override;
 
     koopa::Value* GetInt32(int value) override;
-    koopa::Value* CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies, bool isPointer) override;
+    koopa::Value* CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies) override;
 
     koopa::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) override;
 

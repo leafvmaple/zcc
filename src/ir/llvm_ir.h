@@ -66,7 +66,7 @@ public:
     llvm::Type* GetElementType(llvm::Type* value) override {};
 
     llvm::Value* GetInt32(int value) override;
-    llvm::Value* CreateGEP(llvm::Type* type, llvm::Value* array, vector<llvm::Value*> index, bool isPointer) override;
+    llvm::Value* CreateGEP(llvm::Type* type, llvm::Value* array, vector<llvm::Value*> index) override;
 
     llvm::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs) override;
 
