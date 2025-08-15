@@ -63,7 +63,7 @@ public:
     llvm::Type* GetArrayType(llvm::Type* type, int size) override;
     llvm::Type* GetPointerType(llvm::Type* type) override;
 
-    llvm::Type* GetValueType(llvm::Value* value) override {};
+    llvm::Type* GetValueType(llvm::Value* value) override;
 
     llvm::Value* GetInt32(int value) override;
     llvm::Value* CreateGEP(llvm::Type* type, llvm::Value* array, vector<llvm::Value*> index) override;
@@ -71,11 +71,12 @@ public:
     llvm::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs) override;
 
     int GetValueInt(llvm::Value* value) override;
-    llvm::Value* GetArrayElement(llvm::Value* array, int index) override {};
+    llvm::Value* GetArrayElement(llvm::Value* array, int index) override;
 
     bool EndWithTerminator() override;
 
 private:
+    void _SetMachineTarget(const char* target);
 
     llvm::LLVMContext TheContext;
     llvm::Module TheModule;

@@ -1,6 +1,5 @@
 int f(int arr[]) {
-  // return arr[1];
-  return 1;
+  return arr[1];
 }
 
 int main() {

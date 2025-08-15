@@ -7,11 +7,18 @@
 #include "llvm/Transforms/Scalar/ADCE.h"
 
 #include "llvm/Support/raw_os_ostream.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/MC/TargetRegistry.h"
 
 #include <fstream>
 
 LLVMEnv::LLVMEnv(std::string moduleName)
     : TheModule(std::forward<std::string>(moduleName), TheContext), Builder(TheContext) {
+    
+    // _SetMachineTarget("i386-unknown-linux-gnu");
+
     EnterScope();
 }
 
@@ -211,6 +218,10 @@ llvm::Type* LLVMEnv::GetPointerType(llvm::Type* type) {
     return llvm::PointerType::get(type, 0); // 0 for address space
 }
 
+llvm::Type* LLVMEnv::GetValueType(llvm::Value* value) {
+    return value->getType();
+}
+
 llvm::Value* LLVMEnv::GetInt32(int value) {
     return llvm::ConstantInt::get(GetInt32Type(), value);
 }
@@ -235,6 +246,12 @@ int LLVMEnv::GetValueInt(llvm::Value* value) {
     return 0;
 }
 
+llvm::Value* LLVMEnv::GetArrayElement(llvm::Value* array, int index) {
+    auto* arrayType = llvm::dyn_cast<llvm::ArrayType>(array->getType());
+    auto* indexValue = GetInt32(index);
+    return Builder.CreateGEP(arrayType->getElementType(), array, {indexValue});
+}
+
 bool LLVMEnv::EndWithTerminator() {
     auto* basic_block = Builder.GetInsertBlock();
     return !basic_block->empty() && basic_block->back().isTerminator();
@@ -246,4 +263,18 @@ void LLVMEnv::CreateRet(llvm::Value* value) {
 
 llvm::Value* LLVMEnv::CreateCall(llvm::Function* func, std::vector<llvm::Value*> args) {
     return Builder.CreateCall(func, args);
+}
+
+void LLVMEnv::_SetMachineTarget(const char* target) {
+    llvm::TargetOptions Options;
+    std::string Error;
+
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+
+    auto Target = llvm::TargetRegistry::lookupTarget(target, Error);
+    auto TM = Target->createTargetMachine(target, "generic", "", Options, std::nullopt);
+
+    TheModule.setDataLayout(TM->createDataLayout());
 }

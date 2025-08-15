@@ -527,16 +527,28 @@ koopa::Value* KoopaEnv::GetInt32(int value) {
 koopa::Value* KoopaEnv::CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies) {
     koopa::Value* res = array;
     for (const auto& index : indies) {
-        res = _CreateInst(new koopa_raw_value_data_t{
-            .ty = type,
-            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-            .kind = {
+        koopa_raw_value_kind_t kind;
+        if (res->ty->tag == KOOPA_RTT_ARRAY) {
+            kind = {
                 .tag = KOOPA_RVT_GET_ELEM_PTR,
+                .data.get_ptr = {
+                    .src = res,
+                    .index = index
+                }
+            };
+        } else if (res->ty->tag == KOOPA_RTT_POINTER) {
+            kind = {
+                .tag = KOOPA_RVT_GET_PTR,
                 .data.get_elem_ptr = {
                     .src = res,
                     .index = index
                 }
-            }
+            };
+        }
+        res = _CreateInst(new koopa_raw_value_data_t{
+            .ty = type,
+            .used_by = koopa_slice(KOOPA_RSIK_VALUE),
+            .kind = kind
         });
     }
     return res;
