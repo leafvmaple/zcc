@@ -77,14 +77,17 @@ public:
     virtual Type* GetArrayType(Type* type, int size)= 0;
     virtual Type* GetPointerType(Type* type) = 0;
     virtual Type* GetValueType(Value* value) = 0;
+    virtual Type* GetElementType(Type* value) = 0;
 
     virtual Value* GetInt32(int value) = 0;
-    virtual Value* CreateGEP(Type* type, Value* array, vector<Value*> index) = 0;
+    virtual Value* CreateGEP(Type* type, Value* array, vector<Value*> index, bool isPointer) = 0;
 
     virtual Value* CaculateBinaryOp(const std::function<int(int, int)>& func, Value* lhs, Value* rhs) = 0;
 
     virtual int GetValueInt(Value* value) = 0;
     virtual Value* GetArrayElement(Value* array, int index) = 0;
+
+    virtual bool IsArrayType(Type* value) = 0;
 
     virtual bool EndWithTerminator() = 0;
 

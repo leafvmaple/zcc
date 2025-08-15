@@ -16,63 +16,6 @@ enum class SYMBOL {
     VAR,
 };
 
-class KoopaEnv;
-
-koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind) {
-    return {nullptr, 0, kind};
-}
-
-template<typename Type>
-koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const Type& vec, KoopaEnv* env) {
-    auto* buffer = new const void*[1];
-    buffer[0] = vec->Codegen(env);
-    return {buffer, 1, kind};
-}
-
-template<typename Type>
-koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std::vector<Type>& vec, KoopaEnv* env) {
-    auto* buffer = new const void*[vec.size()];
-    for (size_t i = 0; i < vec.size(); ++i) {
-        buffer[i] = vec[i]->Codegen(env);
-    }
-    return {buffer, static_cast<uint32_t>(vec.size()), kind};
-}
-
-template<typename Type>
-koopa_raw_slice_t inline koopa_slice(koopa_raw_slice_item_kind_t kind, const std::vector<Type>& vec) {
-    auto* buffer = new const void*[vec.size()];
-    for (size_t i = 0; i < vec.size(); ++i) {
-        buffer[i] = vec[i];
-    }
-    return {buffer, static_cast<uint32_t>(vec.size()), kind};
-}
-
-inline koopa::Type* koopa_type(koopa_raw_type_tag_t tag) {
-    return new koopa_raw_type_kind_t { tag };
-}
-
-inline koopa::Type* koopa_pointer(koopa::Type* type) {
-    return new koopa_raw_type_kind_t {
-        .tag = KOOPA_RTT_POINTER,
-        .data.pointer = {
-            .base = type
-        }
-    };
-}
-
-koopa_raw_value_t inline koopa_int(int value) {
-    return new koopa_raw_value_data_t {
-        .ty = koopa_type(KOOPA_RTT_INT32),
-        .used_by = koopa_slice(KOOPA_RSIK_VALUE),
-        .kind = {
-            .tag = KOOPA_RVT_INTEGER,
-            .data.integer = {
-                .value = value
-            }
-        }
-    };
-}
-
 const char* to_string(std::string name);
 const char* to_string(int value);
 
@@ -130,14 +73,17 @@ public:
     koopa::Type* GetPointerType(koopa::Type* type) override;
 
     koopa::Type* GetValueType(koopa::Value* value) override;
+    koopa::Type* GetElementType(koopa::Type* value) override;
 
     koopa::Value* GetInt32(int value) override;
-    koopa::Value* CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies) override;
+    koopa::Value* CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies, bool isPointer) override;
 
     koopa::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) override;
 
     int GetValueInt(koopa::Value* value) override;
     koopa::Value* GetArrayElement(koopa::Value* array, int index) override;
+
+    bool IsArrayType(koopa::Type* value) override;
 
     bool EndWithTerminator() override;
 

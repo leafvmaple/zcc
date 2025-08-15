@@ -226,7 +226,7 @@ llvm::Value* LLVMEnv::GetInt32(int value) {
     return llvm::ConstantInt::get(GetInt32Type(), value);
 }
 
-llvm::Value* LLVMEnv::CreateGEP(llvm::Type* type, llvm::Value* array, vector<llvm::Value*> index) {
+llvm::Value* LLVMEnv::CreateGEP(llvm::Type* type, llvm::Value* array, vector<llvm::Value*> index, bool isPointer) {
     return Builder.CreateGEP(type, array, index);
 }
 

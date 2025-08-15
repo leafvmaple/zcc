@@ -59,7 +59,7 @@ Value* _FlattenToArray(Env<Type, Value, BasicBlock, Function>* env, vector<int>&
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function, typename T>
-Value* _GetArrayInitValue(Env<Type, Value, BasicBlock, Function>* env, vector<int>& shape, Type* type, T* def) {
+Value* _GetArrayInitValue(Env<Type, Value, BasicBlock, Function>* env, vector<int>& shape, Type*& type, T* def) {
     Value* var{};
     if (def->initVal) {
         var = _FlattenToArray(env, shape, def->initVal);
@@ -84,7 +84,7 @@ void _StoreArray(Env<Type, Value, BasicBlock, Function>* env, Value* addr, vecto
     for (int i = 0; i < *shape; ++i) {
         auto element = env->GetArrayElement(val, i);
         auto type = env->GetValueType(element);
-        auto* subAddr = env->CreateGEP(type, addr, { env->GetInt32(i) });
+        auto* subAddr = env->CreateGEP(type, addr, { env->GetInt32(i) }, false );
         _StoreArray(env, subAddr, shape + 1, element);
     }
 }
@@ -308,12 +308,7 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* PrimaryExprAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
         case TYPE::Expr: return expr->ToValue(env);
-        case TYPE::LVal: {
-            auto* val = lval->ToValue(env);
-            auto symbolType = env->GetSymbolType({.value = val});
-            if (symbolType == VAR_TYPE::VAR) return env->CreateLoad(val);
-            else return val;
-        }
+        case TYPE::LVal: return lval->ToValue(env);
         case TYPE::Number: return value->ToValue(env);
     }
     return nullptr;
@@ -324,10 +319,8 @@ Value* PrimaryExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
         case TYPE::Expr: return expr->ToNumber(env);
         case TYPE::LVal: {
-            auto* val = lval->ToValue(env);
-            auto symbolType = env->GetSymbolType({.value = val});
-            if (symbolType == VAR_TYPE::VAR) return env->CreateLoad(val);
-            else return val;
+            assert(false);
+            return nullptr; // LVal should not be converted to number directly
         }
         case TYPE::Number: return value->ToValue(env);
     }
@@ -626,14 +619,26 @@ void BlockItemAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
 template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     auto symbol = env->GetSymbolValue(ident);
+    auto value = symbol.value;
+    auto symbolType = env->GetSymbolType({.value = value});
+
+    if (symbolType == VAR_TYPE::VAR) {
+        auto type = env->GetValueType(value);
+        type = env->GetElementType(type);
+        if (env->IsArrayType(type) && indies.empty()) {
+            return env->CreateGEP(env->GetInt32Type(), value, { env->GetInt32(0) }, false);
+        }
+        value = env->CreateLoad(value);
+    }
     if (!indies.empty()) {
         vector<Value*> indexVals;
         for (auto& index : indies) {
             indexVals.push_back(index->ToValue(env));
         }
-        return env->CreateGEP(env->GetInt32Type(), symbol.value, indexVals);
+        value = env->CreateGEP(env->GetInt32Type(), value, indexVals, true);
+        return env->CreateLoad(value);
     }
-    return symbol.value;
+    return value;
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
