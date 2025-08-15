@@ -623,9 +623,6 @@ Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
         if (env->IsArrayType(type) && indies.empty()) {
             return env->CreateGEP(env->GetInt32Type(), value, { env->GetInt32(0) }, false);
         }
-        value = env->CreateLoad(value);
-    } else {
-        value = env->CreateLoad(value);
     }
     if (!indies.empty()) {
         vector<Value*> indexVals;
@@ -633,9 +630,8 @@ Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
             indexVals.push_back(index->ToValue(env));
         }
         value = env->CreateGEP(env->GetInt32Type(), value, indexVals, true);
-        return env->CreateLoad(value);
     }
-    return value;
+    return env->CreateLoad(value);
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
