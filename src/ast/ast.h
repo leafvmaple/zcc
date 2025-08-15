@@ -396,6 +396,12 @@ public:
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
 
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+
+    template<typename Type, typename Value, typename BasicBlock, typename Function>
+    Value* ToPointer(Env<Type, Value, BasicBlock, Function>* env);
+
     string ident;
     vector<unique_ptr<ExprAST>> indies;
 };

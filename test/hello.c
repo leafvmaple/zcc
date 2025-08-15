@@ -1,8 +1,16 @@
-int f(int arr[][3]) {
-  return arr[1][2];
-}
+int x;
+const int y = 10;
+const int z = y + 1;
+int init = 1;
 
 int main() {
-  int arr[2][3] = {1, 2};
-  return f(arr);
+  putint(x);
+  putch(32);
+  putint(y);
+  putch(32);
+  putint(z);
+  putch(32);
+  putint(init);
+  putch(10);
+  return 0;
 }

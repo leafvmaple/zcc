@@ -11,6 +11,7 @@ using std::vector;
 enum class VAR_TYPE {
     CONST,
     VAR,
+    GLOBAL,
     FUNC,
 };
 
@@ -86,6 +87,7 @@ public:
 
     virtual int GetValueInt(Value* value) = 0;
     virtual Value* GetArrayElement(Value* array, int index) = 0;
+    virtual Value* GetBaseValue(Value* value) = 0;
 
     virtual bool IsArrayType(Type* value) = 0;
 

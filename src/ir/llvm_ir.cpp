@@ -7,10 +7,12 @@
 #include "llvm/Transforms/Scalar/ADCE.h"
 
 #include "llvm/Support/raw_os_ostream.h"
+#if LLVM_VERSION_MAJOR >= 18
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/MC/TargetRegistry.h"
+#endif
 
 #include <fstream>
 
@@ -265,6 +267,7 @@ llvm::Value* LLVMEnv::CreateCall(llvm::Function* func, std::vector<llvm::Value*>
     return Builder.CreateCall(func, args);
 }
 
+#if LLVM_VERSION_MAJOR >= 18
 void LLVMEnv::_SetMachineTarget(const char* target) {
     llvm::TargetOptions Options;
     std::string Error;
@@ -278,3 +281,4 @@ void LLVMEnv::_SetMachineTarget(const char* target) {
 
     TheModule.setDataLayout(TM->createDataLayout());
 }
+#endif

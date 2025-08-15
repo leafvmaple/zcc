@@ -82,6 +82,7 @@ public:
 
     int GetValueInt(koopa::Value* value) override;
     koopa::Value* GetArrayElement(koopa::Value* array, int index) override;
+    koopa::Value* GetBaseValue(koopa::Value* value) override;
 
     bool IsArrayType(koopa::Type* value) override;
 

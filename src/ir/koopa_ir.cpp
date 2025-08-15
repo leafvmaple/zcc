@@ -262,7 +262,9 @@ void KoopaEnv::CreateStore(koopa::Value* value, koopa::Value* dest) {
 
 koopa::Value* KoopaEnv::CreateLoad(koopa::Value* src) {
     koopa::Type* type = GetValueType(src);
-    type = koopa_element_type(type);
+    if (src->kind.tag != KOOPA_RVT_GLOBAL_ALLOC) {
+        type = koopa_element_type(type);
+    }
     return (koopa::Value*)_CreateInst(new koopa::Value {
         .ty = type,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -636,6 +638,14 @@ int KoopaEnv::GetValueInt(koopa::Value* value) {
 koopa::Value* KoopaEnv::GetArrayElement(koopa::Value* array, int index) {
     // TODO assert
     return (koopa::Value*)array->kind.data.aggregate.elems.buffer[index];
+}
+
+koopa::Value* KoopaEnv::GetBaseValue(koopa::Value* value) {
+    // assert(value->kind.tag == KOOPA_RTT_POINTER || value->kind.tag == KOOPA_RVT_GET_ELEM_PTR);
+    if (value->kind.tag == KOOPA_RVT_GLOBAL_ALLOC) {
+        return const_cast<koopa::Value*>(value->kind.data.global_alloc.init);
+    }
+    return nullptr;
 }
 
 bool KoopaEnv::IsArrayType(koopa::Type* type) {

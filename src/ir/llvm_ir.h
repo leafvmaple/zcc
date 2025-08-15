@@ -72,6 +72,7 @@ public:
 
     int GetValueInt(llvm::Value* value) override;
     llvm::Value* GetArrayElement(llvm::Value* array, int index) override;
+    llvm::Value* GetBaseValue(llvm::Value* value) override { return nullptr;};
 
     bool IsArrayType(llvm::Type* value) override {};
 

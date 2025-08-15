@@ -135,22 +135,20 @@ void VarDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type)
     if (!sizeExprs.empty()) {
         init = _GetArrayInitValue(env, shape, type, this);
     } else {
-        if (initVal) {
-            init = initVal->ToValue(env, init);
-        }
+        init = initVal ? initVal->ToValue(env, init) : env->GetInt32(0);
     }
 
     Value* var{};
     if (env->IsGlobalScope()) {
         var = env->CreateGlobal(type, ident, init);
+        env->AddSymbol(ident, VAR_TYPE::GLOBAL, {.value = var});
     } else {
         var = env->CreateAlloca(type, ident);
         if (initVal) {
             _StoreArray(env, var, shape.begin(), init);
         }
+        env->AddSymbol(ident, VAR_TYPE::VAR, {.value = var});
     }
-
-    env->AddSymbol(ident, VAR_TYPE::VAR, {.value = var});
 }
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
@@ -217,7 +215,7 @@ void StmtAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
         case TYPE::Assign: {
             auto* val = expr->ToValue(env);
-            auto* addr = lval->ToValue(env);
+            auto* addr = lval->ToPointer(env);
             env->CreateStore(val, addr);
             break;
         }
@@ -318,10 +316,7 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* PrimaryExprAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
         case TYPE::Expr: return expr->ToNumber(env);
-        case TYPE::LVal: {
-            assert(false);
-            return nullptr; // LVal should not be converted to number directly
-        }
+        case TYPE::LVal: return lval->ToNumber(env);
         case TYPE::Number: return value->ToValue(env);
     }
     return nullptr;
@@ -629,6 +624,8 @@ Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
             return env->CreateGEP(env->GetInt32Type(), value, { env->GetInt32(0) }, false);
         }
         value = env->CreateLoad(value);
+    } else {
+        value = env->CreateLoad(value);
     }
     if (!indies.empty()) {
         vector<Value*> indexVals;
@@ -638,6 +635,20 @@ Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
         value = env->CreateGEP(env->GetInt32Type(), value, indexVals, true);
         return env->CreateLoad(value);
     }
+    return value;
+}
+
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+Value* LValAST::ToNumber(Env<Type, Value, BasicBlock, Function>* env) {
+    auto symbol = env->GetSymbolValue(ident);
+    auto value = symbol.value;
+    return env->GetBaseValue(value);
+}
+
+template<typename Type, typename Value, typename BasicBlock, typename Function>
+Value* LValAST::ToPointer(Env<Type, Value, BasicBlock, Function>* env) {
+    auto symbol = env->GetSymbolValue(ident);
+    auto value = symbol.value;
     return value;
 }
 
