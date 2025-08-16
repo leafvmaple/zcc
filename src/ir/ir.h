@@ -90,6 +90,7 @@ public:
     virtual Value* GetBaseValue(Value* value) = 0;
 
     virtual bool IsArrayType(Type* value) = 0;
+    virtual bool IsPointerType(Type* value) = 0;
 
     virtual bool EndWithTerminator() = 0;
 

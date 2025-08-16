@@ -74,7 +74,8 @@ public:
     llvm::Value* GetArrayElement(llvm::Value* array, int index) override;
     llvm::Value* GetBaseValue(llvm::Value* value) override { return nullptr;};
 
-    bool IsArrayType(llvm::Type* value) override {};
+    bool IsArrayType(llvm::Type* value) override;
+    bool IsPointerType(llvm::Type* value) override;
 
     bool EndWithTerminator() override;
 

@@ -254,6 +254,14 @@ llvm::Value* LLVMEnv::GetArrayElement(llvm::Value* array, int index) {
     return Builder.CreateGEP(arrayType->getElementType(), array, {indexValue});
 }
 
+bool LLVMEnv::IsArrayType(llvm::Type* value) {
+    return value->isArrayTy();
+}
+
+bool LLVMEnv::IsPointerType(llvm::Type* value) {
+    return value->isPointerTy();
+}
+
 bool LLVMEnv::EndWithTerminator() {
     auto* basic_block = Builder.GetInsertBlock();
     return !basic_block->empty() && basic_block->back().isTerminator();

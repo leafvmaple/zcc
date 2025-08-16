@@ -651,6 +651,10 @@ bool KoopaEnv::IsArrayType(koopa::Type* type) {
     return type->tag == KOOPA_RTT_ARRAY;
 }
 
+bool KoopaEnv::IsPointerType(koopa::Type* type) {
+    return type->tag == KOOPA_RTT_POINTER;
+}
+
 bool KoopaEnv::EndWithTerminator() {
     auto insts = insert_ptr->insts;
     return !insts.empty() && _IsTerminator(insts.back());

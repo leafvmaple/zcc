@@ -85,6 +85,7 @@ public:
     koopa::Value* GetBaseValue(koopa::Value* value) override;
 
     bool IsArrayType(koopa::Type* value) override;
+    bool IsPointerType(koopa::Type* value) override;
 
     bool EndWithTerminator() override;
 

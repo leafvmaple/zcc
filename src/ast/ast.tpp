@@ -198,6 +198,10 @@ void FuncDefAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
 
     block->Codegen(env);
 
+    if (!env->EndWithTerminator()) {
+        env->CreateRet(nullptr);
+    }
+
     env->ExitScope();
 }
 
@@ -256,8 +260,7 @@ void StmtAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
             break;
         }
         case TYPE::Ret: {
-            auto* retVal = expr->ToValue(env);
-            env->CreateRet(retVal);
+            env->CreateRet(expr ? expr->ToValue(env) : nullptr);
             break;
         }
         case TYPE::While: {
@@ -613,18 +616,14 @@ void BlockItemAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
 
 template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
-    auto symbol = env->GetSymbolValue(ident);
-    auto value = symbol.value;
-    auto symbolType = env->GetSymbolType({.value = value});
-
-    if (symbolType == VAR_TYPE::VAR) {
-        auto type = env->GetValueType(value);
+    auto value = ToPointer(env);
+    auto type = env->GetValueType(value);
+    if (env->IsPointerType(type)) {
         type = env->GetElementType(type);
-        if (env->IsArrayType(type) && indies.empty()) {
-            return env->CreateGEP(env->GetInt32Type(), value, { env->GetInt32(0) });
+        if (env->IsArrayType(type)) {
+            return env->CreateGEP(type, value, { env->GetInt32(0) });
         }
     }
-    value = ToPointer(env);
     return env->CreateLoad(value);
 }
 

@@ -149,23 +149,35 @@ Stmt : MatchedStmt {
   $$ = std::move($1);
 };
 
-MatchedStmt : LVal '=' Expr ';'{
-  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Assign, std::move($1), std::move($3));
-} | OptExpr ';' {
-  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Expr, std::move($1));
-} | Block {
-  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Block, std::move($1));
-} | IF '(' Expr ')' MatchedStmt ELSE MatchedStmt {
-  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::If, std::move($3), std::move($5), std::move($7));
-} | RETURN Expr ';' {
-  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Ret, std::move($2));
-} | WHILE '(' Expr ')' MatchedStmt {
-  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::While, std::move($3), std::move($5));
-} | BREAK ';' {
-  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Break);
-} | CONTINUE ';' {
-  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Continue);
-};
+MatchedStmt
+: LVal '=' Expr ';'{
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Assign, std::move($1), std::move($3));
+  }
+| OptExpr ';' {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Expr, std::move($1));
+  }
+| Block {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Block, std::move($1));
+  }
+| IF '(' Expr ')' MatchedStmt ELSE MatchedStmt {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::If, std::move($3), std::move($5), std::move($7));
+  }
+| RETURN ';' {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Ret);
+  }
+| RETURN Expr ';' {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Ret, std::move($2));
+  }
+| WHILE '(' Expr ')' MatchedStmt {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::While, std::move($3), std::move($5));
+  }
+| BREAK ';' {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Break);
+  }
+| CONTINUE ';' {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Continue);
+  }
+;
 
 UnmatchedStmt: IF '(' Expr ')' Stmt {
   $$ = std::make_unique<StmtAST>(StmtAST::TYPE::If, std::move($3), std::move($5));
