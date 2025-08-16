@@ -624,14 +624,7 @@ Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
             return env->CreateGEP(env->GetInt32Type(), value, { env->GetInt32(0) });
         }
     }
-    if (!indies.empty()) {
-        vector<Value*> indexVals;
-        for (auto& index : indies) {
-            indexVals.push_back(index->ToValue(env));
-        }
-        // value = env->CreateLoad(value);
-        value = env->CreateGEP(env->GetInt32Type(), value, indexVals);
-    }
+    value = ToPointer(env);
     return env->CreateLoad(value);
 }
 
@@ -646,6 +639,14 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 Value* LValAST::ToPointer(Env<Type, Value, BasicBlock, Function>* env) {
     auto symbol = env->GetSymbolValue(ident);
     auto value = symbol.value;
+
+    if (!indies.empty()) {
+        vector<Value*> indexVals;
+        for (auto& index : indies) {
+            indexVals.push_back(index->ToValue(env));
+        }
+        value = env->CreateGEP(env->GetInt32Type(), value, indexVals);
+    }
     return value;
 }
 

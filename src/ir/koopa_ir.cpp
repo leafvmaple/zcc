@@ -262,9 +262,7 @@ void KoopaEnv::CreateStore(koopa::Value* value, koopa::Value* dest) {
 
 koopa::Value* KoopaEnv::CreateLoad(koopa::Value* src) {
     koopa::Type* type = GetValueType(src);
-    if (src->kind.tag != KOOPA_RVT_GLOBAL_ALLOC) {
-        type = koopa_element_type(type);
-    }
+    type = koopa_element_type(type);
     return (koopa::Value*)_CreateInst(new koopa::Value {
         .ty = type,
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
@@ -422,7 +420,7 @@ koopa::Value* KoopaEnv::CreateAlloca(koopa::Type* type, const std::string& name)
 
 koopa::Value* KoopaEnv::CreateGlobal(koopa::Type* type, const std::string& name, koopa::Value* init) {
     auto* value = new koopa_raw_value_data_t {
-        .ty = type,
+        .ty = koopa_pointer(type),
         .name = to_string("@" + name),
         .used_by = koopa_slice(KOOPA_RSIK_VALUE),
         .kind = {
