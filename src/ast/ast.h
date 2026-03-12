@@ -36,10 +36,7 @@ class ConstExprAST;
 class DeclAST;
 class PrimaryExprAST;
 class UnaryExprAST;
-class MulExprAST;
-class AddExprAST;
-class RelExprAST;
-class EqExprAST;
+class BinaryExprAST;
 class LAndExprAST;
 class FuncRParamAST;
 
@@ -103,7 +100,7 @@ public:
 class StmtAST {
 public:
     enum class TYPE {
-        Assign, Expr, Block, If, Ret, While, For, Break, Continue, Printf, Scanf
+        Assign, Expr, Block, If, Ret, While, For, Break, Continue
     };
 
     StmtAST(TYPE type);
@@ -112,8 +109,6 @@ public:
     StmtAST(TYPE type, unique_ptr<LValAST>&& lval, unique_ptr<ExprAST>&& expr);
     StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt);
     StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt, unique_ptr<StmtAST>&& elseStmt);
-    StmtAST(TYPE type, string fmt, vector<unique_ptr<ExprAST>>&& args);
-    StmtAST(TYPE type, string fmt, vector<unique_ptr<LValAST>>&& lvals);
 
     void Codegen(CodeGen* cg);
 
@@ -127,9 +122,6 @@ public:
     unique_ptr<DeclAST> forDecl;
     unique_ptr<StmtAST> forInitStmt;
     unique_ptr<StmtAST> forStepStmt;
-    string formatStr;
-    vector<unique_ptr<ExprAST>> fmtArgs;
-    vector<unique_ptr<LValAST>> scanfLVals;
 };
 
 class ExprAST {
@@ -144,11 +136,12 @@ public:
 
 class PrimaryExprAST {
 public:
-    enum class TYPE { Expr, LVal, Number };
+    enum class TYPE { Expr, LVal, Number, String };
 
     PrimaryExprAST(TYPE type, unique_ptr<ExprAST>&& expr);
     PrimaryExprAST(TYPE type, unique_ptr<LValAST>&& lval);
     PrimaryExprAST(TYPE type, unique_ptr<NumberAST>&& value);
+    PrimaryExprAST(string strVal);
 
     llvm::Value* ToValue(CodeGen* cg);
     llvm::Value* ToNumber(CodeGen* cg);
@@ -157,6 +150,7 @@ public:
     unique_ptr<ExprAST> expr;
     unique_ptr<LValAST> lval;
     unique_ptr<NumberAST> value;
+    string strVal;
 };
 
 class NumberAST {
@@ -188,92 +182,47 @@ public:
     vector<unique_ptr<ExprAST>> callArgs;
 };
 
-class MulExprAST {
+class BinaryExprAST {
 public:
-    enum class OP { MUL, DIV, MOD };
+    enum class Op {
+        ADD, SUB, MUL, DIV, MOD,
+        LT, GT, LE, GE, EQ, NE,
+    };
 
-    MulExprAST(unique_ptr<UnaryExprAST>&& unaryExpr);
-    MulExprAST(OP op, unique_ptr<MulExprAST>&& left, unique_ptr<UnaryExprAST>&& right);
+    BinaryExprAST(unique_ptr<UnaryExprAST>&& operand);
+    BinaryExprAST(Op op, unique_ptr<BinaryExprAST>&& lhs, unique_ptr<BinaryExprAST>&& rhs);
 
     llvm::Value* ToValue(CodeGen* cg);
     llvm::Value* ToNumber(CodeGen* cg);
 
-    unique_ptr<UnaryExprAST> unaryExpr;
-    OP op;
-    unique_ptr<MulExprAST> left;
-    unique_ptr<UnaryExprAST> right;
-};
-
-class AddExprAST {
-public:
-    enum class OP { ADD, SUB };
-
-    AddExprAST(unique_ptr<MulExprAST>&& mulExpr);
-    AddExprAST(OP op, unique_ptr<AddExprAST>&& left, unique_ptr<MulExprAST>&& right);
-
-    llvm::Value* ToValue(CodeGen* cg);
-    llvm::Value* ToNumber(CodeGen* cg);
-
-    OP op;
-    unique_ptr<MulExprAST> mulExpr;
-    unique_ptr<AddExprAST> left;
-    unique_ptr<MulExprAST> right;
-};
-
-class RelExprAST {
-public:
-    enum class Op { LT, GT, LE, GE };
-
-    RelExprAST(unique_ptr<AddExprAST>&& addExpr);
-    RelExprAST(unique_ptr<RelExprAST>&& left, Op op, unique_ptr<AddExprAST>&& right);
-
-    llvm::Value* ToValue(CodeGen* cg);
-    llvm::Value* ToNumber(CodeGen* cg);
-
-    unique_ptr<AddExprAST> addExpr;
-    unique_ptr<RelExprAST> left;
     Op op;
-    unique_ptr<AddExprAST> right;
-};
-
-class EqExprAST {
-public:
-    enum class Op { EQ, NE };
-
-    EqExprAST(unique_ptr<RelExprAST>&& relExpr);
-    EqExprAST(unique_ptr<EqExprAST>&& left, Op op, unique_ptr<RelExprAST>&& right);
-
-    llvm::Value* ToValue(CodeGen* cg);
-    llvm::Value* ToNumber(CodeGen* cg);
-
-    unique_ptr<RelExprAST> relExpr;
-    unique_ptr<EqExprAST> left;
-    Op op;
-    unique_ptr<RelExprAST> right;
+    unique_ptr<UnaryExprAST> operand;
+    unique_ptr<BinaryExprAST> lhs;
+    unique_ptr<BinaryExprAST> rhs;
 };
 
 class LAndExprAST {
 public:
-    LAndExprAST(unique_ptr<EqExprAST>&& eqExpr);
-    LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<EqExprAST>&& right);
+    LAndExprAST(unique_ptr<BinaryExprAST>&& operand);
+    LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<BinaryExprAST>&& right);
 
     llvm::Value* ToValue(CodeGen* cg);
     llvm::Value* ToNumber(CodeGen* cg);
 
-    unique_ptr<EqExprAST> eqExpr;
+    unique_ptr<BinaryExprAST> operand;
     unique_ptr<LAndExprAST> left;
-    unique_ptr<EqExprAST> right;
+    unique_ptr<BinaryExprAST> right;
 };
 
 class LOrExprAST {
 public:
-    LOrExprAST(unique_ptr<LAndExprAST>&& landExpr);
+    LOrExprAST(unique_ptr<LAndExprAST>&& operand);
     LOrExprAST(unique_ptr<LOrExprAST>&& left, unique_ptr<LAndExprAST>&& right);
 
     llvm::Value* ToValue(CodeGen* cg);
     llvm::Value* ToNumber(CodeGen* cg);
 
-    unique_ptr<LAndExprAST> landExpr;
+    unique_ptr<LAndExprAST> operand;
     unique_ptr<LOrExprAST> left;
     unique_ptr<LAndExprAST> right;
 };

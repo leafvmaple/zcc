@@ -1,47 +1,28 @@
-int buf[2][100];
-
-// sort [l, r)
-void merge_sort(int l, int r)
+int fact(int n)
 {
-    if (l + 1 >= r)
-        return;
+    if (n <= 1)
+        return 1;
+    return n * fact(n - 1);
+}
 
-    int mid = (l + r) / 2;
-    merge_sort(l, mid);
-    merge_sort(mid, r);
-
-    int i = l, j = mid, k = l;
-    while (i < mid && j < r) {
-        if (buf[0][i] < buf[0][j]) {
-            buf[1][k] = buf[0][i];
-            i = i + 1;
-        } else {
-            buf[1][k] = buf[0][j];
-            j = j + 1;
-        }
-        k = k + 1;
+int fib(int n)
+{
+    if (n <= 1)
+        return n;
+    int a = 0, b = 1;
+    int i;
+    for (i = 2; i <= n; i = i + 1) {
+        int t = a + b;
+        a = b;
+        b = t;
     }
-    while (i < mid) {
-        buf[1][k] = buf[0][i];
-        i = i + 1;
-        k = k + 1;
-    }
-    while (j < r) {
-        buf[1][k] = buf[0][j];
-        j = j + 1;
-        k = k + 1;
-    }
-
-    while (l < r) {
-        buf[0][l] = buf[1][l];
-        l = l + 1;
-    }
+    return b;
 }
 
 int main()
 {
-    int n = getarray(buf[0]);
-    merge_sort(0, n);
-    putarray(n, buf[0]);
+    int x = fact(10);
+    int y = fib(10);
+    printf("%d %d\n", x, y);
     return 0;
 }

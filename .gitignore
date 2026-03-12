@@ -36,6 +36,8 @@
 
 *.ll
 *.s
+!*.S
 *.koopa
 
 build/
+lib/

@@ -104,8 +104,8 @@ llvm::Function* CodeGen::CreateFunction(llvm::FunctionType* funcType, const std:
     return func;
 }
 
-void CodeGen::CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params) {
-    auto* funcType = llvm::FunctionType::get(retType, params, false);
+void CodeGen::CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params, bool isVarArg) {
+    auto* funcType = llvm::FunctionType::get(retType, params, isVarArg);
     auto* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, Module);
     AddSymbol(name, VAR_TYPE::FUNC, { func });
 }

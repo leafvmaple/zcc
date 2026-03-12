@@ -44,7 +44,7 @@ public:
     // Functions
     llvm::BasicBlock* CreateBasicBlock(const std::string& name, llvm::Function* func);
     llvm::Function* CreateFunction(llvm::FunctionType* funcType, const std::string& name, std::vector<std::string> names);
-    void CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params);
+    void CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params, bool isVarArg = false);
     llvm::Function* GetFunction();
     llvm::Value* GetFunctionArg(int index);
 

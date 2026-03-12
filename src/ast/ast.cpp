@@ -49,16 +49,13 @@ StmtAST::StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& th
     : type(type), cond(std::move(cond)), thenStmt(std::move(thenStmt)) {}
 StmtAST::StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt, unique_ptr<StmtAST>&& elseStmt)
     : type(type), cond(std::move(cond)), thenStmt(std::move(thenStmt)), elseStmt(std::move(elseStmt)) {}
-StmtAST::StmtAST(TYPE type, string fmt, vector<unique_ptr<ExprAST>>&& args)
-    : type(type), formatStr(std::move(fmt)), fmtArgs(std::move(args)) {}
-StmtAST::StmtAST(TYPE type, string fmt, vector<unique_ptr<LValAST>>&& lvals)
-    : type(type), formatStr(std::move(fmt)), scanfLVals(std::move(lvals)) {}
 
 ExprAST::ExprAST(unique_ptr<LOrExprAST>&& lorExpr) : lorExpr(std::move(lorExpr)) {}
 
 PrimaryExprAST::PrimaryExprAST(TYPE type, unique_ptr<ExprAST>&& expr) : type(type), expr(std::move(expr)) {}
 PrimaryExprAST::PrimaryExprAST(TYPE type, unique_ptr<LValAST>&& lval) : type(type), lval(std::move(lval)) {}
 PrimaryExprAST::PrimaryExprAST(TYPE type, unique_ptr<NumberAST>&& value) : type(type), value(std::move(value)) {}
+PrimaryExprAST::PrimaryExprAST(string strVal) : type(TYPE::String), strVal(std::move(strVal)) {}
 
 NumberAST::NumberAST(int value) : value(value) {}
 
@@ -70,27 +67,16 @@ UnaryExprAST::UnaryExprAST(TYPE type, string ident) : type(type), ident(std::mov
 UnaryExprAST::UnaryExprAST(TYPE type, string ident, vector<unique_ptr<ExprAST>>&& callArgs)
     : type(type), ident(std::move(ident)), callArgs(std::move(callArgs)) {}
 
-MulExprAST::MulExprAST(unique_ptr<UnaryExprAST>&& unaryExpr) : unaryExpr(std::move(unaryExpr)) {}
-MulExprAST::MulExprAST(OP op, unique_ptr<MulExprAST>&& left, unique_ptr<UnaryExprAST>&& right)
-    : op(op), left(std::move(left)), right(std::move(right)) {}
+BinaryExprAST::BinaryExprAST(unique_ptr<UnaryExprAST>&& operand)
+    : operand(std::move(operand)) {}
+BinaryExprAST::BinaryExprAST(Op op, unique_ptr<BinaryExprAST>&& lhs, unique_ptr<BinaryExprAST>&& rhs)
+    : op(op), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
-AddExprAST::AddExprAST(unique_ptr<MulExprAST>&& mulExpr) : mulExpr(std::move(mulExpr)) {}
-AddExprAST::AddExprAST(OP op, unique_ptr<AddExprAST>&& left, unique_ptr<MulExprAST>&& right)
-    : op(op), left(std::move(left)), right(std::move(right)) {}
-
-RelExprAST::RelExprAST(unique_ptr<AddExprAST>&& addExpr) : addExpr(std::move(addExpr)) {}
-RelExprAST::RelExprAST(unique_ptr<RelExprAST>&& left, Op op, unique_ptr<AddExprAST>&& right)
-    : left(std::move(left)), op(op), right(std::move(right)) {}
-
-EqExprAST::EqExprAST(unique_ptr<RelExprAST>&& relExpr) : relExpr(std::move(relExpr)) {}
-EqExprAST::EqExprAST(unique_ptr<EqExprAST>&& left, Op op, unique_ptr<RelExprAST>&& right)
-    : left(std::move(left)), op(op), right(std::move(right)) {}
-
-LAndExprAST::LAndExprAST(unique_ptr<EqExprAST>&& eqExpr) : eqExpr(std::move(eqExpr)) {}
-LAndExprAST::LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<EqExprAST>&& right)
+LAndExprAST::LAndExprAST(unique_ptr<BinaryExprAST>&& operand) : operand(std::move(operand)) {}
+LAndExprAST::LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<BinaryExprAST>&& right)
     : left(std::move(left)), right(std::move(right)) {}
 
-LOrExprAST::LOrExprAST(unique_ptr<LAndExprAST>&& landExpr) : landExpr(std::move(landExpr)) {}
+LOrExprAST::LOrExprAST(unique_ptr<LAndExprAST>&& operand) : operand(std::move(operand)) {}
 LOrExprAST::LOrExprAST(unique_ptr<LOrExprAST>&& left, unique_ptr<LAndExprAST>&& right)
     : left(std::move(left)), right(std::move(right)) {}
 
@@ -257,17 +243,10 @@ void VarDefAST::Codegen(CodeGen* cg, llvm::Type* type) {
 
 void CompUnitAST::Codegen(CodeGen* cg) {
     auto* intType = cg->GetInt32Type();
-    auto* voidType = cg->GetVoidType();
-    auto* ptrType = cg->GetPointerType(intType);
+    auto* ptrType = cg->GetPointerType(cg->GetInt8Type());
 
-    cg->CreateBuiltin("getint", intType, {});
-    cg->CreateBuiltin("getch", intType, {});
-    cg->CreateBuiltin("getarray", intType, {ptrType});
-    cg->CreateBuiltin("putint", voidType, {intType});
-    cg->CreateBuiltin("putch", voidType, {intType});
-    cg->CreateBuiltin("putarray", voidType, {intType, ptrType});
-    cg->CreateBuiltin("starttime", voidType, {});
-    cg->CreateBuiltin("stoptime", voidType, {});
+    cg->CreateBuiltin("printf", intType, {ptrType}, true);
+    cg->CreateBuiltin("scanf", intType, {ptrType}, true);
 
     for (auto& decl : decls) decl->Codegen(cg);
     for (auto& funcDef : funcDefs) funcDef->Codegen(cg);
@@ -398,48 +377,6 @@ void StmtAST::Codegen(CodeGen* cg) {
         if (hasScope) cg->ExitScope();
         break;
     }
-    case TYPE::Printf: {
-        size_t argIdx = 0;
-        auto putchSym = cg->GetSymbolValue("putch");
-        auto putintSym = cg->GetSymbolValue("putint");
-        for (size_t i = 0; i < formatStr.size(); ++i) {
-            char c = formatStr[i];
-            if (c == '%' && i + 1 < formatStr.size()) {
-                char spec = formatStr[i + 1];
-                if (spec == 'd') {
-                    cg->CreateCall(putintSym.function, {fmtArgs[argIdx++]->ToValue(cg)});
-                    ++i;
-                } else if (spec == 'c') {
-                    cg->CreateCall(putchSym.function, {fmtArgs[argIdx++]->ToValue(cg)});
-                    ++i;
-                } else {
-                    cg->CreateCall(putchSym.function, {cg->GetInt32(c)});
-                }
-            } else {
-                cg->CreateCall(putchSym.function, {cg->GetInt32(c)});
-            }
-        }
-        break;
-    }
-    case TYPE::Scanf: {
-        size_t argIdx = 0;
-        auto getintSym = cg->GetSymbolValue("getint");
-        auto getchSym = cg->GetSymbolValue("getch");
-        for (size_t i = 0; i < formatStr.size(); ++i) {
-            char c = formatStr[i];
-            if (c == '%' && i + 1 < formatStr.size()) {
-                char spec = formatStr[i + 1];
-                if (spec == 'd') {
-                    cg->CreateStore(cg->CreateCall(getintSym.function, {}), scanfLVals[argIdx]->ToPointer(cg));
-                    ++argIdx; ++i;
-                } else if (spec == 'c') {
-                    cg->CreateStore(cg->CreateCall(getchSym.function, {}), scanfLVals[argIdx]->ToPointer(cg));
-                    ++argIdx; ++i;
-                }
-            }
-        }
-        break;
-    }
     }
 }
 
@@ -451,6 +388,7 @@ llvm::Value* PrimaryExprAST::ToValue(CodeGen* cg) {
         case TYPE::Expr:   return expr->ToValue(cg);
         case TYPE::LVal:   return lval->ToValue(cg);
         case TYPE::Number: return value->ToValue(cg);
+        case TYPE::String: return cg->CreateGlobalString(strVal);
     }
     return nullptr;
 }
@@ -460,6 +398,7 @@ llvm::Value* PrimaryExprAST::ToNumber(CodeGen* cg) {
         case TYPE::Expr:   return expr->ToNumber(cg);
         case TYPE::LVal:   return lval->ToNumber(cg);
         case TYPE::Number: return value->ToValue(cg);
+        case TYPE::String: return cg->CreateGlobalString(strVal);
     }
     return nullptr;
 }
@@ -503,82 +442,46 @@ llvm::Value* UnaryExprAST::ToNumber(CodeGen* cg) {
     return nullptr;
 }
 
-llvm::Value* MulExprAST::ToValue(CodeGen* cg) {
-    if (!left) return unaryExpr->ToValue(cg);
-    auto *l = left->ToValue(cg), *r = right->ToValue(cg);
+llvm::Value* BinaryExprAST::ToValue(CodeGen* cg) {
+    if (!lhs) return operand->ToValue(cg);
+    auto *l = lhs->ToValue(cg), *r = rhs->ToValue(cg);
     switch (op) {
-        case OP::MUL: return cg->CreateMul(l, r);
-        case OP::DIV: return cg->CreateDiv(l, r);
-        case OP::MOD: return cg->CreateMod(l, r);
+        case Op::ADD: return cg->CreateAdd(l, r);
+        case Op::SUB: return cg->CreateSub(l, r);
+        case Op::MUL: return cg->CreateMul(l, r);
+        case Op::DIV: return cg->CreateDiv(l, r);
+        case Op::MOD: return cg->CreateMod(l, r);
+        case Op::LT:  return cg->CreateICmpLT(l, r);
+        case Op::GT:  return cg->CreateICmpGT(l, r);
+        case Op::LE:  return cg->CreateICmpLE(l, r);
+        case Op::GE:  return cg->CreateICmpGE(l, r);
+        case Op::EQ:  return cg->CreateICmpEQ(l, r);
+        case Op::NE:  return cg->CreateICmpNE(l, r);
     }
     return nullptr;
 }
 
-llvm::Value* MulExprAST::ToNumber(CodeGen* cg) {
-    if (!left) return unaryExpr->ToNumber(cg);
-    auto *l = left->ToNumber(cg), *r = right->ToNumber(cg);
+llvm::Value* BinaryExprAST::ToNumber(CodeGen* cg) {
+    if (!lhs) return operand->ToNumber(cg);
+    auto *l = lhs->ToNumber(cg), *r = rhs->ToNumber(cg);
     switch (op) {
-        case OP::MUL: return cg->CalculateBinaryOp([](int a, int b) { return a * b; }, l, r);
-        case OP::DIV: return cg->CalculateBinaryOp([](int a, int b) { return a / b; }, l, r);
-        case OP::MOD: return cg->CalculateBinaryOp([](int a, int b) { return a % b; }, l, r);
+        case Op::ADD: return cg->CalculateBinaryOp([](int a, int b) { return a + b; }, l, r);
+        case Op::SUB: return cg->CalculateBinaryOp([](int a, int b) { return a - b; }, l, r);
+        case Op::MUL: return cg->CalculateBinaryOp([](int a, int b) { return a * b; }, l, r);
+        case Op::DIV: return cg->CalculateBinaryOp([](int a, int b) { return a / b; }, l, r);
+        case Op::MOD: return cg->CalculateBinaryOp([](int a, int b) { return a % b; }, l, r);
+        case Op::LT:  return cg->CalculateBinaryOp([](int a, int b) { return a < b; }, l, r);
+        case Op::GT:  return cg->CalculateBinaryOp([](int a, int b) { return a > b; }, l, r);
+        case Op::LE:  return cg->CalculateBinaryOp([](int a, int b) { return a <= b; }, l, r);
+        case Op::GE:  return cg->CalculateBinaryOp([](int a, int b) { return a >= b; }, l, r);
+        case Op::EQ:  return cg->CalculateBinaryOp([](int a, int b) { return a == b; }, l, r);
+        case Op::NE:  return cg->CalculateBinaryOp([](int a, int b) { return a != b; }, l, r);
     }
     return nullptr;
-}
-
-llvm::Value* AddExprAST::ToValue(CodeGen* cg) {
-    if (!left) return mulExpr->ToValue(cg);
-    auto *l = left->ToValue(cg), *r = right->ToValue(cg);
-    return op == OP::ADD ? cg->CreateAdd(l, r) : cg->CreateSub(l, r);
-}
-
-llvm::Value* AddExprAST::ToNumber(CodeGen* cg) {
-    if (!left) return mulExpr->ToNumber(cg);
-    auto *l = left->ToNumber(cg), *r = right->ToNumber(cg);
-    return op == OP::ADD
-        ? cg->CalculateBinaryOp([](int a, int b) { return a + b; }, l, r)
-        : cg->CalculateBinaryOp([](int a, int b) { return a - b; }, l, r);
-}
-
-llvm::Value* RelExprAST::ToValue(CodeGen* cg) {
-    if (!left) return addExpr->ToValue(cg);
-    auto *l = left->ToValue(cg), *r = right->ToValue(cg);
-    switch (op) {
-        case Op::LT: return cg->CreateICmpLT(l, r);
-        case Op::GT: return cg->CreateICmpGT(l, r);
-        case Op::LE: return cg->CreateICmpLE(l, r);
-        case Op::GE: return cg->CreateICmpGE(l, r);
-    }
-    return nullptr;
-}
-
-llvm::Value* RelExprAST::ToNumber(CodeGen* cg) {
-    if (!left) return addExpr->ToNumber(cg);
-    auto *l = left->ToNumber(cg), *r = right->ToNumber(cg);
-    switch (op) {
-        case Op::LT: return cg->CalculateBinaryOp([](int a, int b) { return a < b; }, l, r);
-        case Op::GT: return cg->CalculateBinaryOp([](int a, int b) { return a > b; }, l, r);
-        case Op::LE: return cg->CalculateBinaryOp([](int a, int b) { return a <= b; }, l, r);
-        case Op::GE: return cg->CalculateBinaryOp([](int a, int b) { return a >= b; }, l, r);
-    }
-    return nullptr;
-}
-
-llvm::Value* EqExprAST::ToValue(CodeGen* cg) {
-    if (!left) return relExpr->ToValue(cg);
-    auto *l = left->ToValue(cg), *r = right->ToValue(cg);
-    return op == Op::EQ ? cg->CreateICmpEQ(l, r) : cg->CreateICmpNE(l, r);
-}
-
-llvm::Value* EqExprAST::ToNumber(CodeGen* cg) {
-    if (!left) return relExpr->ToNumber(cg);
-    auto *l = left->ToNumber(cg), *r = right->ToNumber(cg);
-    return op == Op::EQ
-        ? cg->CalculateBinaryOp([](int a, int b) { return a == b; }, l, r)
-        : cg->CalculateBinaryOp([](int a, int b) { return a != b; }, l, r);
 }
 
 llvm::Value* LAndExprAST::ToValue(CodeGen* cg) {
-    if (!left) return eqExpr->ToValue(cg);
+    if (!left) return operand->ToValue(cg);
 
     auto* leftVal = left->ToValue(cg);
     auto* func = cg->GetFunction();
@@ -600,12 +503,12 @@ llvm::Value* LAndExprAST::ToValue(CodeGen* cg) {
 }
 
 llvm::Value* LAndExprAST::ToNumber(CodeGen* cg) {
-    if (!left) return eqExpr->ToNumber(cg);
+    if (!left) return operand->ToNumber(cg);
     return cg->CalculateBinaryOp([](int a, int b) { return a && b; }, left->ToNumber(cg), right->ToNumber(cg));
 }
 
 llvm::Value* LOrExprAST::ToValue(CodeGen* cg) {
-    if (!left) return landExpr->ToValue(cg);
+    if (!left) return operand->ToValue(cg);
 
     auto* leftVal = left->ToValue(cg);
     auto* func = cg->GetFunction();
@@ -627,7 +530,7 @@ llvm::Value* LOrExprAST::ToValue(CodeGen* cg) {
 }
 
 llvm::Value* LOrExprAST::ToNumber(CodeGen* cg) {
-    if (!left) return landExpr->ToNumber(cg);
+    if (!left) return operand->ToNumber(cg);
     return cg->CalculateBinaryOp([](int a, int b) { return a || b; }, left->ToNumber(cg), right->ToNumber(cg));
 }
 

@@ -49,7 +49,7 @@ LLVM_LDFLAGS := $(shell llvm-config --ldflags --system-libs --libs core)
 # Source files & target files
 FB_SRCS := $(patsubst $(FB_DIR)/%.l, $(BUILD_DIR)/%.lex$(FB_EXT), $(shell find $(FB_DIR) -name "*.l"))
 FB_SRCS += $(patsubst $(FB_DIR)/%.y, $(BUILD_DIR)/%.tab$(FB_EXT), $(shell find $(FB_DIR) -name "*.y"))
-SRCS := $(FB_SRCS) $(shell find $(SRC_DIR) -name "*.c" -or -name "*.cpp" -or -name "*.cc")
+SRCS := $(FB_SRCS) $(shell find $(SRC_DIR) -path $(SRC_DIR)/runtime -prune -o \( -name "*.c" -or -name "*.cpp" -or -name "*.cc" \) -print)
 OBJS := $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.c.o, $(SRCS))
 OBJS := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.cpp.o, $(OBJS))
 OBJS := $(patsubst $(SRC_DIR)/%.cc, $(BUILD_DIR)/%.cc.o, $(OBJS))
@@ -98,17 +98,30 @@ $(BUILD_DIR)/%.tab$(FB_EXT): $(FB_DIR)/%.y
 	$(BISON) $(BFLAGS) -o $@ $<
 
 
-.PHONY: clean
-.PHONY: test
+.PHONY: clean test lib-x64 lib-riscv64 lib elf-x64 elf-riscv64
 
 clean:
 	-rm -rf $(BUILD_DIR)
+	$(MAKE) -C $(TOP_DIR)/src/runtime clean
 
+# ---- Runtime library targets ----
+lib-x64:
+	$(MAKE) -C $(TOP_DIR)/src/runtime x64
+
+lib-riscv64:
+	$(MAKE) -C $(TOP_DIR)/src/runtime riscv64
+
+lib: lib-x64 lib-riscv64
+
+# ---- Compile test programs ----
 llvm: all
 	$(BUILD_DIR)/$(TARGET_EXEC) -llvm test/hello.c -o test/hello.ll
 
-koopa: all
-	$(BUILD_DIR)/$(TARGET_EXEC) -koopa test/hello.c -o test/hello.koopa
+elf-x64: all lib-x64
+	$(BUILD_DIR)/$(TARGET_EXEC) -x64 test/hello.c -o test/hello_x64 -sysroot $(TOP_DIR)/lib/x64
+
+elf-riscv64: all lib-riscv64
+	$(BUILD_DIR)/$(TARGET_EXEC) -riscv64 test/hello.c -o test/hello_riscv64 -sysroot $(TOP_DIR)/lib/riscv64
 
 riscv: test
 	llc -march=riscv32 -filetype=asm -O0 test/hello.ll -o test/hello.s
