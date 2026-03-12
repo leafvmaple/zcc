@@ -61,6 +61,12 @@ StmtAST::StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& th
 StmtAST::StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt, unique_ptr<StmtAST>&& elseStmt) 
     : type(type), cond(std::move(cond)), thenStmt(std::move(thenStmt)), elseStmt(std::move(elseStmt)) {}
 
+StmtAST::StmtAST(TYPE type, string fmt, vector<unique_ptr<ExprAST>>&& args)
+    : type(type), formatStr(std::move(fmt)), fmtArgs(std::move(args)) {}
+
+StmtAST::StmtAST(TYPE type, string fmt, vector<unique_ptr<LValAST>>&& lvals)
+    : type(type), formatStr(std::move(fmt)), scanfLVals(std::move(lvals)) {}
+
 
 ExprAST::ExprAST(unique_ptr<LOrExprAST>&& lorExpr)
     : lorExpr(std::move(lorExpr)) {}

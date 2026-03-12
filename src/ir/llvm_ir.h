@@ -59,20 +59,26 @@ public:
     llvm::Value* GetFunctionArg(int index) override;
 
     llvm::Type* GetInt32Type() override;
+    llvm::Type* GetInt8Type() override;
     llvm::Type* GetVoidType() override;
     llvm::Type* GetArrayType(llvm::Type* type, int size) override;
     llvm::Type* GetPointerType(llvm::Type* type) override;
     llvm::Type* GetValueType(llvm::Value* value) override;
-    llvm::Type* GetElementType(llvm::Type* value) override {};
+    llvm::Type* GetElementType(llvm::Type* value) override;
+    llvm::Type* GetAllocatedType(llvm::Value* value) override;
 
     llvm::Value* GetInt32(int value) override;
+    llvm::Value* GetInt8(int value) override;
     llvm::Value* CreateGEP(llvm::Type* type, llvm::Value* array, vector<llvm::Value*> index) override;
+    llvm::Value* CreateGlobalString(const std::string& str) override;
+    llvm::Value* CreateTrunc(llvm::Value* value, llvm::Type* type) override;
+    llvm::Value* CreateZExt(llvm::Value* value, llvm::Type* type) override;
 
     llvm::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs) override;
 
     int GetValueInt(llvm::Value* value) override;
     llvm::Value* GetArrayElement(llvm::Value* array, int index) override;
-    llvm::Value* GetBaseValue(llvm::Value* value) override { return nullptr;};
+    llvm::Value* GetBaseValue(llvm::Value* value) override;
 
     bool IsArrayType(llvm::Type* value) override;
     bool IsPointerType(llvm::Type* value) override;

@@ -68,15 +68,21 @@ public:
     koopa::Value* GetFunctionArg(int index) override;
 
     koopa::Type* GetInt32Type() override;
+    koopa::Type* GetInt8Type() override;
     koopa::Type* GetVoidType() override;
     koopa::Type* GetArrayType(koopa::Type* type, int size) override;
     koopa::Type* GetPointerType(koopa::Type* type) override;
 
     koopa::Type* GetValueType(koopa::Value* value) override;
     koopa::Type* GetElementType(koopa::Type* value) override;
+    koopa::Type* GetAllocatedType(koopa::Value* value) override;
 
     koopa::Value* GetInt32(int value) override;
+    koopa::Value* GetInt8(int value) override;
     koopa::Value* CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies) override;
+    koopa::Value* CreateGlobalString(const std::string& str) override;
+    koopa::Value* CreateTrunc(koopa::Value* value, koopa::Type* type) override;
+    koopa::Value* CreateZExt(koopa::Value* value, koopa::Type* type) override;
 
     koopa::Value* CaculateBinaryOp(const std::function<int(int, int)>& func, koopa::Value* lhs, koopa::Value* rhs) override;
 

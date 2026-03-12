@@ -551,6 +551,11 @@ koopa::Type* KoopaEnv::GetInt32Type() {
     return koopa_type(KOOPA_RTT_INT32);
 }
 
+koopa::Type* KoopaEnv::GetInt8Type() {
+    // Koopa IR doesn't have a native i8 type, so we use i32 as a stand-in
+    return koopa_type(KOOPA_RTT_INT32);
+}
+
 koopa::Type* KoopaEnv::GetVoidType() {
     return koopa_type(KOOPA_RTT_UNIT);
 }
@@ -577,6 +582,14 @@ koopa::Type* KoopaEnv::GetElementType(koopa::Type* type) {
     return koopa_element_type(type);
 }
 
+koopa::Type* KoopaEnv::GetAllocatedType(koopa::Value* value) {
+    // In Koopa, alloc values have pointer type whose base is the allocated type
+    if (value && value->ty) {
+        return koopa_element_type(value->ty);
+    }
+    return nullptr;
+}
+
 koopa::Value* KoopaEnv::GetInt32(int value) {
     return new koopa_raw_value_data_t {
         .ty = koopa_type(KOOPA_RTT_INT32),
@@ -588,6 +601,26 @@ koopa::Value* KoopaEnv::GetInt32(int value) {
             }
         }
     };
+}
+
+koopa::Value* KoopaEnv::GetInt8(int value) {
+    // Koopa IR uses i32 for everything, just return an integer value
+    return GetInt32(value);
+}
+
+koopa::Value* KoopaEnv::CreateGlobalString(const std::string& str) {
+    // Not directly supported in Koopa IR, return null
+    return nullptr;
+}
+
+koopa::Value* KoopaEnv::CreateTrunc(koopa::Value* value, koopa::Type* type) {
+    // Koopa IR doesn't have trunc, return value as-is
+    return value;
+}
+
+koopa::Value* KoopaEnv::CreateZExt(koopa::Value* value, koopa::Type* type) {
+    // Koopa IR doesn't have zext, return value as-is
+    return value;
 }
 
 koopa::Value* KoopaEnv::CreateGEP(koopa::Type* type, koopa::Value* array, vector<koopa::Value*> indies) {

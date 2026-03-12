@@ -12,9 +12,12 @@ class KoopaEnv;
 struct BaseType {
     enum class TYPE {
         INT,
+        CHAR,
         VOID,
     };
     BaseType(TYPE type) : type(type) {}
+
+    TYPE GetType() const { return type; }
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     Type* Codegen(Env<Type, Value, BasicBlock, Function>* env);
@@ -29,6 +32,7 @@ template<typename Type, typename Value, typename BasicBlock, typename Function>
 Type* BaseType::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
     switch (type) {
         case TYPE::INT:
+        case TYPE::CHAR:
             return env->GetInt32Type();
         case TYPE::VOID:
             return env->GetVoidType();

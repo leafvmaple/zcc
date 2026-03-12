@@ -292,6 +292,97 @@ void StmtAST::Codegen(Env<Type, Value, BasicBlock, Function>* env) {
             env->CreateBr(env->GetWhileEntry());
             break;
         }
+        case TYPE::For: {
+            bool hasScope = (forDecl != nullptr);
+            if (hasScope) env->EnterScope();
+
+            if (forDecl) forDecl->Codegen(env);
+            else if (forInitStmt) forInitStmt->Codegen(env);
+
+            auto* func = env->GetFunction();
+            auto* condBB = env->CreateBasicBlock("for_cond", func);
+            auto* bodyBB = env->CreateBasicBlock("for_body", func);
+            auto* stepBB = env->CreateBasicBlock("for_step", func);
+            auto* endBB = env->CreateBasicBlock("for_end", func);
+
+            env->EnterWhile(stepBB, endBB);
+            env->CreateBr(condBB);
+
+            env->SetInserPointer(condBB);
+            if (cond) {
+                auto* condVal = cond->ToValue(env);
+                env->CreateCondBr(condVal, bodyBB, endBB);
+            } else {
+                env->CreateBr(bodyBB);
+            }
+
+            env->SetInserPointer(bodyBB);
+            thenStmt->Codegen(env);
+            if (!env->EndWithTerminator()) {
+                env->CreateBr(stepBB);
+            }
+
+            env->SetInserPointer(stepBB);
+            if (forStepStmt) forStepStmt->Codegen(env);
+            env->CreateBr(condBB);
+
+            env->SetInserPointer(endBB);
+            env->ExitWhile();
+            if (hasScope) env->ExitScope();
+            break;
+        }
+        case TYPE::Printf: {
+            // Parse format string and emit putint/putch calls
+            size_t argIdx = 0;
+            auto putchSym = env->GetSymbolValue("putch");
+            auto putintSym = env->GetSymbolValue("putint");
+            for (size_t i = 0; i < formatStr.size(); ++i) {
+                char c = formatStr[i];
+                if (c == '%' && i + 1 < formatStr.size()) {
+                    char spec = formatStr[i + 1];
+                    if (spec == 'd') {
+                        auto* val = fmtArgs[argIdx++]->ToValue(env);
+                        env->CreateCall(putintSym.function, {val});
+                        ++i;
+                    } else if (spec == 'c') {
+                        auto* val = fmtArgs[argIdx++]->ToValue(env);
+                        env->CreateCall(putchSym.function, {val});
+                        ++i;
+                    } else {
+                        env->CreateCall(putchSym.function, {env->GetInt32(c)});
+                    }
+                } else {
+                    env->CreateCall(putchSym.function, {env->GetInt32(c)});
+                }
+            }
+            break;
+        }
+        case TYPE::Scanf: {
+            // Parse format string and emit getint/getch + store
+            size_t argIdx = 0;
+            auto getintSym = env->GetSymbolValue("getint");
+            auto getchSym = env->GetSymbolValue("getch");
+            for (size_t i = 0; i < formatStr.size(); ++i) {
+                char c = formatStr[i];
+                if (c == '%' && i + 1 < formatStr.size()) {
+                    char spec = formatStr[i + 1];
+                    if (spec == 'd') {
+                        auto* val = env->CreateCall(getintSym.function, {});
+                        auto* addr = scanfLVals[argIdx]->ToPointer(env);
+                        env->CreateStore(val, addr);
+                        ++argIdx;
+                        ++i;
+                    } else if (spec == 'c') {
+                        auto* val = env->CreateCall(getchSym.function, {});
+                        auto* addr = scanfLVals[argIdx]->ToPointer(env);
+                        env->CreateStore(val, addr);
+                        ++argIdx;
+                        ++i;
+                    }
+                }
+            }
+            break;
+        }
     }
 }
 
@@ -619,9 +710,9 @@ Value* LValAST::ToValue(Env<Type, Value, BasicBlock, Function>* env) {
     auto value = ToPointer(env);
     auto type = env->GetValueType(value);
     if (env->IsPointerType(type)) {
-        type = env->GetElementType(type);
-        if (env->IsArrayType(type)) {
-            return env->CreateGEP(type, value, { env->GetInt32(0) });
+        auto elemType = env->GetAllocatedType(value);
+        if (elemType && env->IsArrayType(elemType)) {
+            return env->CreateGEP(elemType, value, { env->GetInt32(0) });
         }
     }
     return env->CreateLoad(value);

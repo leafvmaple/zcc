@@ -108,8 +108,11 @@ public:
         If,
         Ret,
         While,
+        For,
         Break,
-        Continue
+        Continue,
+        Printf,
+        Scanf
     };
 
     StmtAST(TYPE type);
@@ -118,6 +121,10 @@ public:
     StmtAST(TYPE type, unique_ptr<LValAST>&& lval, unique_ptr<ExprAST>&& expr);
     StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt);
     StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt, unique_ptr<StmtAST>&& elseStmt);
+    // Printf/Scanf: format string + args
+    StmtAST(TYPE type, string fmt, vector<unique_ptr<ExprAST>>&& args);
+    // Scanf: format string + lvals
+    StmtAST(TYPE type, string fmt, vector<unique_ptr<LValAST>>&& lvals);
 
     template<typename Type, typename Value, typename BasicBlock, typename Function>
     void Codegen(Env<Type, Value, BasicBlock, Function>* env);
@@ -129,6 +136,14 @@ public:
     unique_ptr<ExprAST> cond;
     unique_ptr<StmtAST> thenStmt;
     unique_ptr<StmtAST> elseStmt;
+    // For loop
+    unique_ptr<DeclAST> forDecl;       // declaration-style init
+    unique_ptr<StmtAST> forInitStmt;   // expression/assignment init
+    unique_ptr<StmtAST> forStepStmt;   // expression/assignment step
+    // Printf/Scanf
+    string formatStr;
+    vector<unique_ptr<ExprAST>> fmtArgs;     // for printf
+    vector<unique_ptr<LValAST>> scanfLVals;  // for scanf
 };
 
 class ExprAST {

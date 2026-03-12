@@ -100,7 +100,7 @@ void LLVMEnv::CreateBuiltin(const std::string& name, llvm::Type* retType, std::v
 }
 
 void LLVMEnv::CreateCondBr(llvm::Value* cond, llvm::BasicBlock* trueBB, llvm::BasicBlock* falseBB) {
-    auto* logic_cond = CreateICmpNE(cond, GetInt32(0));
+    auto* logic_cond = Builder.CreateICmpNE(cond, GetInt32(0));
     Builder.CreateCondBr(logic_cond, trueBB, falseBB);
 }
 
@@ -113,8 +113,9 @@ void LLVMEnv::CreateStore(llvm::Value* value, llvm::Value* dest) {
 }
 
 llvm::Value* LLVMEnv::CreateLoad(llvm::Value* src) {
-    // TODO
-    return Builder.CreateLoad(llvm::Type::getInt32Ty(TheContext), src);
+    llvm::Type* loadType = GetAllocatedType(src);
+    if (!loadType) loadType = llvm::Type::getInt32Ty(TheContext);
+    return Builder.CreateLoad(loadType, src);
 }
 
 llvm::Value* LLVMEnv::CreateAlloca(llvm::Type* type, const std::string& name) {
@@ -208,6 +209,10 @@ llvm::Type* LLVMEnv::GetInt32Type() {
     return llvm::Type::getInt32Ty(TheContext);
 }
 
+llvm::Type* LLVMEnv::GetInt8Type() {
+    return llvm::Type::getInt8Ty(TheContext);
+}
+
 llvm::Type* LLVMEnv::GetVoidType() {
     return llvm::Type::getVoidTy(TheContext);
 }
@@ -224,12 +229,48 @@ llvm::Type* LLVMEnv::GetValueType(llvm::Value* value) {
     return value->getType();
 }
 
+llvm::Type* LLVMEnv::GetElementType(llvm::Type* type) {
+    if (type->isArrayTy()) {
+        return type->getArrayElementType();
+    }
+    return nullptr;
+}
+
+llvm::Type* LLVMEnv::GetAllocatedType(llvm::Value* value) {
+    if (auto* alloca = llvm::dyn_cast<llvm::AllocaInst>(value)) {
+        return alloca->getAllocatedType();
+    }
+    if (auto* gep = llvm::dyn_cast<llvm::GetElementPtrInst>(value)) {
+        return gep->getSourceElementType();
+    }
+    if (auto* gv = llvm::dyn_cast<llvm::GlobalVariable>(value)) {
+        return gv->getValueType();
+    }
+    return nullptr;
+}
+
 llvm::Value* LLVMEnv::GetInt32(int value) {
     return llvm::ConstantInt::get(GetInt32Type(), value);
 }
 
+llvm::Value* LLVMEnv::GetInt8(int value) {
+    return llvm::ConstantInt::get(GetInt8Type(), value);
+}
+
 llvm::Value* LLVMEnv::CreateGEP(llvm::Type* type, llvm::Value* array, vector<llvm::Value*> index) {
     return Builder.CreateGEP(type, array, index);
+}
+
+llvm::Value* LLVMEnv::CreateGlobalString(const std::string& str) {
+    return Builder.CreateGlobalStringPtr(str);
+}
+
+llvm::Value* LLVMEnv::CreateTrunc(llvm::Value* value, llvm::Type* type) {
+    return Builder.CreateTrunc(value, type);
+}
+
+llvm::Value* LLVMEnv::CreateZExt(llvm::Value* value, llvm::Type* type) {
+    return Builder.CreateZExt(value, type);
 }
 
 llvm::Value* LLVMEnv::CaculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs) {
@@ -252,6 +293,10 @@ llvm::Value* LLVMEnv::GetArrayElement(llvm::Value* array, int index) {
     auto* arrayType = llvm::dyn_cast<llvm::ArrayType>(array->getType());
     auto* indexValue = GetInt32(index);
     return Builder.CreateGEP(arrayType->getElementType(), array, {indexValue});
+}
+
+llvm::Value* LLVMEnv::GetBaseValue(llvm::Value* value) {
+    return value;
 }
 
 bool LLVMEnv::IsArrayType(llvm::Type* value) {

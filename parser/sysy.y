@@ -36,11 +36,13 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %lex-param {void *scanner} {yy::location& loc}
 %parse-param {void *scanner} {yy::location& loc} { class Scanner& ctx }
 
-%token INT VOID
-%token RETURN CONST IF ELSE WHILE BREAK CONTINUE
+%token INT CHAR VOID
+%token RETURN CONST IF ELSE WHILE FOR BREAK CONTINUE
+%token PRINTF SCANF
 %token AND OR EQ NE LE GE
 %token <std::string> IDENT
 %token <int> INT_CONST
+%token <std::string> STR_CONST
 
 %token END 0
 
@@ -54,6 +56,8 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %type <std::vector<std::unique_ptr<ConstInitValAST>>> ConstInitVals
 
 %type <std::unique_ptr<ExprAST>> OptExpr
+%type <std::unique_ptr<BlockItemAST>> ForInitClause
+%type <std::unique_ptr<StmtAST>> ForStepClause
 
 %type <std::unique_ptr<FuncDefAST>> FuncDef
 %type <std::unique_ptr<FuncFParamAST>> FuncFParam
@@ -86,6 +90,9 @@ void yyerror(std::unique_ptr<std::string> &ast, const char *s);
 %type <std::unique_ptr<ConstDefAST>> ConstDef
 %type <std::unique_ptr<VarDefAST>> VarDef
 
+%type <std::vector<std::unique_ptr<ExprAST>>> PrintfArgs
+%type <std::vector<std::unique_ptr<LValAST>>> ScanfArgs
+
 %%
 
 CompUnit : | CompUnit FuncDef {
@@ -102,6 +109,8 @@ FuncDef : BasicType IDENT '(' FuncFParams ')' Block {
 
 BasicType : INT {
   $$ = std::make_unique<BaseType>(BaseType::TYPE::INT);
+} | CHAR {
+  $$ = std::make_unique<BaseType>(BaseType::TYPE::CHAR);
 } | VOID {
   $$ = std::make_unique<BaseType>(BaseType::TYPE::VOID);
 };
@@ -171,11 +180,30 @@ MatchedStmt
 | WHILE '(' Expr ')' MatchedStmt {
     $$ = std::make_unique<StmtAST>(StmtAST::TYPE::While, std::move($3), std::move($5));
   }
+| FOR '(' ForInitClause OptExpr ';' ForStepClause ')' MatchedStmt {
+    auto s = std::make_unique<StmtAST>(StmtAST::TYPE::For);
+    if ($3) {
+        if ($3->decl) s->forDecl = std::move($3->decl);
+        else if ($3->stmt) s->forInitStmt = std::move($3->stmt);
+    }
+    s->cond = std::move($4); s->forStepStmt = std::move($6); s->thenStmt = std::move($8);
+    $$ = std::move(s);
+  }
 | BREAK ';' {
     $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Break);
   }
 | CONTINUE ';' {
     $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Continue);
+  }
+| PRINTF '(' STR_CONST ')' ';' {
+    auto args = std::vector<std::unique_ptr<ExprAST>>();
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Printf, $3, std::move(args));
+  }
+| PRINTF '(' STR_CONST ',' PrintfArgs ')' ';' {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Printf, $3, std::move($5));
+  }
+| SCANF '(' STR_CONST ',' ScanfArgs ')' ';' {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Scanf, $3, std::move($5));
   }
 ;
 
@@ -183,6 +211,32 @@ UnmatchedStmt: IF '(' Expr ')' Stmt {
   $$ = std::make_unique<StmtAST>(StmtAST::TYPE::If, std::move($3), std::move($5));
 } | IF '(' Expr ')' MatchedStmt ELSE UnmatchedStmt {
   $$ = std::make_unique<StmtAST>(StmtAST::TYPE::If, std::move($3), std::move($5), std::move($7));
+} | FOR '(' ForInitClause OptExpr ';' ForStepClause ')' UnmatchedStmt {
+  auto s = std::make_unique<StmtAST>(StmtAST::TYPE::For);
+  if ($3) {
+      if ($3->decl) s->forDecl = std::move($3->decl);
+      else if ($3->stmt) s->forInitStmt = std::move($3->stmt);
+  }
+  s->cond = std::move($4); s->forStepStmt = std::move($6); s->thenStmt = std::move($8);
+  $$ = std::move(s);
+} | WHILE '(' Expr ')' UnmatchedStmt {
+  $$ = std::make_unique<StmtAST>(StmtAST::TYPE::While, std::move($3), std::move($5));
+};
+
+PrintfArgs : Expr {
+  $$ = std::vector<std::unique_ptr<ExprAST>>();
+  $$.emplace_back(std::move($1));
+} | PrintfArgs ',' Expr {
+  $1.emplace_back(std::move($3));
+  $$ = std::move($1);
+};
+
+ScanfArgs : LVal {
+  $$ = std::vector<std::unique_ptr<LValAST>>();
+  $$.emplace_back(std::move($1));
+} | ScanfArgs ',' LVal {
+  $1.emplace_back(std::move($3));
+  $$ = std::move($1);
 };
 
 OptExpr : Expr {
@@ -190,6 +244,36 @@ OptExpr : Expr {
 } | {
   $$ = std::unique_ptr<ExprAST>();
 };
+
+ForInitClause
+: ';' {
+    $$ = nullptr;
+  }
+| BasicType VarDefs ';' {
+    auto decl = std::make_unique<DeclAST>(std::make_unique<VarDeclAST>(std::move($1), std::move($2)));
+    $$ = std::make_unique<BlockItemAST>(std::move(decl));
+  }
+| LVal '=' Expr ';' {
+    auto stmt = std::make_unique<StmtAST>(StmtAST::TYPE::Assign, std::move($1), std::move($3));
+    $$ = std::make_unique<BlockItemAST>(std::move(stmt));
+  }
+| Expr ';' {
+    auto stmt = std::make_unique<StmtAST>(StmtAST::TYPE::Expr, std::move($1));
+    $$ = std::make_unique<BlockItemAST>(std::move(stmt));
+  }
+;
+
+ForStepClause
+: {
+    $$ = nullptr;
+  }
+| LVal '=' Expr {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Assign, std::move($1), std::move($3));
+  }
+| Expr {
+    $$ = std::make_unique<StmtAST>(StmtAST::TYPE::Expr, std::move($1));
+  }
+;
 
 Expr : LOrExpr {
   $$ = std::make_unique<ExprAST>(std::move($1));
