@@ -5,11 +5,19 @@
 #include <vector>
 
 #include "type.h"
-#include "ir/ir.h"
 
 using std::unique_ptr;
 using std::vector;
 using std::string;
+
+namespace llvm {
+    class Value;
+    class Type;
+    class BasicBlock;
+    class Function;
+    class FunctionType;
+}
+class CodeGen;
 
 class FuncDefAST;
 class FuncFParamAST;
@@ -40,8 +48,7 @@ public:
     ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& initVal);
     ConstDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<ConstInitValAST>&& initVal);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type);
+    void Codegen(CodeGen* cg, llvm::Type* type);
 
     string ident;
     vector<unique_ptr<ConstExprAST>> sizeExprs;
@@ -55,8 +62,7 @@ public:
     VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs);
     VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<InitValAST>&& initVal);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env, Type* type);
+    void Codegen(CodeGen* cg, llvm::Type* type);
 
     string ident;
     vector<unique_ptr<ConstExprAST>> sizeExprs;
@@ -67,9 +73,7 @@ struct CompUnitAST {
 public:
     void AddFuncDef(unique_ptr<FuncDefAST>&& funcDef);
     void AddDecl(unique_ptr<DeclAST>&& decl);
-    
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    void Codegen(CodeGen* cg);
 
     vector<unique_ptr<FuncDefAST>> funcDefs;
     vector<unique_ptr<DeclAST>> decls;
@@ -80,8 +84,7 @@ public:
     FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, unique_ptr<BlockAST>&& block);
     FuncDefAST(unique_ptr<BaseType>&& funcType, string ident, vector<unique_ptr<FuncFParamAST>>&& params, unique_ptr<BlockAST>&& block);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    void Codegen(CodeGen* cg);
 
     unique_ptr<BaseType> funcType;
     string ident;
@@ -92,9 +95,7 @@ public:
 class BlockAST {
 public:
     BlockAST(vector<unique_ptr<BlockItemAST>>&& items);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    void Codegen(CodeGen* cg);
 
     vector<unique_ptr<BlockItemAST>> items;
 };
@@ -102,17 +103,7 @@ public:
 class StmtAST {
 public:
     enum class TYPE {
-        Assign,
-        Expr,
-        Block,
-        If,
-        Ret,
-        While,
-        For,
-        Break,
-        Continue,
-        Printf,
-        Scanf
+        Assign, Expr, Block, If, Ret, While, For, Break, Continue, Printf, Scanf
     };
 
     StmtAST(TYPE type);
@@ -121,13 +112,10 @@ public:
     StmtAST(TYPE type, unique_ptr<LValAST>&& lval, unique_ptr<ExprAST>&& expr);
     StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt);
     StmtAST(TYPE type, unique_ptr<ExprAST>&& cond, unique_ptr<StmtAST>&& thenStmt, unique_ptr<StmtAST>&& elseStmt);
-    // Printf/Scanf: format string + args
     StmtAST(TYPE type, string fmt, vector<unique_ptr<ExprAST>>&& args);
-    // Scanf: format string + lvals
     StmtAST(TYPE type, string fmt, vector<unique_ptr<LValAST>>&& lvals);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    void Codegen(CodeGen* cg);
 
     TYPE type;
     unique_ptr<LValAST> lval;
@@ -136,44 +124,34 @@ public:
     unique_ptr<ExprAST> cond;
     unique_ptr<StmtAST> thenStmt;
     unique_ptr<StmtAST> elseStmt;
-    // For loop
-    unique_ptr<DeclAST> forDecl;       // declaration-style init
-    unique_ptr<StmtAST> forInitStmt;   // expression/assignment init
-    unique_ptr<StmtAST> forStepStmt;   // expression/assignment step
-    // Printf/Scanf
+    unique_ptr<DeclAST> forDecl;
+    unique_ptr<StmtAST> forInitStmt;
+    unique_ptr<StmtAST> forStepStmt;
     string formatStr;
-    vector<unique_ptr<ExprAST>> fmtArgs;     // for printf
-    vector<unique_ptr<LValAST>> scanfLVals;  // for scanf
+    vector<unique_ptr<ExprAST>> fmtArgs;
+    vector<unique_ptr<LValAST>> scanfLVals;
 };
 
 class ExprAST {
 public:
     ExprAST(unique_ptr<LOrExprAST>&& lorExpr);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     unique_ptr<LOrExprAST> lorExpr;
 };
 
 class PrimaryExprAST {
 public:
-    enum class TYPE {
-        Expr,
-        LVal,
-        Number
-    };
+    enum class TYPE { Expr, LVal, Number };
 
     PrimaryExprAST(TYPE type, unique_ptr<ExprAST>&& expr);
     PrimaryExprAST(TYPE type, unique_ptr<LValAST>&& lval);
     PrimaryExprAST(TYPE type, unique_ptr<NumberAST>&& value);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     TYPE type;
     unique_ptr<ExprAST> expr;
@@ -184,36 +162,23 @@ public:
 class NumberAST {
 public:
     NumberAST(int value);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
 
     int value;
 };
 
 class UnaryExprAST {
 public:
-    enum class TYPE {
-        Primary,
-        Unary,
-        Call
-    };
-
-    enum class OP {
-        PLUS,
-        MINUS,
-        NOT
-    };
+    enum class TYPE { Primary, Unary, Call };
+    enum class OP { PLUS, MINUS, NOT };
 
     UnaryExprAST(TYPE type, unique_ptr<PrimaryExprAST>&& primaryExpr);
     UnaryExprAST(TYPE type, OP op, unique_ptr<UnaryExprAST>&& unaryExpr);
     UnaryExprAST(TYPE type, string ident);
     UnaryExprAST(TYPE type, string ident, vector<unique_ptr<ExprAST>>&& callArgs);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     TYPE type;
     OP op;
@@ -226,13 +191,12 @@ public:
 class MulExprAST {
 public:
     enum class OP { MUL, DIV, MOD };
+
     MulExprAST(unique_ptr<UnaryExprAST>&& unaryExpr);
     MulExprAST(OP op, unique_ptr<MulExprAST>&& left, unique_ptr<UnaryExprAST>&& right);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     unique_ptr<UnaryExprAST> unaryExpr;
     OP op;
@@ -243,13 +207,12 @@ public:
 class AddExprAST {
 public:
     enum class OP { ADD, SUB };
+
     AddExprAST(unique_ptr<MulExprAST>&& mulExpr);
     AddExprAST(OP op, unique_ptr<AddExprAST>&& left, unique_ptr<MulExprAST>&& right);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     OP op;
     unique_ptr<MulExprAST> mulExpr;
@@ -263,11 +226,9 @@ public:
 
     RelExprAST(unique_ptr<AddExprAST>&& addExpr);
     RelExprAST(unique_ptr<RelExprAST>&& left, Op op, unique_ptr<AddExprAST>&& right);
-    
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     unique_ptr<AddExprAST> addExpr;
     unique_ptr<RelExprAST> left;
@@ -282,10 +243,8 @@ public:
     EqExprAST(unique_ptr<RelExprAST>&& relExpr);
     EqExprAST(unique_ptr<EqExprAST>&& left, Op op, unique_ptr<RelExprAST>&& right);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     unique_ptr<RelExprAST> relExpr;
     unique_ptr<EqExprAST> left;
@@ -298,10 +257,8 @@ public:
     LAndExprAST(unique_ptr<EqExprAST>&& eqExpr);
     LAndExprAST(unique_ptr<LAndExprAST>&& left, unique_ptr<EqExprAST>&& right);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     unique_ptr<EqExprAST> eqExpr;
     unique_ptr<LAndExprAST> left;
@@ -313,10 +270,8 @@ public:
     LOrExprAST(unique_ptr<LAndExprAST>&& landExpr);
     LOrExprAST(unique_ptr<LOrExprAST>&& left, unique_ptr<LAndExprAST>&& right);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     unique_ptr<LAndExprAST> landExpr;
     unique_ptr<LOrExprAST> left;
@@ -328,8 +283,7 @@ public:
     DeclAST(unique_ptr<ConstDeclAST>&& constDecl);
     DeclAST(unique_ptr<VarDeclAST>&& varDecl);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    void Codegen(CodeGen* cg);
 
     unique_ptr<ConstDeclAST> constDecl;
     unique_ptr<VarDeclAST> varDecl;
@@ -338,9 +292,7 @@ public:
 class ConstDeclAST {
 public:
     ConstDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<ConstDefAST>>&& constDefs);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    void Codegen(CodeGen* cg);
 
     unique_ptr<BaseType> btype;
     vector<unique_ptr<ConstDefAST>> constDefs;
@@ -349,9 +301,7 @@ public:
 class VarDeclAST {
 public:
     VarDeclAST(unique_ptr<BaseType>&& btype, vector<unique_ptr<VarDefAST>>&& varDefs);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Codegen(Env<Type, Value, BasicBlock, Function>* env);
+    void Codegen(CodeGen* cg);
 
     unique_ptr<BaseType> btype;
     vector<unique_ptr<VarDefAST>> varDefs;
@@ -364,8 +314,7 @@ public:
     ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs);
     ConstInitValAST(vector<unique_ptr<ConstInitValAST>>&& subVals);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToNumber(CodeGen* cg);
 
     unique_ptr<ConstExprAST> expr;
     vector<unique_ptr<ConstInitValAST>> subVals;
@@ -379,12 +328,8 @@ public:
     InitValAST(vector<unique_ptr<ExprAST>>&& exprs);
     InitValAST(vector<unique_ptr<InitValAST>>&& subVals);
 
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env, Value* addr);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env, vector<int> shape, int dim);
+    llvm::Value* ToValue(CodeGen* cg, llvm::Value* addr);
+    llvm::Value* ToNumber(CodeGen* cg, vector<int> shape, int dim);
 
     unique_ptr<ExprAST> expr;
     vector<unique_ptr<InitValAST>> subVals;
@@ -396,8 +341,7 @@ public:
     BlockItemAST(unique_ptr<DeclAST>&& decl);
     BlockItemAST(unique_ptr<StmtAST>&& stmt);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void ToValue(Env<Type, Value, BasicBlock, Function>* env);
+    void ToValue(CodeGen* cg);
 
     unique_ptr<DeclAST> decl;
     unique_ptr<StmtAST> stmt;
@@ -408,14 +352,9 @@ public:
     LValAST(string ident);
     LValAST(string ident, vector<unique_ptr<ExprAST>>&& indies);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToPointer(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
+    llvm::Value* ToPointer(CodeGen* cg);
 
     string ident;
     vector<unique_ptr<ExprAST>> indies;
@@ -425,12 +364,9 @@ class ConstExprAST {
 public:
     ConstExprAST(unique_ptr<ExprAST>&& expr);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToNumber(Env<Type, Value, BasicBlock, Function>* env);
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    int ToInteger(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
+    llvm::Value* ToNumber(CodeGen* cg);
+    int ToInteger(CodeGen* cg);
 
     unique_ptr<ExprAST> expr;
 };
@@ -440,26 +376,19 @@ public:
     FuncFParamAST(unique_ptr<BaseType>&& btype, string ident, bool isArray = false);
     FuncFParamAST(unique_ptr<BaseType>&& btype, string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs);
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Type* ToType(Env<Type, Value, BasicBlock, Function>* env);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* Alloca(Env<Type, Value, BasicBlock, Function>* env, Type* type);
+    llvm::Type* ToType(CodeGen* cg);
+    llvm::Value* Alloca(CodeGen* cg, llvm::Type* type);
 
     unique_ptr<BaseType> btype;
     string ident;
-    vector<unique_ptr<ConstExprAST>> sizeExprs; // For array parameters
+    vector<unique_ptr<ConstExprAST>> sizeExprs;
     bool isArray;
 };
 
 class FuncRParamAST {
 public:
     FuncRParamAST(unique_ptr<ExprAST>&& expr);
-
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    Value* ToValue(Env<Type, Value, BasicBlock, Function>* env);
+    llvm::Value* ToValue(CodeGen* cg);
 
     unique_ptr<ExprAST> expr;
 };
-
-#include "ast/ast.tpp"

@@ -17,9 +17,8 @@ public:
     Scanner();
     ~Scanner();
 
-    template<typename Type, typename Value, typename BasicBlock, typename Function>
-    void Parse(FILE* input, Env<Type, Value, BasicBlock, Function>* env);
-    
+    void Parse(FILE* input, CodeGen* cg);
+
     CompUnitAST ast;
 
 private:
