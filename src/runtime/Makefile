@@ -20,6 +20,10 @@ RV64_AR   := ar
 
 CFLAGS := -ffreestanding -fno-builtin -nostdlib -O2 -Wall
 
+# Default: use local syscall.h; override ABI_DIR to use an external OS header
+ABI_DIR ?= $(SRC_DIR)
+ASFLAGS := -I$(ABI_DIR)
+
 .PHONY: all clean x64 riscv64
 
 all: x64 riscv64
@@ -33,11 +37,11 @@ $(BUILD_DIR)/x64/printf.o: $(SRC_DIR)/printf.c
 
 $(BUILD_DIR)/x64/syscall.o: $(SRC_DIR)/x64/syscall.S
 	@mkdir -p $(dir $@)
-	$(X64_AS) --target=x86_64 -c $< -o $@
+	$(X64_AS) --target=x86_64 $(ASFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/x64/crt0.o: $(SRC_DIR)/x64/crt0.S
 	@mkdir -p $(dir $@)
-	$(X64_AS) --target=x86_64 -c $< -o $@
+	$(X64_AS) --target=x86_64 $(ASFLAGS) -c $< -o $@
 
 $(LIB_DIR)/x64/libzccrt.a: $(BUILD_DIR)/x64/printf.o $(BUILD_DIR)/x64/syscall.o
 	@mkdir -p $(dir $@)
@@ -60,11 +64,11 @@ $(BUILD_DIR)/riscv64/printf.o: $(SRC_DIR)/printf.c
 
 $(BUILD_DIR)/riscv64/syscall.o: $(SRC_DIR)/riscv64/syscall.S
 	@mkdir -p $(dir $@)
-	$(RV64_AS) -march=rv64gc -c $< -o $@
+	$(RV64_AS) -march=rv64gc $(ASFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/riscv64/crt0.o: $(SRC_DIR)/riscv64/crt0.S
 	@mkdir -p $(dir $@)
-	$(RV64_AS) -march=rv64gc -c $< -o $@
+	$(RV64_AS) -march=rv64gc $(ASFLAGS) -c $< -o $@
 
 $(LIB_DIR)/riscv64/libzccrt.a: $(BUILD_DIR)/riscv64/printf.o $(BUILD_DIR)/riscv64/syscall.o
 	@mkdir -p $(dir $@)

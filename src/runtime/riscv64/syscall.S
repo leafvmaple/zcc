@@ -7,26 +7,50 @@
  *   Trap via: ecall
  */
 
+#include "syscall.h"
+
     .section .text
 
-/* long sys_write(int fd, const void *buf, long count)
- * C calling convention: a0=fd, a1=buf, a2=count
- * These already match the syscall register layout.
- */
-    .globl sys_write
-sys_write:
-    li      a7, 4               /* NR_WRITE = 4 */
+/* long sys_read(int fd, void *buf, long count) */
+    .globl sys_read
+sys_read:
+    li      a7, NR_READ
     ecall
     ret
 
-/* void sys_exit(int code)
- * C calling convention: a0=code
- */
+/* long sys_write(int fd, const void *buf, long count) */
+    .globl sys_write
+sys_write:
+    li      a7, NR_WRITE
+    ecall
+    ret
+
+/* int sys_open(const char *path, int flags) */
+    .globl sys_open
+sys_open:
+    li      a7, NR_OPEN
+    ecall
+    ret
+
+/* int sys_close(int fd) */
+    .globl sys_close
+sys_close:
+    li      a7, NR_CLOSE
+    ecall
+    ret
+
+/* void sys_exit(int code) */
     .globl sys_exit
 sys_exit:
-    li      a7, 1               /* NR_EXIT = 1 */
+    li      a7, NR_EXIT
     ecall
-    /* Should not return */
     j       sys_exit
+
+/* int sys_pause(void) */
+    .globl sys_pause
+sys_pause:
+    li      a7, NR_PAUSE
+    ecall
+    ret
 
     .section .note.GNU-stack,"",@progbits
