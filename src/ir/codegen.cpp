@@ -4,6 +4,8 @@
 #include "llvm/Transforms/Scalar/ADCE.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Support/raw_os_ostream.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
 
 #include <fstream>
 
@@ -62,6 +64,22 @@ llvm::Type* CodeGen::GetArrayType(llvm::Type* type, int size) {
     return llvm::ArrayType::get(type, size);
 }
 
+// Build a (possibly nested) array type from a list of dimensions, innermost last:
+// MakeArrayType(i32, {2, 3}) -> [2 x [3 x i32]].
+llvm::Type* CodeGen::MakeArrayType(llvm::Type* elemType, const std::vector<int>& dims) {
+    llvm::Type* type = elemType;
+    for (auto it = dims.rbegin(); it != dims.rend(); ++it)
+        type = GetArrayType(type, *it);
+    return type;
+}
+
+// Strip `levels` array layers: PeelArray([2 x [3 x i32]], 2) -> i32.
+llvm::Type* CodeGen::PeelArray(llvm::Type* type, int levels) {
+    for (int i = 0; i < levels && type && type->isArrayTy(); ++i)
+        type = type->getArrayElementType();
+    return type;
+}
+
 llvm::Type* CodeGen::GetPointerType(llvm::Type* type) {
     return llvm::PointerType::get(type, 0);
 }
@@ -100,14 +118,14 @@ llvm::Function* CodeGen::CreateFunction(llvm::FunctionType* funcType, const std:
         args->setName(names[i]);
         ++args;
     }
-    AddSymbol(name, VAR_TYPE::FUNC, { func });
+    AddSymbol(name, { .function = func, .kind = VAR_TYPE::FUNC });
     return func;
 }
 
 void CodeGen::CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params, bool isVarArg) {
     auto* funcType = llvm::FunctionType::get(retType, params, isVarArg);
     auto* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, Module);
-    AddSymbol(name, VAR_TYPE::FUNC, { func });
+    AddSymbol(name, { .function = func, .kind = VAR_TYPE::FUNC });
 }
 
 llvm::Function* CodeGen::GetFunction() {
@@ -128,7 +146,14 @@ llvm::Value* CodeGen::CreateAlloca(llvm::Type* type, const std::string& name) {
 }
 
 llvm::Value* CodeGen::CreateGlobal(llvm::Type* type, const std::string& name, llvm::Value* init) {
-    llvm::Constant* initVal = init ? llvm::dyn_cast<llvm::Constant>(init) : llvm::Constant::getNullValue(type);
+    llvm::Constant* initVal = init ? llvm::dyn_cast<llvm::Constant>(init) : nullptr;
+    // A scalar initializer is produced as i32; narrow it to the global's type
+    // (e.g. an i8 `char` global) so the GlobalVariable type and init agree.
+    if (auto* ci = llvm::dyn_cast_or_null<llvm::ConstantInt>(initVal)) {
+        if (type->isIntegerTy() && ci->getType() != type)
+            initVal = llvm::ConstantInt::get(type, ci->getSExtValue());
+    }
+    if (!initVal) initVal = llvm::Constant::getNullValue(type);
     return new llvm::GlobalVariable(Module, type, false, llvm::GlobalValue::ExternalLinkage, initVal, name);
 }
 
@@ -136,10 +161,28 @@ void CodeGen::CreateStore(llvm::Value* value, llvm::Value* dest) {
     Builder.CreateStore(value, dest);
 }
 
+// Store an i32 value into a scalar location of element type `elemType`,
+// truncating first when the destination is narrower (e.g. an i8 `char`).
+void CodeGen::StoreScalar(llvm::Value* value, llvm::Value* dest, llvm::Type* elemType) {
+    Builder.CreateStore(ConvertInt(value, elemType), dest);
+}
+
 llvm::Value* CodeGen::CreateLoad(llvm::Value* src) {
     llvm::Type* loadType = GetAllocatedType(src);
     if (!loadType) loadType = GetInt32Type();
     return Builder.CreateLoad(loadType, src);
+}
+
+// Load a scalar of element type `elemType` and widen it to i32 so all
+// expression values share a single representation (a `char` sign-extends).
+llvm::Value* CodeGen::CreateLoadInt(llvm::Value* ptr, llvm::Type* elemType) {
+    llvm::Value* v = Builder.CreateLoad(elemType, ptr);
+    return ConvertInt(v, GetInt32Type());
+}
+
+// Load a decayed array pointer (the pointer stored in an array parameter's slot).
+llvm::Value* CodeGen::LoadPointer(llvm::Value* ptr) {
+    return Builder.CreateLoad(GetPointerType(GetInt8Type()), ptr);
 }
 
 llvm::Value* CodeGen::CreateGEP(llvm::Type* type, llvm::Value* array, std::vector<llvm::Value*> index) {
@@ -166,6 +209,27 @@ llvm::Value* CodeGen::CreateArray(llvm::Type* type, std::vector<llvm::Value*> va
 
 llvm::Value* CodeGen::CreateGlobalString(const std::string& str) {
     return Builder.CreateGlobalStringPtr(str);
+}
+
+// Build a constant aggregate for a global array initializer from a row-major,
+// zero-padded list of i32 scalar constants. Leaf constants are narrowed to
+// `elemType` (e.g. i8 for a `char` array).
+llvm::Constant* CodeGen::MakeArrayConstant(llvm::Type* elemType, const std::vector<int>& dims,
+                                           const std::vector<llvm::Value*>& flatValues) {
+    size_t idx = 0;
+    std::function<llvm::Constant*(size_t)> build = [&](size_t dim) -> llvm::Constant* {
+        if (dim == dims.size()) {
+            auto* ci = llvm::cast<llvm::ConstantInt>(flatValues[idx++]);
+            return llvm::ConstantInt::get(elemType, ci->getSExtValue());
+        }
+        std::vector<llvm::Constant*> elems;
+        for (int i = 0; i < dims[dim]; ++i)
+            elems.push_back(build(dim + 1));
+        auto* arrTy = llvm::ArrayType::get(MakeArrayType(elemType,
+                          std::vector<int>(dims.begin() + dim + 1, dims.end())), dims[dim]);
+        return llvm::ConstantArray::get(arrTy, elems);
+    };
+    return build(0);
 }
 
 // --- Arithmetic ---
@@ -216,6 +280,13 @@ void CodeGen::CreateRet(llvm::Value* value) {
 }
 
 llvm::Value* CodeGen::CreateCall(llvm::Function* func, std::vector<llvm::Value*> args) {
+    // Coerce each fixed argument to the callee's declared parameter type
+    // (e.g. narrow an i32 expression to an i8 `char` parameter). Variadic
+    // arguments beyond the fixed list keep their (promoted) i32 form.
+    auto* ft = func->getFunctionType();
+    unsigned n = ft->getNumParams();
+    for (unsigned i = 0; i < args.size() && i < n; ++i)
+        args[i] = ConvertInt(args[i], ft->getParamType(i));
     return Builder.CreateCall(func, args);
 }
 
@@ -230,6 +301,16 @@ bool CodeGen::EndWithTerminator() {
 
 llvm::Value* CodeGen::CreateTrunc(llvm::Value* value, llvm::Type* type) { return Builder.CreateTrunc(value, type); }
 llvm::Value* CodeGen::CreateZExt(llvm::Value* value, llvm::Type* type)  { return Builder.CreateZExt(value, type); }
+
+llvm::Value* CodeGen::ConvertInt(llvm::Value* value, llvm::Type* dst) {
+    llvm::Type* src = value->getType();
+    if (src == dst || !src->isIntegerTy() || !dst->isIntegerTy())
+        return value;
+    unsigned sb = src->getIntegerBitWidth(), db = dst->getIntegerBitWidth();
+    if (sb < db) return Builder.CreateSExt(value, dst);
+    if (sb > db) return Builder.CreateTrunc(value, dst);
+    return value;
+}
 
 // --- Value utilities ---
 
@@ -254,29 +335,20 @@ llvm::Value* CodeGen::GetBaseValue(llvm::Value* value) { return value; }
 
 // --- Scope management ---
 
-void CodeGen::EnterScope() { locals.push_back({}); types.push_back({}); }
-void CodeGen::ExitScope()  { locals.pop_back(); types.pop_back(); }
+void CodeGen::EnterScope() { locals.push_back({}); }
+void CodeGen::ExitScope()  { locals.pop_back(); }
 bool CodeGen::IsGlobalScope() const { return locals.size() == 1; }
 
-void CodeGen::AddSymbol(const std::string& name, VAR_TYPE type, SymbolValue value) {
-    locals.back()[name] = value;
-    types.back()[value] = type;
+void CodeGen::AddSymbol(const std::string& name, const Symbol& sym) {
+    locals.back()[name] = sym;
 }
 
-CodeGen::SymbolValue CodeGen::GetSymbolValue(const std::string& name) {
+CodeGen::Symbol CodeGen::GetSymbol(const std::string& name) {
     for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
         auto found = it->find(name);
         if (found != it->end()) return found->second;
     }
-    return { nullptr };
-}
-
-VAR_TYPE CodeGen::GetSymbolType(SymbolValue value) {
-    for (auto it = types.rbegin(); it != types.rend(); ++it) {
-        auto found = it->find(value);
-        if (found != it->end()) return found->second;
-    }
-    return VAR_TYPE::VAR;
+    return {};
 }
 
 // --- While loop tracking ---

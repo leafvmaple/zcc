@@ -16,10 +16,17 @@ enum class VAR_TYPE { CONST, VAR, GLOBAL, FUNC };
 
 class CodeGen {
 public:
-    union SymbolValue {
-        llvm::Value* value;
-        llvm::Function* function;
-        bool operator<(const SymbolValue& other) const { return value < other.value; }
+    // A name binding. `value` is the storage (alloca / global) or, for a local
+    // const scalar, the immediate constant; `function` is set for functions.
+    // `type` is the storage element type: the scalar type (i8/i32) for scalars,
+    // the full array type for arrays, and — when `pointerParam` is set — the
+    // pointee element type that a decayed array parameter points to.
+    struct Symbol {
+        llvm::Value* value = nullptr;
+        llvm::Function* function = nullptr;
+        VAR_TYPE kind = VAR_TYPE::VAR;
+        llvm::Type* type = nullptr;
+        bool pointerParam = false;
     };
 
     CodeGen(const std::string& moduleName);
@@ -34,6 +41,8 @@ public:
     llvm::Type* GetInt8Type();
     llvm::Type* GetVoidType();
     llvm::Type* GetArrayType(llvm::Type* type, int size);
+    llvm::Type* MakeArrayType(llvm::Type* elemType, const std::vector<int>& dims);
+    llvm::Type* PeelArray(llvm::Type* type, int levels);
     llvm::Type* GetPointerType(llvm::Type* type);
     llvm::Type* GetValueType(llvm::Value* value);
     llvm::Type* GetElementType(llvm::Type* type);
@@ -52,7 +61,10 @@ public:
     llvm::Value* CreateAlloca(llvm::Type* type, const std::string& name);
     llvm::Value* CreateGlobal(llvm::Type* type, const std::string& name, llvm::Value* init);
     void CreateStore(llvm::Value* value, llvm::Value* dest);
+    void StoreScalar(llvm::Value* value, llvm::Value* dest, llvm::Type* elemType);
     llvm::Value* CreateLoad(llvm::Value* src);
+    llvm::Value* CreateLoadInt(llvm::Value* ptr, llvm::Type* elemType);
+    llvm::Value* LoadPointer(llvm::Value* ptr);
     llvm::Value* CreateGEP(llvm::Type* type, llvm::Value* array, std::vector<llvm::Value*> index);
 
     // Constants
@@ -60,6 +72,8 @@ public:
     llvm::Value* GetInt8(int value);
     llvm::Value* CreateZero(llvm::Type* type);
     llvm::Value* CreateArray(llvm::Type* type, std::vector<llvm::Value*> values);
+    llvm::Constant* MakeArrayConstant(llvm::Type* elemType, const std::vector<int>& dims,
+                                      const std::vector<llvm::Value*>& flatValues);
     llvm::Value* CreateGlobalString(const std::string& str);
 
     // Arithmetic
@@ -90,6 +104,9 @@ public:
     // Type conversions
     llvm::Value* CreateTrunc(llvm::Value* value, llvm::Type* type);
     llvm::Value* CreateZExt(llvm::Value* value, llvm::Type* type);
+    // Sign-extend / truncate an integer value to `dst` (no-op if already matching
+    // or not an integer-to-integer conversion).
+    llvm::Value* ConvertInt(llvm::Value* value, llvm::Type* dst);
 
     // Value utilities
     llvm::Value* CalculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs);
@@ -101,9 +118,8 @@ public:
     void EnterScope();
     void ExitScope();
     bool IsGlobalScope() const;
-    void AddSymbol(const std::string& name, VAR_TYPE type, SymbolValue value);
-    SymbolValue GetSymbolValue(const std::string& name);
-    VAR_TYPE GetSymbolType(SymbolValue value);
+    void AddSymbol(const std::string& name, const Symbol& sym);
+    Symbol GetSymbol(const std::string& name);
 
     // While loop tracking
     void EnterWhile(llvm::BasicBlock* entry, llvm::BasicBlock* end);
@@ -117,7 +133,6 @@ private:
     llvm::IRBuilder<llvm::NoFolder> Builder;
 
     struct WhileData { llvm::BasicBlock* entry; llvm::BasicBlock* end; };
-    std::vector<std::map<std::string, SymbolValue>> locals;
-    std::vector<std::map<SymbolValue, VAR_TYPE>> types;
+    std::vector<std::map<std::string, Symbol>> locals;
     std::vector<WhileData> whiles;
 };

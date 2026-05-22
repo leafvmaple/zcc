@@ -304,6 +304,8 @@ public:
     llvm::Value* ToValue(CodeGen* cg);
     llvm::Value* ToNumber(CodeGen* cg);
     llvm::Value* ToPointer(CodeGen* cg);
+    // Address of the l-value, also reporting the pointee element type via `elemOut`.
+    llvm::Value* ToPointer(CodeGen* cg, llvm::Type*& elemOut);
 
     string ident;
     vector<unique_ptr<ExprAST>> indies;

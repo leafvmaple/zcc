@@ -145,49 +145,32 @@ void Flatten(CodeGen* cg, vector<llvm::Value*>& flatValues, const vector<int>& s
     }
 }
 
-llvm::Value* ToArray(CodeGen* cg, vector<int>::iterator shape, llvm::Value**& init) {
-    auto size = *shape;
-    if (!size) return *init++;
-
-    llvm::Type* type{};
-    vector<llvm::Value*> values;
-    for (int i = 0; i < size; ++i) {
-        auto* val = ToArray(cg, shape + 1, init);
-        values.push_back(val);
-        type = cg->GetValueType(val);
-    }
-    return cg->CreateArray(cg->GetArrayType(type, size), values);
-}
-
+// Collect an array's dimension sizes from the (constant) size expressions.
 template<typename T>
-llvm::Value* FlattenToArray(CodeGen* cg, vector<int>& shape, T& initVal) {
-    vector<llvm::Value*> flatValues;
-    Flatten(cg, flatValues, shape, 0, initVal);
-    auto* ptr = flatValues.data();
-    return ToArray(cg, shape.begin(), ptr);
+vector<int> ArrayDims(CodeGen* cg, T* def) {
+    vector<int> dims;
+    for (auto& sizeExpr : def->sizeExprs)
+        dims.push_back(sizeExpr->ToInteger(cg));
+    return dims;
 }
 
+// Flatten an initializer into a row-major, zero-padded list of i32 scalars.
 template<typename T>
-llvm::Value* GetArrayInitValue(CodeGen* cg, vector<int>& shape, llvm::Type*& type, T* def) {
-    if (def->initVal) {
-        auto* var = FlattenToArray(cg, shape, def->initVal);
-        type = cg->GetValueType(var);
-        return var;
-    }
-    for (auto it = shape.rbegin() + 1; *it; ++it)
-        type = cg->GetArrayType(type, *it);
-    return cg->CreateZero(type);
+vector<llvm::Value*> FlattenInit(CodeGen* cg, const vector<int>& dims, T& initVal) {
+    vector<int> shape = dims;
+    shape.push_back(0); // sentinel used by Flatten
+    vector<llvm::Value*> flat;
+    Flatten(cg, flat, shape, 0, initVal);
+    return flat;
 }
 
-void StoreArray(CodeGen* cg, llvm::Value* addr, vector<int>::iterator shape, llvm::Value* val) {
-    if (*shape == 0) {
-        cg->CreateStore(val, addr);
-        return;
-    }
-    for (int i = 0; i < *shape; ++i) {
-        auto* element = cg->GetArrayElement(val, i);
-        auto* subAddr = cg->CreateGEP(cg->GetValueType(element), addr, {cg->GetInt32(i)});
-        StoreArray(cg, subAddr, shape + 1, element);
+// Store a flattened initializer into a freshly allocated local array, element
+// by element, truncating each scalar to `elemType` (e.g. i8 for `char`).
+void StoreFlatInit(CodeGen* cg, llvm::Value* addr, llvm::Type* elemType,
+                   const vector<llvm::Value*>& flat) {
+    for (size_t i = 0; i < flat.size(); ++i) {
+        auto* p = cg->CreateGEP(elemType, addr, {cg->GetInt32((int)i)});
+        cg->StoreScalar(flat[i], p, elemType);
     }
 }
 
@@ -195,49 +178,63 @@ void StoreArray(CodeGen* cg, llvm::Value* addr, vector<int>::iterator shape, llv
 
 // ========== Code Generation ==========
 
-void ConstDefAST::Codegen(CodeGen* cg, llvm::Type* type) {
-    vector<int> shape{};
-    for (auto& sizeExpr : sizeExprs)
-        shape.push_back(sizeExpr->ToInteger(cg));
-    shape.push_back(0);
-
-    llvm::Value* init{};
-    if (!sizeExprs.empty())
-        init = GetArrayInitValue(cg, shape, type, this);
-    else
-        init = initVal->ToNumber(cg);
-
-    llvm::Value* var{};
-    if (cg->IsGlobalScope()) {
-        var = cg->CreateGlobal(type, ident, init);
-    } else if (!sizeExprs.empty()) {
-        var = cg->CreateAlloca(type, ident);
-        if (initVal) StoreArray(cg, var, shape.begin(), init);
-    } else {
-        var = init;
+void ConstDefAST::Codegen(CodeGen* cg, llvm::Type* elemType) {
+    if (sizeExprs.empty()) {
+        // Scalar const: keep the folded constant as the binding so it can be
+        // reused in later constant expressions (e.g. array dimensions).
+        llvm::Value* val = initVal->ToNumber(cg);
+        if (cg->IsGlobalScope()) {
+            auto* var = cg->CreateGlobal(elemType, ident, val);
+            cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::CONST, .type = elemType});
+        } else {
+            cg->AddSymbol(ident, {.value = val, .kind = VAR_TYPE::CONST, .type = elemType});
+        }
+        return;
     }
-    cg->AddSymbol(ident, VAR_TYPE::CONST, {.value = var});
+
+    auto dims = ArrayDims(cg, this);
+    auto* arrType = cg->MakeArrayType(elemType, dims);
+    auto flat = initVal ? FlattenInit(cg, dims, initVal) : vector<llvm::Value*>{};
+
+    if (cg->IsGlobalScope()) {
+        llvm::Value* init = initVal ? cg->MakeArrayConstant(elemType, dims, flat) : nullptr;
+        auto* var = cg->CreateGlobal(arrType, ident, init);
+        cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::CONST, .type = arrType});
+    } else {
+        auto* var = cg->CreateAlloca(arrType, ident);
+        StoreFlatInit(cg, var, elemType, flat);
+        cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::CONST, .type = arrType});
+    }
 }
 
-void VarDefAST::Codegen(CodeGen* cg, llvm::Type* type) {
-    vector<int> shape{};
-    for (auto& sizeExpr : sizeExprs)
-        shape.push_back(sizeExpr->ToInteger(cg));
-    shape.push_back(0);
+void VarDefAST::Codegen(CodeGen* cg, llvm::Type* elemType) {
+    if (sizeExprs.empty()) {
+        // Scalar variable.
+        llvm::Value* init = initVal ? initVal->ToValue(cg, nullptr) : cg->GetInt32(0);
+        if (cg->IsGlobalScope()) {
+            auto* var = cg->CreateGlobal(elemType, ident, init);
+            cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::GLOBAL, .type = elemType});
+        } else {
+            auto* var = cg->CreateAlloca(elemType, ident);
+            if (initVal) cg->StoreScalar(init, var, elemType);
+            cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::VAR, .type = elemType});
+        }
+        return;
+    }
 
-    llvm::Value* init{};
-    if (!sizeExprs.empty())
-        init = GetArrayInitValue(cg, shape, type, this);
-    else
-        init = initVal ? initVal->ToValue(cg, init) : cg->GetInt32(0);
+    auto dims = ArrayDims(cg, this);
+    auto* arrType = cg->MakeArrayType(elemType, dims);
 
     if (cg->IsGlobalScope()) {
-        auto* var = cg->CreateGlobal(type, ident, init);
-        cg->AddSymbol(ident, VAR_TYPE::GLOBAL, {.value = var});
+        llvm::Value* init = initVal
+            ? cg->MakeArrayConstant(elemType, dims, FlattenInit(cg, dims, initVal))
+            : nullptr;
+        auto* var = cg->CreateGlobal(arrType, ident, init);
+        cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::GLOBAL, .type = arrType});
     } else {
-        auto* var = cg->CreateAlloca(type, ident);
-        if (initVal) StoreArray(cg, var, shape.begin(), init);
-        cg->AddSymbol(ident, VAR_TYPE::VAR, {.value = var});
+        auto* var = cg->CreateAlloca(arrType, ident);
+        if (initVal) StoreFlatInit(cg, var, elemType, FlattenInit(cg, dims, initVal));
+        cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::VAR, .type = arrType});
     }
 }
 
@@ -282,7 +279,9 @@ void BlockAST::Codegen(CodeGen* cg) {
 void StmtAST::Codegen(CodeGen* cg) {
     switch (type) {
     case TYPE::Assign: {
-        cg->CreateStore(expr->ToValue(cg), lval->ToPointer(cg));
+        llvm::Type* elemType = nullptr;
+        auto* ptr = lval->ToPointer(cg, elemType);
+        cg->StoreScalar(expr->ToValue(cg), ptr, elemType ? elemType : cg->GetInt32Type());
         break;
     }
     case TYPE::Expr: {
@@ -318,7 +317,10 @@ void StmtAST::Codegen(CodeGen* cg) {
         break;
     }
     case TYPE::Ret: {
-        cg->CreateRet(expr ? expr->ToValue(cg) : nullptr);
+        if (expr)
+            cg->CreateRet(cg->ConvertInt(expr->ToValue(cg), cg->GetFunction()->getReturnType()));
+        else
+            cg->CreateRet(nullptr);
         break;
     }
     case TYPE::While: {
@@ -419,7 +421,8 @@ llvm::Value* UnaryExprAST::ToValue(CodeGen* cg) {
     case TYPE::Call: {
         std::vector<llvm::Value*> args;
         for (auto& arg : callArgs) args.push_back(arg->ToValue(cg));
-        return cg->CreateCall(cg->GetSymbolValue(ident).function, args);
+        // Widen a narrow (char) return to i32 so expression values stay uniform.
+        return cg->ConvertInt(cg->CreateCall(cg->GetSymbol(ident).function, args), cg->GetInt32Type());
     }
     }
     return nullptr;
@@ -578,28 +581,62 @@ void BlockItemAST::ToValue(CodeGen* cg) {
 }
 
 llvm::Value* LValAST::ToValue(CodeGen* cg) {
-    auto* ptr = ToPointer(cg);
-    auto* type = cg->GetValueType(ptr);
-    if (cg->IsPointerType(type)) {
-        auto* elemType = cg->GetAllocatedType(ptr);
-        if (elemType && cg->IsArrayType(elemType))
-            return cg->CreateGEP(elemType, ptr, {cg->GetInt32(0)});
-    }
-    return cg->CreateLoad(ptr);
+    auto sym = cg->GetSymbol(ident);
+
+    // A bare array parameter used as a value is the (loaded) pointer it holds.
+    if (sym.pointerParam && indies.empty())
+        return cg->LoadPointer(sym.value);
+
+    // A local const scalar is bound directly to its constant value, not a slot.
+    if (indies.empty() && sym.value && !cg->IsPointerType(sym.value->getType()))
+        return cg->ConvertInt(sym.value, cg->GetInt32Type());
+
+    llvm::Type* elemType = nullptr;
+    auto* ptr = ToPointer(cg, elemType);
+    // A whole (sub)array used as a value decays to the address of its first element.
+    if (elemType && cg->IsArrayType(elemType))
+        return ptr;
+    return cg->CreateLoadInt(ptr, elemType ? elemType : cg->GetInt32Type());
 }
 
 llvm::Value* LValAST::ToNumber(CodeGen* cg) {
-    return cg->GetBaseValue(cg->GetSymbolValue(ident).value);
+    return cg->GetBaseValue(cg->GetSymbol(ident).value);
 }
 
 llvm::Value* LValAST::ToPointer(CodeGen* cg) {
-    auto* value = cg->GetSymbolValue(ident).value;
-    if (!indies.empty()) {
-        vector<llvm::Value*> indexVals;
-        for (auto& index : indies) indexVals.push_back(index->ToValue(cg));
-        value = cg->CreateGEP(cg->GetInt32Type(), value, indexVals);
+    llvm::Type* elemType = nullptr;
+    return ToPointer(cg, elemType);
+}
+
+llvm::Value* LValAST::ToPointer(CodeGen* cg, llvm::Type*& elemOut) {
+    auto sym = cg->GetSymbol(ident);
+    llvm::Value* addr = sym.value;
+    llvm::Type* container = sym.type; // array type, scalar type, or param pointee type
+
+    if (indies.empty()) {
+        elemOut = container;
+        return addr;
     }
-    return value;
+
+    vector<llvm::Value*> idx;
+    for (auto& index : indies) idx.push_back(index->ToValue(cg));
+
+    if (sym.pointerParam) {
+        // `addr` is a slot holding a decayed pointer to elements of type `container`.
+        // gep <container>, ptr <loaded>, idx0, idx1, ...  (no leading zero)
+        llvm::Value* base = cg->LoadPointer(addr);
+        addr = cg->CreateGEP(container, base, idx);
+        elemOut = cg->PeelArray(container, (int)idx.size() - 1);
+    } else {
+        // `addr` points at the array object; the leading zero steps through it.
+        // gep <arrayType>, ptr <addr>, 0, idx0, idx1, ...
+        vector<llvm::Value*> gidx;
+        gidx.push_back(cg->GetInt32(0));
+        for (auto* v : idx) gidx.push_back(v);
+        addr = cg->CreateGEP(container, addr, gidx);
+        elemOut = cg->PeelArray(container, (int)idx.size());
+    }
+    return addr;
 }
 
 llvm::Value* ConstExprAST::ToValue(CodeGen* cg)  { return expr->ToValue(cg); }
@@ -618,7 +655,16 @@ llvm::Type* FuncFParamAST::ToType(CodeGen* cg) {
 
 llvm::Value* FuncFParamAST::Alloca(CodeGen* cg, llvm::Type* type) {
     auto* addr = cg->CreateAlloca(type, ident);
-    cg->AddSymbol(ident, VAR_TYPE::VAR, {.value = addr});
+    if (isArray) {
+        // The slot holds a decayed pointer; record the element type it points to
+        // (the declared base with any inner dimensions applied).
+        llvm::Type* elem = btype->Codegen(cg);
+        for (auto& sizeExpr : sizeExprs)
+            elem = cg->GetArrayType(elem, sizeExpr->ToInteger(cg));
+        cg->AddSymbol(ident, {.value = addr, .kind = VAR_TYPE::VAR, .type = elem, .pointerParam = true});
+    } else {
+        cg->AddSymbol(ident, {.value = addr, .kind = VAR_TYPE::VAR, .type = type});
+    }
     return addr;
 }
 
