@@ -1,0 +1,6 @@
+# The test runner executes under WSL/Linux; keep it and the fixtures LF so a
+# Windows checkout with core.autocrlf=true does not break the script or make
+# the .expected files mismatch the program's LF stdout.
+*.sh           text eol=lf
+test/cases/*.c        text eol=lf
+test/cases/*.expected text eol=lf

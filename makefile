@@ -104,6 +104,12 @@ clean:
 	-rm -rf $(BUILD_DIR)
 	$(MAKE) -C $(TOP_DIR)/src/runtime clean
 
+# ---- Regression tests ----
+# Compiles each test/cases/*.c to LLVM IR, builds it with the host clang
+# (libc as the runtime oracle), runs it, and diffs stdout against *.expected.
+test: all
+	@bash $(TOP_DIR)/test/run_tests.sh
+
 # ---- Runtime library targets ----
 lib-x64:
 	$(MAKE) -C $(TOP_DIR)/src/runtime x64
@@ -123,7 +129,7 @@ elf-x64: all lib-x64
 elf-riscv64: all lib-riscv64
 	$(BUILD_DIR)/$(TARGET_EXEC) -riscv64 test/hello.c -o test/hello_riscv64 -sysroot $(TOP_DIR)/lib/riscv64
 
-riscv: test
+riscv: llvm
 	llc -march=riscv32 -filetype=asm -O0 test/hello.ll -o test/hello.s
 
 -include $(DEPS)
