@@ -165,7 +165,7 @@ llvm::Value* CodeGen::CreateArray(llvm::Type* type, std::vector<llvm::Value*> va
 }
 
 llvm::Value* CodeGen::CreateGlobalString(const std::string& str) {
-    return Builder.CreateGlobalStringPtr(str);
+    return Builder.CreateGlobalString(str);
 }
 
 // --- Arithmetic ---

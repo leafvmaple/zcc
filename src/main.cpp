@@ -112,8 +112,10 @@ static void link_elf(const Options& opts, const char* llFile, const char* argv0)
     else
         sysroot = default_sysroot(argv0, opts.arch);
 
-    std::string llcArch = (opts.arch == Arch::X64) ? "x86-64"  : "riscv64";
-    std::string target  = (opts.arch == Arch::X64) ? "x86_64"  : "riscv64";
+    std::string target  = (opts.arch == Arch::X64) ? "x86_64-none-elf" : "riscv64-none-elf";
+    // Match the RV64GC/lp64d runtime library when cross-compiling from any host.
+    std::string llvm_flags = (opts.arch == Arch::X64) ? "" : " -mattr=+m,+a,+f,+d,+c -target-abi=lp64d";
+    std::string assembler_flags = (opts.arch == Arch::X64) ? "" : " -march=rv64gc -mabi=lp64d";
 
     /* Resolve linker script, crt0.o, libzccrt.a */
     std::string linkerScript = opts.linkerScript.empty()
@@ -126,13 +128,13 @@ static void link_elf(const Options& opts, const char* llFile, const char* argv0)
     std::string oFile = std::string(opts.output) + ".o";
 
     /* LLVM IR → assembly */
-    run("llc -march=" + llcArch + " -filetype=asm -O0 " + llFile + " -o " + sFile);
+    run("llc -mtriple=" + target + llvm_flags + " -filetype=asm -O0 " + llFile + " -o " + sFile);
 
     /* assembly → object */
-    run("clang --target=" + target + " -c " + sFile + " -o " + oFile);
+    run("clang --target=" + target + assembler_flags + " -c " + sFile + " -o " + oFile);
 
     /* link: crt0.o + user.o + libzccrt.a + extra -l libs → ELF */
-    std::string ldCmd = "ld -T " + linkerScript + " -o " + std::string(opts.output)
+    std::string ldCmd = "ld.lld -T " + linkerScript + " -o " + std::string(opts.output)
                       + " " + crt0 + " " + oFile + " " + rtLib;
     for (auto& dir : opts.libDirs)
         ldCmd += " -L" + dir;

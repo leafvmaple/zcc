@@ -12,11 +12,11 @@ LIB_DIR   := $(ROOT_DIR)/lib
 # Toolchains
 X64_CC    := clang
 X64_AS    := clang
-X64_AR    := ar
+X64_AR    := llvm-ar
 
 RV64_CC   := clang --target=riscv64
 RV64_AS   := clang --target=riscv64
-RV64_AR   := ar
+RV64_AR   := llvm-ar
 
 CFLAGS := -ffreestanding -fno-builtin -nostdlib -O2 -Wall
 
