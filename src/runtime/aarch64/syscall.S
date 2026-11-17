@@ -21,6 +21,21 @@ sys_close:
     mov x8, #NR_CLOSE
     svc #0
     ret
+.globl sys_ioctl
+sys_ioctl:
+    mov x8, #NR_IOCTL
+    svc #0
+    ret
+.globl sys_dup2
+sys_dup2:
+    mov x8, #NR_DUP2
+    svc #0
+    ret
+.globl sys_fcntl
+sys_fcntl:
+    mov x8, #NR_FCNTL
+    svc #0
+    ret
 .globl sys_exit
 sys_exit:
     mov x8, #NR_EXIT

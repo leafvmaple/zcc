@@ -1,124 +1,81 @@
-/*
- * Minimal printf for custom OS
- * Supports: %d, %s, %c, %x, %%, \n
- * Uses sys_write syscall directly — no libc dependency
- */
-
+/* Minimal printf: %d, %s, %c, %x and %%; uses the shared syscall runtime. */
 typedef __builtin_va_list va_list;
 #define va_start(ap, param) __builtin_va_start(ap, param)
-#define va_arg(ap, type)    __builtin_va_arg(ap, type)
-#define va_end(ap)          __builtin_va_end(ap)
-
-/* Implemented in arch-specific syscall.S */
+#define va_arg(ap, type) __builtin_va_arg(ap, type)
+#define va_end(ap) __builtin_va_end(ap)
 long sys_write(int fd, const void *buf, long count);
 
-static void put_char(char c) {
-    sys_write(1, &c, 1);
+static int put_bytes(const char *text, long size) {
+    if (size > 2147483647)
+        return -1;
+    long done = 0;
+    while (done < size) {
+        long count = sys_write(1, text + done, size - done);
+        if (count <= 0)
+            return -1;
+        done += count;
+    }
+    return (int)done;
 }
 
-static void put_string(const char *s) {
-    long len = 0;
-    const char *p = s;
-    while (*p++) len++;
-    sys_write(1, s, len);
-}
-
-static void put_int(int n) {
-    char buf[20];
-    int i = 0;
-    int neg = 0;
-
-    if (n < 0) {
-        neg = 1;
-        /* Handle INT_MIN without UB */
-        if (n == (-2147483647 - 1)) {
-            put_string("-2147483648");
-            return;
-        }
-        n = -n;
-    }
-
-    if (n == 0) {
-        buf[i++] = '0';
-    } else {
-        while (n > 0) {
-            buf[i++] = '0' + (n % 10);
-            n /= 10;
-        }
-    }
-
-    if (neg) put_char('-');
-
-    /* Print digits in reverse order */
-    while (i > 0) {
-        put_char(buf[--i]);
-    }
-}
-
-static void put_hex(unsigned int n) {
-    char buf[16];
-    int i = 0;
-    const char *hex = "0123456789abcdef";
-
-    if (n == 0) {
-        buf[i++] = '0';
-    } else {
-        while (n > 0) {
-            buf[i++] = hex[n & 0xf];
-            n >>= 4;
-        }
-    }
-
-    while (i > 0) {
-        put_char(buf[--i]);
-    }
+static int put_number(unsigned int value, unsigned int base, int negative) {
+    const char *digits = "0123456789abcdef";
+    char buffer[12];
+    char *end = buffer + sizeof(buffer);
+    char *out = end;
+    do {
+        *--out = digits[value % base];
+        value /= base;
+    } while (value);
+    if (negative)
+        *--out = '-';
+    return put_bytes(out, end - out);
 }
 
 int printf(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     int written = 0;
-
     while (*fmt) {
-        if (*fmt == '%') {
-            fmt++;
-            switch (*fmt) {
-            case 'd': {
-                int val = va_arg(ap, int);
-                put_int(val);
-                break;
-            }
-            case 's': {
-                const char *s = va_arg(ap, const char *);
-                put_string(s);
-                break;
-            }
-            case 'c': {
-                int c = va_arg(ap, int);
-                put_char((char)c);
-                break;
-            }
-            case 'x': {
-                unsigned int val = va_arg(ap, unsigned int);
-                put_hex(val);
-                break;
-            }
-            case '%': {
-                put_char('%');
-                break;
-            }
-            default:
-                put_char('%');
-                put_char(*fmt);
-                break;
-            }
+        char c = *fmt++;
+        int count;
+        if (c != '%') {
+            count = put_bytes(&c, 1);
         } else {
-            put_char(*fmt);
+            c = *fmt;
+            if (c)
+                ++fmt;
+            switch (c) {
+            case 'd': {
+                int value = va_arg(ap, int);
+                unsigned int magnitude = value < 0 ? 0u - (unsigned int)value : (unsigned int)value;
+                count = put_number(magnitude, 10, value < 0);
+                break;
+            }
+            case 'x': count = put_number(va_arg(ap, unsigned int), 16, 0); break;
+            case 's': {
+                const char *text = va_arg(ap, const char *);
+                long size = 0;
+                while (text[size])
+                    ++size;
+                count = put_bytes(text, size);
+                break;
+            }
+            case 'c': c = (char)va_arg(ap, int); count = put_bytes(&c, 1); break;
+            case '%': count = put_bytes("%", 1); break;
+            default: {
+                char literal[2] = {'%', c};
+                count = put_bytes(literal, c ? 2 : 1);
+                break;
+            }
+            }
         }
-        fmt++;
-        written++;
+        if (count < 0 || written > 2147483647 - count) {
+            written = -1;
+            break;
+        }
+        written += count;
     }
-
     va_end(ap);
     return written;
 }

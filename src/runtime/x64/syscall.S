@@ -21,6 +21,21 @@ sys_close:
     mov $NR_CLOSE, %eax
     int $0x80
     ret
+.globl sys_ioctl
+sys_ioctl:
+    mov $NR_IOCTL, %eax
+    int $0x80
+    ret
+.globl sys_dup2
+sys_dup2:
+    mov $NR_DUP2, %eax
+    int $0x80
+    ret
+.globl sys_fcntl
+sys_fcntl:
+    mov $NR_FCNTL, %eax
+    int $0x80
+    ret
 .globl sys_exit
 sys_exit:
     mov $NR_EXIT, %eax

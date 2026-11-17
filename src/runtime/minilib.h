@@ -3,10 +3,17 @@
 #include "syscall.h"
 #include "process.h"
 #include "fcntl.h"
+#include "terminal.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 long sys_read(int fd, void* buffer, long count);
 long sys_write(int fd, void* buffer, long count);
 int sys_open(char* path, int flags);
 int sys_close(int fd);
+long sys_ioctl(int fd, int request, long argument);
+long sys_dup2(int old_fd, int new_fd);
+long sys_fcntl(int fd, int command, long argument);
 void sys_exit(int code);
 int sys_pause();
 long sys_chdir(char* path);
@@ -35,5 +42,8 @@ void* memset(void* target, int value, long size);
 void* memmove(void* target, void* source, long size);
 #ifndef __ZCC__
 int printf(const char* format, ...);
+#endif
+#ifdef __cplusplus
+}
 #endif
 #endif

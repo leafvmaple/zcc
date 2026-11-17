@@ -21,6 +21,21 @@ sys_close:
     li a7, NR_CLOSE
     ecall
     ret
+.globl sys_ioctl
+sys_ioctl:
+    li a7, NR_IOCTL
+    ecall
+    ret
+.globl sys_dup2
+sys_dup2:
+    li a7, NR_DUP2
+    ecall
+    ret
+.globl sys_fcntl
+sys_fcntl:
+    li a7, NR_FCNTL
+    ecall
+    ret
 .globl sys_exit
 sys_exit:
     li a7, NR_EXIT
