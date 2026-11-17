@@ -36,6 +36,11 @@ sys_spawn:
     mov $NR_SPAWN, %eax
     int $0x80
     ret
+.globl sys_spawn_foreground
+sys_spawn_foreground:
+    mov $NR_SPAWN_FOREGROUND, %eax
+    int $0x80
+    ret
 .globl sys_wait
 sys_wait:
     mov $NR_WAIT, %eax
@@ -44,6 +49,11 @@ sys_wait:
 .globl sys_kill
 sys_kill:
     mov $NR_KILL, %eax
+    int $0x80
+    ret
+.globl sys_process_next
+sys_process_next:
+    mov $NR_PROCESS_NEXT, %eax
     int $0x80
     ret
 .globl sys_getpid
@@ -74,6 +84,41 @@ sys_chdir:
 .globl sys_getcwd
 sys_getcwd:
     mov $NR_GETCWD, %eax
+    int $0x80
+    ret
+.globl sys_mkdir
+sys_mkdir:
+    mov $NR_MKDIR, %eax
+    int $0x80
+    ret
+.globl sys_unlink
+sys_unlink:
+    mov $NR_UNLINK, %eax
+    int $0x80
+    ret
+.globl sys_rmdir
+sys_rmdir:
+    mov $NR_RMDIR, %eax
+    int $0x80
+    ret
+.globl sys_sync
+sys_sync:
+    mov $NR_SYNC, %eax
+    int $0x80
+    ret
+.globl sys_shutdown
+sys_shutdown:
+    mov $NR_SHUTDOWN, %eax
+    int $0x80
+    ret
+.globl sys_fstat
+sys_fstat:
+    mov $NR_FSTAT, %eax
+    int $0x80
+    ret
+.globl sys_ftruncate
+sys_ftruncate:
+    mov $NR_FTRUNCATE, %eax
     int $0x80
     ret
 .section .note.GNU-stack,"",@progbits

@@ -36,6 +36,11 @@ sys_spawn:
     li a7, NR_SPAWN
     ecall
     ret
+.globl sys_spawn_foreground
+sys_spawn_foreground:
+    li a7, NR_SPAWN_FOREGROUND
+    ecall
+    ret
 .globl sys_wait
 sys_wait:
     li a7, NR_WAIT
@@ -44,6 +49,11 @@ sys_wait:
 .globl sys_kill
 sys_kill:
     li a7, NR_KILL
+    ecall
+    ret
+.globl sys_process_next
+sys_process_next:
+    li a7, NR_PROCESS_NEXT
     ecall
     ret
 .globl sys_getpid
@@ -74,6 +84,41 @@ sys_chdir:
 .globl sys_getcwd
 sys_getcwd:
     li a7, NR_GETCWD
+    ecall
+    ret
+.globl sys_mkdir
+sys_mkdir:
+    li a7, NR_MKDIR
+    ecall
+    ret
+.globl sys_unlink
+sys_unlink:
+    li a7, NR_UNLINK
+    ecall
+    ret
+.globl sys_rmdir
+sys_rmdir:
+    li a7, NR_RMDIR
+    ecall
+    ret
+.globl sys_sync
+sys_sync:
+    li a7, NR_SYNC
+    ecall
+    ret
+.globl sys_shutdown
+sys_shutdown:
+    li a7, NR_SHUTDOWN
+    ecall
+    ret
+.globl sys_fstat
+sys_fstat:
+    li a7, NR_FSTAT
+    ecall
+    ret
+.globl sys_ftruncate
+sys_ftruncate:
+    li a7, NR_FTRUNCATE
     ecall
     ret
 .section .note.GNU-stack,"",@progbits

@@ -36,6 +36,11 @@ sys_spawn:
     mov x8, #NR_SPAWN
     svc #0
     ret
+.globl sys_spawn_foreground
+sys_spawn_foreground:
+    mov x8, #NR_SPAWN_FOREGROUND
+    svc #0
+    ret
 .globl sys_wait
 sys_wait:
     mov x8, #NR_WAIT
@@ -44,6 +49,11 @@ sys_wait:
 .globl sys_kill
 sys_kill:
     mov x8, #NR_KILL
+    svc #0
+    ret
+.globl sys_process_next
+sys_process_next:
+    mov x8, #NR_PROCESS_NEXT
     svc #0
     ret
 .globl sys_getpid
@@ -74,6 +84,41 @@ sys_chdir:
 .globl sys_getcwd
 sys_getcwd:
     mov x8, #NR_GETCWD
+    svc #0
+    ret
+.globl sys_mkdir
+sys_mkdir:
+    mov x8, #NR_MKDIR
+    svc #0
+    ret
+.globl sys_unlink
+sys_unlink:
+    mov x8, #NR_UNLINK
+    svc #0
+    ret
+.globl sys_rmdir
+sys_rmdir:
+    mov x8, #NR_RMDIR
+    svc #0
+    ret
+.globl sys_sync
+sys_sync:
+    mov x8, #NR_SYNC
+    svc #0
+    ret
+.globl sys_shutdown
+sys_shutdown:
+    mov x8, #NR_SHUTDOWN
+    svc #0
+    ret
+.globl sys_fstat
+sys_fstat:
+    mov x8, #NR_FSTAT
+    svc #0
+    ret
+.globl sys_ftruncate
+sys_ftruncate:
+    mov x8, #NR_FTRUNCATE
     svc #0
     ret
 .section .note.GNU-stack,"",%progbits
