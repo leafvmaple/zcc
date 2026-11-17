@@ -66,4 +66,14 @@ sys_readdir:
     mov $NR_READDIR, %eax
     int $0x80
     ret
+.globl sys_chdir
+sys_chdir:
+    mov $NR_CHDIR, %eax
+    int $0x80
+    ret
+.globl sys_getcwd
+sys_getcwd:
+    mov $NR_GETCWD, %eax
+    int $0x80
+    ret
 .section .note.GNU-stack,"",@progbits

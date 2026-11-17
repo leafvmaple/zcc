@@ -66,4 +66,14 @@ sys_readdir:
     li a7, NR_READDIR
     ecall
     ret
+.globl sys_chdir
+sys_chdir:
+    li a7, NR_CHDIR
+    ecall
+    ret
+.globl sys_getcwd
+sys_getcwd:
+    li a7, NR_GETCWD
+    ecall
+    ret
 .section .note.GNU-stack,"",@progbits

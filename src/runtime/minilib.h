@@ -9,6 +9,8 @@ int sys_open(char* path, int flags);
 int sys_close(int fd);
 void sys_exit(int code);
 int sys_pause();
+long sys_chdir(char* path);
+long sys_getcwd(char* buffer, long capacity);
 long sys_spawn(char* path, int argc, char** argv);
 long sys_wait(int pid, int* status);
 long sys_kill(int pid);

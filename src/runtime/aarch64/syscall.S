@@ -66,4 +66,14 @@ sys_readdir:
     mov x8, #NR_READDIR
     svc #0
     ret
+.globl sys_chdir
+sys_chdir:
+    mov x8, #NR_CHDIR
+    svc #0
+    ret
+.globl sys_getcwd
+sys_getcwd:
+    mov x8, #NR_GETCWD
+    svc #0
+    ret
 .section .note.GNU-stack,"",%progbits

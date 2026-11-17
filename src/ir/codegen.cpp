@@ -341,7 +341,17 @@ TypeRef CodeGen::TypeOf(llvm::Value* value) {
 llvm::Value* CodeGen::Annotate(llvm::Value* value, TypeRef type) { sourceTypes[value] = std::move(type); return value; }
 llvm::Value* CodeGen::Cast(llvm::Value* value, TypeRef type) {
     auto* target = type->Codegen(this);
-    if (value->getType() == target) return Annotate(value, type);
+    if (value->getType() == target) {
+        // Opaque LLVM pointers can represent distinct C pointer types. Keep a
+        // conversion's annotation separate from the original lvalue address.
+        if (target->isPointerTy()) {
+            // Global initializers retain a constant; their destination owns its
+            // declared type. Do not retype the address of a referenced global.
+            if (!Builder.GetInsertBlock()) return value;
+            value = Builder.Insert(llvm::GetElementPtrInst::Create(GetInt8Type(), value, {GetInt32(0)}));
+        }
+        return Annotate(value, type);
+    }
     if (target->isIntegerTy() && value->getType()->isIntegerTy()) {
         if (auto* constant = llvm::dyn_cast<llvm::ConstantInt>(value)) return Annotate(llvm::ConstantInt::get(target, constant->getValue().sextOrTrunc(target->getIntegerBitWidth())), type);
         return Annotate(Builder.CreateIntCast(value, target, true), type);
