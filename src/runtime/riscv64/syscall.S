@@ -1,56 +1,69 @@
-/*
- * RISC-V 64 syscall stubs for custom OS
- *
- * Syscall convention:
- *   a7 = syscall number
- *   a0 = arg1, a1 = arg2, a2 = arg3
- *   Trap via: ecall
- */
-
 #include "syscall.h"
-
-    .section .text
-
-/* long sys_read(int fd, void *buf, long count) */
-    .globl sys_read
+.section .text
+.globl sys_read
 sys_read:
-    li      a7, NR_READ
+    li a7, NR_READ
     ecall
     ret
-
-/* long sys_write(int fd, const void *buf, long count) */
-    .globl sys_write
+.globl sys_write
 sys_write:
-    li      a7, NR_WRITE
+    li a7, NR_WRITE
     ecall
     ret
-
-/* int sys_open(const char *path, int flags) */
-    .globl sys_open
+.globl sys_open
 sys_open:
-    li      a7, NR_OPEN
+    li a2, 0
+    li a7, NR_OPEN
     ecall
     ret
-
-/* int sys_close(int fd) */
-    .globl sys_close
+.globl sys_close
 sys_close:
-    li      a7, NR_CLOSE
+    li a7, NR_CLOSE
     ecall
     ret
-
-/* void sys_exit(int code) */
-    .globl sys_exit
+.globl sys_exit
 sys_exit:
-    li      a7, NR_EXIT
+    li a7, NR_EXIT
     ecall
-    j       sys_exit
-
-/* int sys_pause(void) */
-    .globl sys_pause
+    unimp
+.globl sys_pause
 sys_pause:
-    li      a7, NR_PAUSE
+    li a7, NR_PAUSE
     ecall
     ret
-
-    .section .note.GNU-stack,"",@progbits
+.globl sys_spawn
+sys_spawn:
+    li a7, NR_SPAWN
+    ecall
+    ret
+.globl sys_wait
+sys_wait:
+    li a7, NR_WAIT
+    ecall
+    ret
+.globl sys_kill
+sys_kill:
+    li a7, NR_KILL
+    ecall
+    ret
+.globl sys_getpid
+sys_getpid:
+    li a7, NR_GETPID
+    ecall
+    ret
+.globl sys_yield
+sys_yield:
+    li a7, NR_YIELD
+    ecall
+    ret
+.globl sys_stat
+sys_stat:
+    li a7, NR_STAT
+    ecall
+    ret
+.globl sys_readdir
+sys_readdir:
+    li a7, NR_READDIR
+    ecall
+    ret
+.section .note.GNU-stack,"",@progbits

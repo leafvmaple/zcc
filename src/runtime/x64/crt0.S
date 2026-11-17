@@ -1,21 +1,13 @@
-/*
- * x86_64 C runtime startup for custom OS
- * Entry point: _start → calls main() → sys_exit(retval)
- */
-
-    .section .text
-    .globl _start
+#include "syscall.h"
+.section .text
+.globl _start
 _start:
-    /* Clear frame pointer for clean stack traces */
-    xorq    %rbp, %rbp
-
-    /* Call main() */
-    call    main
-
-    /* Exit with main's return value */
-    movq    %rax, %rdi          /* exit code = main() return value */
-    movq    $1, %rax            /* NR_EXIT = 1 */
-    int     $0x80
-    hlt
-
-    .section .note.GNU-stack,"",@progbits
+    xorq %rbp, %rbp
+    movq (%rsp), %rdi
+    leaq 8(%rsp), %rsi
+    call main
+    movl %eax, %edi
+    movq $NR_EXIT, %rax
+    int $0x80
+    ud2
+.section .note.GNU-stack,"",@progbits

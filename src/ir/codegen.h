@@ -11,6 +11,8 @@
 #include <vector>
 #include <map>
 #include <functional>
+#include <stdexcept>
+#include "ast/type.h"
 
 enum class VAR_TYPE { CONST, VAR, GLOBAL, FUNC };
 
@@ -31,14 +33,28 @@ public:
     // Types
     llvm::FunctionType* CreateFuncType(llvm::Type* retType, std::vector<llvm::Type*> params);
     llvm::Type* GetInt32Type();
+    llvm::Type* GetInt64Type();
+    void SetTarget(const std::string& target);
+    TypeRef TypeOf(llvm::Value* value);
+    llvm::Value* Annotate(llvm::Value* value, TypeRef type);
+    llvm::Value* Cast(llvm::Value* value, TypeRef type);
+    llvm::Value* Decay(llvm::Value* address);
+    llvm::Value* Index(llvm::Value* address, llvm::Value* index);
+    llvm::Value* Member(llvm::Value* address, const std::string& name);
+    llvm::Value* SizeOf(TypeRef type);
+    void DefineStruct(const std::string& name, const std::vector<StructField>& fields);
+    llvm::Type* StructType(const std::string& name);
+    void DeclareFunction(const std::string& name, TypeRef result, const std::vector<TypeRef>& params);
+    llvm::Value* Alloca(TypeRef type, const std::string& name);
+    llvm::Value* Global(TypeRef type, const std::string& name, llvm::Value* init);
+    llvm::Value* Initializer(TypeRef type, const std::vector<llvm::Value*>& values);
+    void CommonIntegers(llvm::Value*& lhs, llvm::Value*& rhs);
     llvm::Type* GetInt8Type();
     llvm::Type* GetVoidType();
     llvm::Type* GetArrayType(llvm::Type* type, int size);
     llvm::Type* GetPointerType(llvm::Type* type);
     llvm::Type* GetValueType(llvm::Value* value);
-    llvm::Type* GetElementType(llvm::Type* type);
     llvm::Type* GetAllocatedType(llvm::Value* value);
-    bool IsArrayType(llvm::Type* type);
     bool IsPointerType(llvm::Type* type);
 
     // Functions
@@ -59,7 +75,6 @@ public:
     llvm::Value* GetInt32(int value);
     llvm::Value* GetInt8(int value);
     llvm::Value* CreateZero(llvm::Type* type);
-    llvm::Value* CreateArray(llvm::Type* type, std::vector<llvm::Value*> values);
     llvm::Value* CreateGlobalString(const std::string& str);
 
     // Arithmetic
@@ -94,7 +109,6 @@ public:
     // Value utilities
     llvm::Value* CalculateBinaryOp(const std::function<int(int, int)>& func, llvm::Value* lhs, llvm::Value* rhs);
     int GetValueInt(llvm::Value* value);
-    llvm::Value* GetArrayElement(llvm::Value* array, int index);
     llvm::Value* GetBaseValue(llvm::Value* value);
 
     // Scope management
@@ -120,4 +134,8 @@ private:
     std::vector<std::map<std::string, SymbolValue>> locals;
     std::vector<std::map<SymbolValue, VAR_TYPE>> types;
     std::vector<WhileData> whiles;
+    std::map<llvm::Value*, TypeRef> sourceTypes;
+    std::map<std::string, std::vector<StructField>> structs;
+    std::map<llvm::Function*, std::vector<TypeRef>> parameterTypes;
+    std::map<llvm::Function*, TypeRef> returnTypes;
 };

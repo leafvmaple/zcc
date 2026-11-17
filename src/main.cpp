@@ -10,7 +10,7 @@
 
 namespace fs = std::filesystem;
 
-enum class Arch { NONE, X64, RISCV64 };
+enum class Arch { NONE, X64, RISCV64, AARCH64 };
 
 struct Options {
     Arch        arch = Arch::NONE;
@@ -19,14 +19,16 @@ struct Options {
     std::string sysroot;         // -sysroot <dir>   (base for lib lookup)
     std::string linkerScript;    // -T <script>
     std::vector<std::string> libDirs;   // -L <dir> (repeatable)
+    std::vector<std::string> includes;
     std::vector<std::string> libs;      // -l <name> (repeatable)
 };
 
 static void usage(const char* prog) {
     fprintf(stderr,
-        "Usage: %s <-llvm|-x64|-riscv64> <input.c> -o <output> [options]\n"
+        "Usage: %s <-llvm|-x64|-riscv64|-aarch64> <input.c> -o <output> [options]\n"
         "\nOptions:\n"
         "  -sysroot <dir>   Runtime library root (default: <compiler>/../lib/<arch>)\n"
+        "  -I <dir>         Header search path (repeatable)\n"
         "  -T <script>      Linker script\n"
         "  -L <dir>         Additional library search path (repeatable)\n"
         "  -l <name>        Link library lib<name>.a (repeatable)\n",
@@ -37,7 +39,7 @@ static void usage(const char* prog) {
 /* Resolve the default sysroot relative to the compiler binary */
 static fs::path default_sysroot(const char* argv0, Arch arch) {
     auto exe = fs::canonical(fs::path(argv0)).parent_path();
-    const char* archStr = (arch == Arch::X64) ? "x64" : "riscv64";
+    const char* archStr = arch == Arch::X64 ? "x64" : arch == Arch::RISCV64 ? "riscv64" : "aarch64";
     /* Try <exe>/../lib/<arch>  (installed layout) */
     auto p = exe.parent_path() / "lib" / archStr;
     if (fs::exists(p)) return p;
@@ -55,6 +57,7 @@ static Options parse_args(int argc, const char* argv[]) {
     if (strcmp(argv[1], "-llvm") == 0)       opts.arch = Arch::NONE;
     else if (strcmp(argv[1], "-x64") == 0)   opts.arch = Arch::X64;
     else if (strcmp(argv[1], "-riscv64") == 0) opts.arch = Arch::RISCV64;
+    else if (strcmp(argv[1], "-aarch64") == 0) opts.arch = Arch::AARCH64;
     else usage(argv[0]);
 
     /* Remaining args: input, -o output, then optional flags */
@@ -64,6 +67,10 @@ static Options parse_args(int argc, const char* argv[]) {
             opts.output = argv[++i];
         } else if (strcmp(argv[i], "-sysroot") == 0 && i + 1 < argc) {
             opts.sysroot = argv[++i];
+        } else if (strcmp(argv[i], "-I") == 0 && i + 1 < argc) {
+            opts.includes.push_back(argv[++i]);
+        } else if (strncmp(argv[i], "-I", 2) == 0) {
+            opts.includes.push_back(argv[i] + 2);
         } else if (strcmp(argv[i], "-T") == 0 && i + 1 < argc) {
             opts.linkerScript = argv[++i];
         } else if (strcmp(argv[i], "-L") == 0 && i + 1 < argc) {
@@ -79,6 +86,12 @@ static Options parse_args(int argc, const char* argv[]) {
 
     if (!opts.output) usage(argv[0]);
     return opts;
+}
+
+static std::string quote(const std::string& value) {
+    std::string result = "'";
+    for (char c : value) result += c == '\'' ? "'\\''" : std::string(1, c);
+    return result + "'";
 }
 
 /* Run a shell command; abort on failure */
@@ -112,10 +125,11 @@ static void link_elf(const Options& opts, const char* llFile, const char* argv0)
     else
         sysroot = default_sysroot(argv0, opts.arch);
 
-    std::string target  = (opts.arch == Arch::X64) ? "x86_64-none-elf" : "riscv64-none-elf";
-    // Match the RV64GC/lp64d runtime library when cross-compiling from any host.
-    std::string llvm_flags = (opts.arch == Arch::X64) ? "" : " -mattr=+m,+a,+f,+d,+c -target-abi=lp64d";
-    std::string assembler_flags = (opts.arch == Arch::X64) ? "" : " -march=rv64gc -mabi=lp64d";
+    std::string target = opts.arch == Arch::X64 ? "x86_64-none-elf" : opts.arch == Arch::RISCV64 ? "riscv64-none-elf" : "aarch64-none-elf";
+    // Match the kernel's saved register state: RV64 integer ABI, no AArch64 FP/SIMD.
+    std::string llvm_flags = opts.arch == Arch::RISCV64 ? " -mattr=+m,+a,+c -target-abi=lp64" :
+                             opts.arch == Arch::AARCH64 ? " -mattr=-fp-armv8,-neon" : " -mattr=+sse2,-avx";
+    std::string assembler_flags = opts.arch == Arch::RISCV64 ? " -march=rv64imac -mabi=lp64 -mno-relax" : "";
 
     /* Resolve linker script, crt0.o, libzccrt.a */
     std::string linkerScript = opts.linkerScript.empty()
@@ -128,18 +142,18 @@ static void link_elf(const Options& opts, const char* llFile, const char* argv0)
     std::string oFile = std::string(opts.output) + ".o";
 
     /* LLVM IR → assembly */
-    run("llc -mtriple=" + target + llvm_flags + " -filetype=asm -O0 " + llFile + " -o " + sFile);
+    run("llc -mtriple=" + target + llvm_flags + " -filetype=asm -O0 " + quote(llFile) + " -o " + quote(sFile));
 
     /* assembly → object */
-    run("clang --target=" + target + assembler_flags + " -c " + sFile + " -o " + oFile);
+    run("clang --target=" + target + assembler_flags + " -c " + quote(sFile) + " -o " + quote(oFile));
 
     /* link: crt0.o + user.o + libzccrt.a + extra -l libs → ELF */
-    std::string ldCmd = "ld.lld -T " + linkerScript + " -o " + std::string(opts.output)
-                      + " " + crt0 + " " + oFile + " " + rtLib;
+    std::string ldCmd = "ld.lld --no-relax -T " + quote(linkerScript) + " -o " + quote(opts.output)
+                      + " " + quote(crt0) + " " + quote(oFile) + " " + quote(rtLib);
     for (auto& dir : opts.libDirs)
-        ldCmd += " -L" + dir;
+        ldCmd += " -L" + quote(dir);
     for (auto& lib : opts.libs)
-        ldCmd += " -l" + lib;
+        ldCmd += " -l" + quote(lib);
     run(ldCmd);
 
     /* Cleanup intermediate files */
@@ -153,16 +167,29 @@ int main(int argc, const char *argv[]) {
     /* Frontend: source → LLVM IR */
     Scanner scanner{};
     CodeGen cg(opts.input);
-
-    auto* file = fopen(opts.input, "r");
+    const std::string target = opts.arch == Arch::X64 ? "x86_64-none-elf" : opts.arch == Arch::RISCV64 ? "riscv64-none-elf" : "aarch64-none-elf";
+    cg.SetTarget(target);
+    const fs::path sysroot = opts.sysroot.empty() ? default_sysroot(argv[0], opts.arch) : fs::path(opts.sysroot);
+    const std::string preprocessed = std::string(opts.output) + ".i";
+    // Clang only preprocesses directives; parsing and C-to-IR generation remain zcc's.
+    std::string cpp = "clang --target=" + target + " -E -P -x c -nostdinc -D__ZCC__=1 -I" + quote(sysroot.string());
+    for (const auto& include : opts.includes) cpp += " -I" + quote(include);
+    run(cpp + " " + quote(opts.input) + " -o " + quote(preprocessed));
+    auto* file = fopen(preprocessed.c_str(), "r");
     if (!file) {
         fprintf(stderr, "Cannot open input: %s\n", opts.input);
         return 1;
     }
-    scanner.Parse(file, &cg);
+    try { scanner.Parse(file, &cg); cg.Optimize(); }
+    catch (const std::exception& error) {
+        fclose(file);
+        std::remove(preprocessed.c_str());
+        fprintf(stderr, "[zcc] %s\n", error.what());
+        return 1;
+    }
     fclose(file);
+    std::remove(preprocessed.c_str());
 
-    cg.Optimize();
 
     if (opts.arch == Arch::NONE) {
         /* -llvm: just dump IR */

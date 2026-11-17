@@ -20,8 +20,6 @@ void Scanner::Parse(FILE* input, CodeGen* cg) {
     if (ret == 0) {
         ast.Codegen(cg);
     } else {
-        fprintf(stderr, "Parse error at %s:%d:%d\n",
-                loc->begin.filename ? loc->begin.filename->c_str() : "unknown",
-                loc->begin.line, loc->begin.column);
+        throw std::runtime_error("source parsing failed");
     }
 }
