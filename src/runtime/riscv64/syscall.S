@@ -26,6 +26,11 @@ sys_ioctl:
     li a7, NR_IOCTL
     ecall
     ret
+.globl sys_pipe2
+sys_pipe2:
+    li a7, NR_PIPE2
+    ecall
+    ret
 .globl sys_dup2
 sys_dup2:
     li a7, NR_DUP2

@@ -12,6 +12,7 @@ long sys_write(int fd, void* buffer, long count);
 int sys_open(char* path, int flags);
 int sys_close(int fd);
 long sys_ioctl(int fd, int request, long argument);
+long sys_pipe2(int* ends, int flags);
 long sys_dup2(int old_fd, int new_fd);
 long sys_fcntl(int fd, int command, long argument);
 void sys_exit(int code);

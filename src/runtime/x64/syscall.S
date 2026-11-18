@@ -26,6 +26,11 @@ sys_ioctl:
     mov $NR_IOCTL, %eax
     int $0x80
     ret
+.globl sys_pipe2
+sys_pipe2:
+    mov $NR_PIPE2, %eax
+    int $0x80
+    ret
 .globl sys_dup2
 sys_dup2:
     mov $NR_DUP2, %eax

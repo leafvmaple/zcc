@@ -26,6 +26,11 @@ sys_ioctl:
     mov x8, #NR_IOCTL
     svc #0
     ret
+.globl sys_pipe2
+sys_pipe2:
+    mov x8, #NR_PIPE2
+    svc #0
+    ret
 .globl sys_dup2
 sys_dup2:
     mov x8, #NR_DUP2
