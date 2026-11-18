@@ -121,6 +121,11 @@ sys_mkdir:
     li a7, NR_MKDIR
     ecall
     ret
+.globl sys_rename
+sys_rename:
+    li a7, NR_RENAME
+    ecall
+    ret
 .globl sys_unlink
 sys_unlink:
     li a7, NR_UNLINK

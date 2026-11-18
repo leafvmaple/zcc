@@ -121,6 +121,11 @@ sys_mkdir:
     mov x8, #NR_MKDIR
     svc #0
     ret
+.globl sys_rename
+sys_rename:
+    mov x8, #NR_RENAME
+    svc #0
+    ret
 .globl sys_unlink
 sys_unlink:
     mov x8, #NR_UNLINK

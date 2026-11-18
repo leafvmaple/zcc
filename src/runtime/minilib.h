@@ -30,6 +30,7 @@ long sys_process_next(long after_pid, struct ProcessInfo* result);
 long sys_getpid();
 long sys_yield();
 long sys_mkdir(char* path);
+long sys_rename(char* path, char* new_name);
 long sys_unlink(char* path);
 long sys_rmdir(char* path);
 long sys_sync();

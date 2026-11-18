@@ -121,6 +121,11 @@ sys_mkdir:
     mov $NR_MKDIR, %eax
     int $0x80
     ret
+.globl sys_rename
+sys_rename:
+    mov $NR_RENAME, %eax
+    int $0x80
+    ret
 .globl sys_unlink
 sys_unlink:
     mov $NR_UNLINK, %eax
