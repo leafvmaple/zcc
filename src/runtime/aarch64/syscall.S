@@ -36,6 +36,26 @@ sys_wait_readable:
     mov x8, #NR_WAIT_READABLE
     svc #0
     ret
+.globl sys_uptime_ms
+sys_uptime_ms:
+    mov x8, #NR_UPTIME_MS
+    svc #0
+    ret
+.globl sys_wait_readable_for
+sys_wait_readable_for:
+    mov x8, #NR_WAIT_READABLE_FOR
+    svc #0
+    ret
+.globl sys_getrandom
+sys_getrandom:
+    mov x8, #NR_GETRANDOM
+    svc #0
+    ret
+.globl sys_wait_io
+sys_wait_io:
+    mov x8, #NR_WAIT_IO
+    svc #0
+    ret
 .globl sys_openpty
 sys_openpty:
     mov x8, #NR_OPENPTY

@@ -36,6 +36,26 @@ sys_wait_readable:
     mov $NR_WAIT_READABLE, %eax
     int $0x80
     ret
+.globl sys_uptime_ms
+sys_uptime_ms:
+    mov $NR_UPTIME_MS, %eax
+    int $0x80
+    ret
+.globl sys_wait_readable_for
+sys_wait_readable_for:
+    mov $NR_WAIT_READABLE_FOR, %eax
+    int $0x80
+    ret
+.globl sys_getrandom
+sys_getrandom:
+    mov $NR_GETRANDOM, %eax
+    int $0x80
+    ret
+.globl sys_wait_io
+sys_wait_io:
+    mov $NR_WAIT_IO, %eax
+    int $0x80
+    ret
 .globl sys_openpty
 sys_openpty:
     mov $NR_OPENPTY, %eax

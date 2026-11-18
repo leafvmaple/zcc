@@ -1,7 +1,7 @@
 #include "minilib.h"
 
-long strlen(char* text) {
-    long n = 0;
+__SIZE_TYPE__ strlen(const char* text) {
+    __SIZE_TYPE__ n = 0;
     while (text[n])
         ++n;
     return n;

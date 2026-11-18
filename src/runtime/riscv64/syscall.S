@@ -36,6 +36,26 @@ sys_wait_readable:
     li a7, NR_WAIT_READABLE
     ecall
     ret
+.globl sys_uptime_ms
+sys_uptime_ms:
+    li a7, NR_UPTIME_MS
+    ecall
+    ret
+.globl sys_wait_readable_for
+sys_wait_readable_for:
+    li a7, NR_WAIT_READABLE_FOR
+    ecall
+    ret
+.globl sys_getrandom
+sys_getrandom:
+    li a7, NR_GETRANDOM
+    ecall
+    ret
+.globl sys_wait_io
+sys_wait_io:
+    li a7, NR_WAIT_IO
+    ecall
+    ret
 .globl sys_openpty
 sys_openpty:
     li a7, NR_OPENPTY
