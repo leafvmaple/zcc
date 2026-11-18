@@ -31,6 +31,16 @@ sys_pipe2:
     mov $NR_PIPE2, %eax
     int $0x80
     ret
+.globl sys_wait_readable
+sys_wait_readable:
+    mov $NR_WAIT_READABLE, %eax
+    int $0x80
+    ret
+.globl sys_openpty
+sys_openpty:
+    mov $NR_OPENPTY, %eax
+    int $0x80
+    ret
 .globl sys_dup2
 sys_dup2:
     mov $NR_DUP2, %eax

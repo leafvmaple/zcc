@@ -31,6 +31,16 @@ sys_pipe2:
     mov x8, #NR_PIPE2
     svc #0
     ret
+.globl sys_wait_readable
+sys_wait_readable:
+    mov x8, #NR_WAIT_READABLE
+    svc #0
+    ret
+.globl sys_openpty
+sys_openpty:
+    mov x8, #NR_OPENPTY
+    svc #0
+    ret
 .globl sys_dup2
 sys_dup2:
     mov x8, #NR_DUP2

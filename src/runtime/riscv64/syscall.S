@@ -31,6 +31,16 @@ sys_pipe2:
     li a7, NR_PIPE2
     ecall
     ret
+.globl sys_wait_readable
+sys_wait_readable:
+    li a7, NR_WAIT_READABLE
+    ecall
+    ret
+.globl sys_openpty
+sys_openpty:
+    li a7, NR_OPENPTY
+    ecall
+    ret
 .globl sys_dup2
 sys_dup2:
     li a7, NR_DUP2

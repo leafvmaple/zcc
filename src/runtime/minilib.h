@@ -14,6 +14,8 @@ int sys_open(char* path, int flags);
 int sys_close(int fd);
 long sys_ioctl(int fd, int request, long argument);
 long sys_pipe2(int* ends, int flags);
+long sys_wait_readable(long mask);
+long sys_openpty(int* ends, struct TerminalSize* size);
 long sys_dup2(int old_fd, int new_fd);
 long sys_fcntl(int fd, int command, long argument);
 void sys_exit(int code);
@@ -38,10 +40,17 @@ long sys_stat(char* path, struct FileStat* result);
 long sys_readdir(char* path, long index, struct DirectoryEntry* result);
 long strlen(char* text);
 int strcmp(char* first, char* second);
+#ifdef __ZCC__
 int memcmp(void* first, void* second, long size);
 void* memcpy(void* target, void* source, long size);
 void* memset(void* target, int value, long size);
 void* memmove(void* target, void* source, long size);
+#else
+int memcmp(const void* first, const void* second, __SIZE_TYPE__ size);
+void* memcpy(void* target, const void* source, __SIZE_TYPE__ size);
+void* memset(void* target, int value, __SIZE_TYPE__ size);
+void* memmove(void* target, const void* source, __SIZE_TYPE__ size);
+#endif
 #ifndef __ZCC__
 int printf(const char* format, ...);
 #endif
