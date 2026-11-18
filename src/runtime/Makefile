@@ -13,7 +13,7 @@ FLAGS_x64 := -m64 -mno-red-zone -march=x86-64 -msse2 -mno-avx
 FLAGS_riscv64 := -march=rv64imac -mabi=lp64 -mno-relax
 FLAGS_aarch64 := -mgeneral-regs-only
 CFLAGS := -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -nostdlib -O2 -Wall
-HEADERS := $(SRC_DIR)/minilib.h $(ABI_DIR)/syscall.h $(ABI_DIR)/process.h $(ABI_DIR)/fcntl.h $(ABI_DIR)/terminal.h
+HEADERS := $(SRC_DIR)/minilib.h $(ABI_DIR)/syscall.h $(ABI_DIR)/process.h $(ABI_DIR)/fcntl.h $(ABI_DIR)/terminal.h $(ABI_DIR)/display.h
 .PHONY: all clean $(ARCHES)
 all: $(ARCHES)
 

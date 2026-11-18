@@ -4,6 +4,7 @@
 #include "process.h"
 #include "fcntl.h"
 #include "terminal.h"
+#include "display.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
