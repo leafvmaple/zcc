@@ -41,6 +41,11 @@ sys_uptime_ms:
     li a7, NR_UPTIME_MS
     ecall
     ret
+.globl sys_realtime
+sys_realtime:
+    li a7, NR_REALTIME
+    ecall
+    ret
 .globl sys_wait_readable_for
 sys_wait_readable_for:
     li a7, NR_WAIT_READABLE_FOR

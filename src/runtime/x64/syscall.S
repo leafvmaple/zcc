@@ -41,6 +41,11 @@ sys_uptime_ms:
     mov $NR_UPTIME_MS, %eax
     int $0x80
     ret
+.globl sys_realtime
+sys_realtime:
+    mov $NR_REALTIME, %eax
+    int $0x80
+    ret
 .globl sys_wait_readable_for
 sys_wait_readable_for:
     mov $NR_WAIT_READABLE_FOR, %eax

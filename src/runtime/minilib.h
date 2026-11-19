@@ -18,6 +18,7 @@ long sys_wait_readable(long mask);
 long sys_wait_readable_for(long mask, long timeout_ms);
 long sys_wait_io(long read_mask, long write_mask, long timeout_ms);
 long sys_uptime_ms();
+long sys_realtime();
 long sys_getrandom(void* output, long size, long flags);
 long sys_openpty(int* ends, struct TerminalSize* size);
 long sys_dup2(int old_fd, int new_fd);
