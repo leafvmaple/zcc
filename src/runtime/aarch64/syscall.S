@@ -51,6 +51,21 @@ sys_brk:
     mov x8, #NR_BRK
     svc #0
     ret
+.globl sys_channel_listen
+sys_channel_listen:
+    mov x8, #NR_CHANNEL_LISTEN
+    svc #0
+    ret
+.globl sys_channel_connect
+sys_channel_connect:
+    mov x8, #NR_CHANNEL_CONNECT
+    svc #0
+    ret
+.globl sys_channel_accept
+sys_channel_accept:
+    mov x8, #NR_CHANNEL_ACCEPT
+    svc #0
+    ret
 .globl sys_wait_readable_for
 sys_wait_readable_for:
     mov x8, #NR_WAIT_READABLE_FOR

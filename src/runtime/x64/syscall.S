@@ -51,6 +51,21 @@ sys_brk:
     mov $NR_BRK, %eax
     int $0x80
     ret
+.globl sys_channel_listen
+sys_channel_listen:
+    mov $NR_CHANNEL_LISTEN, %eax
+    int $0x80
+    ret
+.globl sys_channel_connect
+sys_channel_connect:
+    mov $NR_CHANNEL_CONNECT, %eax
+    int $0x80
+    ret
+.globl sys_channel_accept
+sys_channel_accept:
+    mov $NR_CHANNEL_ACCEPT, %eax
+    int $0x80
+    ret
 .globl sys_wait_readable_for
 sys_wait_readable_for:
     mov $NR_WAIT_READABLE_FOR, %eax

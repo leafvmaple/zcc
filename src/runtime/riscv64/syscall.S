@@ -51,6 +51,21 @@ sys_brk:
     li a7, NR_BRK
     ecall
     ret
+.globl sys_channel_listen
+sys_channel_listen:
+    li a7, NR_CHANNEL_LISTEN
+    ecall
+    ret
+.globl sys_channel_connect
+sys_channel_connect:
+    li a7, NR_CHANNEL_CONNECT
+    ecall
+    ret
+.globl sys_channel_accept
+sys_channel_accept:
+    li a7, NR_CHANNEL_ACCEPT
+    ecall
+    ret
 .globl sys_wait_readable_for
 sys_wait_readable_for:
     li a7, NR_WAIT_READABLE_FOR

@@ -5,6 +5,7 @@
 #include "fcntl.h"
 #include "terminal.h"
 #include "display.h"
+#include "channel.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,6 +15,10 @@ int sys_open(char* path, int flags);
 int sys_close(int fd);
 long sys_ioctl(int fd, int request, long argument);
 long sys_pipe2(int* ends, int flags);
+// Named local streams; flags accept O_CLOEXEC and O_NONBLOCK. Each returns a descriptor or a negative error.
+long sys_channel_listen(char* name, int flags);
+long sys_channel_connect(char* name, int flags);
+long sys_channel_accept(int fd, int flags);
 long sys_wait_readable(long mask);
 long sys_wait_readable_for(long mask, long timeout_ms);
 long sys_wait_io(long read_mask, long write_mask, long timeout_ms);
