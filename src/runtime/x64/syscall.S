@@ -46,6 +46,11 @@ sys_realtime:
     mov $NR_REALTIME, %eax
     int $0x80
     ret
+.globl sys_brk
+sys_brk:
+    mov $NR_BRK, %eax
+    int $0x80
+    ret
 .globl sys_wait_readable_for
 sys_wait_readable_for:
     mov $NR_WAIT_READABLE_FOR, %eax

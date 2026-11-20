@@ -46,6 +46,11 @@ sys_realtime:
     mov x8, #NR_REALTIME
     svc #0
     ret
+.globl sys_brk
+sys_brk:
+    mov x8, #NR_BRK
+    svc #0
+    ret
 .globl sys_wait_readable_for
 sys_wait_readable_for:
     mov x8, #NR_WAIT_READABLE_FOR

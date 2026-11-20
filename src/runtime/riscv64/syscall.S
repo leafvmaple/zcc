@@ -46,6 +46,11 @@ sys_realtime:
     li a7, NR_REALTIME
     ecall
     ret
+.globl sys_brk
+sys_brk:
+    li a7, NR_BRK
+    ecall
+    ret
 .globl sys_wait_readable_for
 sys_wait_readable_for:
     li a7, NR_WAIT_READABLE_FOR
