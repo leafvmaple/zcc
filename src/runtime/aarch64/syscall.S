@@ -191,6 +191,11 @@ sys_shutdown:
     mov x8, #NR_SHUTDOWN
     svc #0
     ret
+.globl sys_reboot
+sys_reboot:
+    mov x8, #NR_REBOOT
+    svc #0
+    ret
 .globl sys_fstat
 sys_fstat:
     mov x8, #NR_FSTAT

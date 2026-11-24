@@ -191,6 +191,11 @@ sys_shutdown:
     mov $NR_SHUTDOWN, %eax
     int $0x80
     ret
+.globl sys_reboot
+sys_reboot:
+    mov $NR_REBOOT, %eax
+    int $0x80
+    ret
 .globl sys_fstat
 sys_fstat:
     mov $NR_FSTAT, %eax

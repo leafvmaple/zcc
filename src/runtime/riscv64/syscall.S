@@ -191,6 +191,11 @@ sys_shutdown:
     li a7, NR_SHUTDOWN
     ecall
     ret
+.globl sys_reboot
+sys_reboot:
+    li a7, NR_REBOOT
+    ecall
+    ret
 .globl sys_fstat
 sys_fstat:
     li a7, NR_FSTAT
