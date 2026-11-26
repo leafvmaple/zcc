@@ -196,6 +196,11 @@ sys_reboot:
     mov x8, #NR_REBOOT
     svc #0
     ret
+.globl sys_set_priority
+sys_set_priority:
+    mov x8, #NR_SET_PRIORITY
+    svc #0
+    ret
 .globl sys_fstat
 sys_fstat:
     mov x8, #NR_FSTAT

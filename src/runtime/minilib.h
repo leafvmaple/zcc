@@ -48,6 +48,7 @@ long sys_rmdir(char* path);
 long sys_sync();
 long sys_shutdown();
 long sys_reboot();
+long sys_set_priority(int pid, int priority);
 long sys_fstat(int fd, struct DescriptorStat* result);
 long sys_ftruncate(int fd, long length);
 long sys_stat(char* path, struct FileStat* result);

@@ -196,6 +196,11 @@ sys_reboot:
     li a7, NR_REBOOT
     ecall
     ret
+.globl sys_set_priority
+sys_set_priority:
+    li a7, NR_SET_PRIORITY
+    ecall
+    ret
 .globl sys_fstat
 sys_fstat:
     li a7, NR_FSTAT

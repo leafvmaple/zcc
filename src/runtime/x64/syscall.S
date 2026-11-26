@@ -196,6 +196,11 @@ sys_reboot:
     mov $NR_REBOOT, %eax
     int $0x80
     ret
+.globl sys_set_priority
+sys_set_priority:
+    mov $NR_SET_PRIORITY, %eax
+    int $0x80
+    ret
 .globl sys_fstat
 sys_fstat:
     mov $NR_FSTAT, %eax
