@@ -88,6 +88,10 @@ StringLiteral \"([^\\"]|\\.)*\"
 "int"             { return yy::Parser::make_INT(loc); }
 "char"            { return yy::Parser::make_CHAR(loc); }
 "void"            { return yy::Parser::make_VOID(loc); }
+"long"            { return yy::Parser::make_LONG(loc); }
+"unsigned"        { return yy::Parser::make_UNSIGNED(loc); }
+"struct"          { return yy::Parser::make_STRUCT(loc); }
+"sizeof"          { return yy::Parser::make_SIZEOF(loc); }
 "const"           { return yy::Parser::make_CONST(loc); }
 "return"          { return yy::Parser::make_RETURN(loc); }
 "if"              { return yy::Parser::make_IF(loc); }

@@ -59,6 +59,8 @@ PrimaryExprAST::PrimaryExprAST(string strVal) : type(TYPE::String), strVal(std::
 
 NumberAST::NumberAST(int value) : value(value) {}
 
+UnaryExprAST::UnaryExprAST(TYPE type, unique_ptr<BaseType>&& castType, unique_ptr<UnaryExprAST>&& operand)
+    : type(type), unaryExpr(std::move(operand)), castType(std::move(castType)) {}
 UnaryExprAST::UnaryExprAST(TYPE type, unique_ptr<PrimaryExprAST>&& primaryExpr)
     : type(type), primaryExpr(std::move(primaryExpr)) {}
 UnaryExprAST::UnaryExprAST(TYPE type, OP op, unique_ptr<UnaryExprAST>&& unaryExpr)
@@ -101,8 +103,6 @@ BlockItemAST::BlockItemAST(unique_ptr<DeclAST>&& decl) : decl(std::move(decl)) {
 BlockItemAST::BlockItemAST(unique_ptr<StmtAST>&& stmt) : stmt(std::move(stmt)) {}
 
 LValAST::LValAST(string ident) : ident(std::move(ident)) {}
-LValAST::LValAST(string ident, vector<unique_ptr<ExprAST>>&& indies)
-    : ident(std::move(ident)), indies(std::move(indies)) {}
 
 ConstExprAST::ConstExprAST(unique_ptr<ExprAST>&& expr) : expr(std::move(expr)) {}
 
@@ -114,127 +114,63 @@ FuncFParamAST::FuncFParamAST(unique_ptr<BaseType>&& btype, string ident, vector<
 
 FuncRParamAST::FuncRParamAST(unique_ptr<ExprAST>&& expr) : expr(std::move(expr)) {}
 
-// ========== Array initialization helpers ==========
+// ========== Typed declarations and initialization ==========
 
 namespace {
-
-template<typename T>
-void Flatten(CodeGen* cg, vector<llvm::Value*>& flatValues, const vector<int>& shape, int dim, T& initVal) {
-    if (!initVal->isArray) {
-        flatValues.push_back(initVal->expr->ToNumber(cg));
+TypeRef DeclaredType(CodeGen* cg, TypeRef type, const vector<unique_ptr<ConstExprAST>>& dimensions) {
+    for (auto it = dimensions.rbegin(); it != dimensions.rend(); ++it) {
+        int count = (*it)->ToInteger(cg);
+        if (count <= 0) throw std::runtime_error("array extent must be positive");
+        type = BaseType::Array(type, count);
+    }
+    return type;
+}
+template<class Init>
+llvm::Value* InitialValue(CodeGen* cg, TypeRef type, Init* init, bool constant) {
+    if (!init) return cg->CreateZero(type->Codegen(cg));
+    if (type->type != BaseType::TYPE::ARRAY) {
+        if (init->isArray) throw std::runtime_error("aggregate initializer for scalar");
+        return cg->Cast(constant ? init->expr->ToNumber(cg) : init->expr->ToValue(cg), type);
+    }
+    if (!init->isArray) throw std::runtime_error("array initializer requires braces");
+    vector<llvm::Value*> values;
+    for (auto& element : init->subVals) values.push_back(InitialValue(cg, type->element, element.get(), constant));
+    return cg->Initializer(type, values);
+}
+template<class Init>
+void InitializeLocal(CodeGen* cg, llvm::Value* address, TypeRef type, Init* init) {
+    if (type->type != BaseType::TYPE::ARRAY) {
+        cg->CreateStore(init ? init->expr->ToValue(cg) : cg->CreateZero(type->Codegen(cg)), address);
         return;
     }
-
-    int startIndex = flatValues.size();
-    int totalElements = 1;
-    for (int i = shape.size() - 2; i >= dim; i--) {
-        if (startIndex % (totalElements * shape[i]) == 0) {
-            totalElements *= shape[i];
-        }
-    }
-
-    for (auto& val : initVal->subVals) {
-        Flatten(cg, flatValues, shape, dim + 1, val);
-    }
-
-    int filledElements = flatValues.size() - startIndex;
-    if (filledElements < totalElements) {
-        for (int i = filledElements; i < totalElements; i++) {
-            flatValues.push_back(cg->GetInt32(0));
-        }
+    if (init && (!init->isArray || init->subVals.size() > static_cast<size_t>(type->count)))
+        throw std::runtime_error("invalid array initializer");
+    for (int i = 0; i < type->count; ++i) {
+        auto* element = cg->Index(address, cg->GetInt32(i));
+        InitializeLocal(cg, element, type->element, init && i < static_cast<int>(init->subVals.size()) ? init->subVals[i].get() : nullptr);
     }
 }
-
-// Collect an array's dimension sizes from the (constant) size expressions.
-template<typename T>
-vector<int> ArrayDims(CodeGen* cg, T* def) {
-    vector<int> dims;
-    for (auto& sizeExpr : def->sizeExprs)
-        dims.push_back(sizeExpr->ToInteger(cg));
-    return dims;
 }
-
-// Flatten an initializer into a row-major, zero-padded list of i32 scalars.
-template<typename T>
-vector<llvm::Value*> FlattenInit(CodeGen* cg, const vector<int>& dims, T& initVal) {
-    vector<int> shape = dims;
-    shape.push_back(0); // sentinel used by Flatten
-    vector<llvm::Value*> flat;
-    Flatten(cg, flat, shape, 0, initVal);
-    return flat;
-}
-
-// Store a flattened initializer into a freshly allocated local array, element
-// by element, truncating each scalar to `elemType` (e.g. i8 for `char`).
-void StoreFlatInit(CodeGen* cg, llvm::Value* addr, llvm::Type* elemType,
-                   const vector<llvm::Value*>& flat) {
-    for (size_t i = 0; i < flat.size(); ++i) {
-        auto* p = cg->CreateGEP(elemType, addr, {cg->GetInt32((int)i)});
-        cg->StoreScalar(flat[i], p, elemType);
-    }
-}
-
-} // anonymous namespace
-
-// ========== Code Generation ==========
-
-void ConstDefAST::Codegen(CodeGen* cg, llvm::Type* elemType) {
-    if (sizeExprs.empty()) {
-        // Scalar const: keep the folded constant as the binding so it can be
-        // reused in later constant expressions (e.g. array dimensions).
-        llvm::Value* val = initVal->ToNumber(cg);
-        if (cg->IsGlobalScope()) {
-            auto* var = cg->CreateGlobal(elemType, ident, val);
-            cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::CONST, .type = elemType});
-        } else {
-            cg->AddSymbol(ident, {.value = val, .kind = VAR_TYPE::CONST, .type = elemType});
-        }
-        return;
-    }
-
-    auto dims = ArrayDims(cg, this);
-    auto* arrType = cg->MakeArrayType(elemType, dims);
-    auto flat = initVal ? FlattenInit(cg, dims, initVal) : vector<llvm::Value*>{};
-
+void ConstDefAST::Codegen(CodeGen* cg, TypeRef type) {
+    type = DeclaredType(cg, type, sizeExprs);
+    auto* init = InitialValue(cg, type, initVal.get(), true);
     if (cg->IsGlobalScope()) {
-        llvm::Value* init = initVal ? cg->MakeArrayConstant(elemType, dims, flat) : nullptr;
-        auto* var = cg->CreateGlobal(arrType, ident, init);
-        cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::CONST, .type = arrType});
-    } else {
-        auto* var = cg->CreateAlloca(arrType, ident);
-        StoreFlatInit(cg, var, elemType, flat);
-        cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::CONST, .type = arrType});
-    }
+        cg->AddSymbol(ident, VAR_TYPE::CONST, {cg->Global(type, ident, init)});
+    } else if (type->type == BaseType::TYPE::ARRAY || type->type == BaseType::TYPE::STRUCT) {
+        auto* var = cg->Alloca(type, ident);
+        cg->CreateStore(init, var);
+        cg->AddSymbol(ident, VAR_TYPE::CONST, {var});
+    } else cg->AddSymbol(ident, VAR_TYPE::CONST, {init});
 }
-
-void VarDefAST::Codegen(CodeGen* cg, llvm::Type* elemType) {
-    if (sizeExprs.empty()) {
-        // Scalar variable.
-        llvm::Value* init = initVal ? initVal->ToValue(cg, nullptr) : cg->GetInt32(0);
-        if (cg->IsGlobalScope()) {
-            auto* var = cg->CreateGlobal(elemType, ident, init);
-            cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::GLOBAL, .type = elemType});
-        } else {
-            auto* var = cg->CreateAlloca(elemType, ident);
-            if (initVal) cg->StoreScalar(init, var, elemType);
-            cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::VAR, .type = elemType});
-        }
-        return;
-    }
-
-    auto dims = ArrayDims(cg, this);
-    auto* arrType = cg->MakeArrayType(elemType, dims);
-
+void VarDefAST::Codegen(CodeGen* cg, TypeRef type) {
+    type = DeclaredType(cg, type, sizeExprs);
     if (cg->IsGlobalScope()) {
-        llvm::Value* init = initVal
-            ? cg->MakeArrayConstant(elemType, dims, FlattenInit(cg, dims, initVal))
-            : nullptr;
-        auto* var = cg->CreateGlobal(arrType, ident, init);
-        cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::GLOBAL, .type = arrType});
+        auto* init = InitialValue(cg, type, initVal.get(), true);
+        cg->AddSymbol(ident, VAR_TYPE::GLOBAL, {cg->Global(type, ident, init)});
     } else {
-        auto* var = cg->CreateAlloca(arrType, ident);
-        if (initVal) StoreFlatInit(cg, var, elemType, FlattenInit(cg, dims, initVal));
-        cg->AddSymbol(ident, {.value = var, .kind = VAR_TYPE::VAR, .type = arrType});
+        auto* var = cg->Alloca(type, ident);
+        if (initVal) InitializeLocal(cg, var, type, initVal.get());
+        cg->AddSymbol(ident, VAR_TYPE::VAR, {var});
     }
 }
 
@@ -245,8 +181,14 @@ void CompUnitAST::Codegen(CodeGen* cg) {
     cg->CreateBuiltin("printf", intType, {ptrType}, true);
     cg->CreateBuiltin("scanf", intType, {ptrType}, true);
 
+    for (auto& record : structs) cg->DefineStruct(record.first, record.second);
+    for (auto& func : funcDefs) {
+        vector<TypeRef> params;
+        for (auto& param : func->params) params.push_back(param->SourceType(cg));
+        cg->DeclareFunction(func->ident, func->funcType->Copy(), params);
+    }
     for (auto& decl : decls) decl->Codegen(cg);
-    for (auto& funcDef : funcDefs) funcDef->Codegen(cg);
+    for (auto& funcDef : funcDefs) if (funcDef->block) funcDef->Codegen(cg);
 }
 
 void FuncDefAST::Codegen(CodeGen* cg) {
@@ -262,8 +204,10 @@ void FuncDefAST::Codegen(CodeGen* cg) {
     cg->SetInsertPoint(cg->CreateBasicBlock("entry", func));
     cg->EnterScope();
 
-    for (size_t i = 0; i < params.size(); ++i)
+    for (size_t i = 0; i < params.size(); ++i) {
+        cg->Annotate(cg->GetFunctionArg(i), params[i]->SourceType(cg));
         cg->CreateStore(cg->GetFunctionArg(i), params[i]->Alloca(cg, paramTypes[i]));
+    }
 
     block->Codegen(cg);
     if (!cg->EndWithTerminator()) cg->CreateRet(nullptr);
@@ -272,16 +216,17 @@ void FuncDefAST::Codegen(CodeGen* cg) {
 
 void BlockAST::Codegen(CodeGen* cg) {
     cg->EnterScope();
-    for (auto& item : items) item->ToValue(cg);
+    for (auto& item : items) {
+        if (cg->EndWithTerminator()) break;
+        item->ToValue(cg);
+    }
     cg->ExitScope();
 }
 
 void StmtAST::Codegen(CodeGen* cg) {
     switch (type) {
     case TYPE::Assign: {
-        llvm::Type* elemType = nullptr;
-        auto* ptr = lval->ToPointer(cg, elemType);
-        cg->StoreScalar(expr->ToValue(cg), ptr, elemType ? elemType : cg->GetInt32Type());
+        cg->CreateStore(expr->ToValue(cg), lval->ToPointer(cg));
         break;
     }
     case TYPE::Expr: {
@@ -317,10 +262,7 @@ void StmtAST::Codegen(CodeGen* cg) {
         break;
     }
     case TYPE::Ret: {
-        if (expr)
-            cg->CreateRet(cg->ConvertInt(expr->ToValue(cg), cg->GetFunction()->getReturnType()));
-        else
-            cg->CreateRet(nullptr);
+        cg->CreateRet(expr ? expr->ToValue(cg) : nullptr);
         break;
     }
     case TYPE::While: {
@@ -410,9 +352,14 @@ llvm::Value* NumberAST::ToValue(CodeGen* cg) { return cg->GetInt32(value); }
 llvm::Value* UnaryExprAST::ToValue(CodeGen* cg) {
     switch (type) {
     case TYPE::Primary: return primaryExpr->ToValue(cg);
+    case TYPE::Cast: return cg->Cast(unaryExpr->ToValue(cg), castType->Copy());
+    case TYPE::Sizeof: return cg->SizeOf(castType->Copy());
     case TYPE::Unary: {
+        if (op == OP::ADDRESS) return unaryExpr->ToPointer(cg);
         auto* val = unaryExpr->ToValue(cg);
         switch (op) {
+            case OP::ADDRESS:
+                throw std::runtime_error("invalid address operation");
             case OP::PLUS:  return val;
             case OP::MINUS: return cg->CreateSub(cg->GetInt32(0), val);
             case OP::NOT:   return cg->CreateICmpEQ(val, cg->GetInt32(0));
@@ -421,8 +368,7 @@ llvm::Value* UnaryExprAST::ToValue(CodeGen* cg) {
     case TYPE::Call: {
         std::vector<llvm::Value*> args;
         for (auto& arg : callArgs) args.push_back(arg->ToValue(cg));
-        // Widen a narrow (char) return to i32 so expression values stay uniform.
-        return cg->ConvertInt(cg->CreateCall(cg->GetSymbol(ident).function, args), cg->GetInt32Type());
+        return cg->CreateCall(cg->GetSymbolValue(ident).function, args);
     }
     }
     return nullptr;
@@ -431,16 +377,20 @@ llvm::Value* UnaryExprAST::ToValue(CodeGen* cg) {
 llvm::Value* UnaryExprAST::ToNumber(CodeGen* cg) {
     switch (type) {
     case TYPE::Primary: return primaryExpr->ToNumber(cg);
+    case TYPE::Cast: return cg->Cast(unaryExpr->ToNumber(cg), castType->Copy());
+    case TYPE::Sizeof: return cg->SizeOf(castType->Copy());
     case TYPE::Unary: {
         auto* val = unaryExpr->ToNumber(cg);
         switch (op) {
+            case OP::ADDRESS:
+                throw std::runtime_error("invalid address operation");
             case OP::PLUS:  return val;
             case OP::MINUS: return cg->CalculateBinaryOp([](int a, int b) { return a - b; }, cg->GetInt32(0), val);
             case OP::NOT:   return cg->CalculateBinaryOp([](int a, int b) { return a == b; }, val, cg->GetInt32(0));
         }
     }
     case TYPE::Call:
-        assert(false && "Call expressions should not be calculated directly");
+        throw std::runtime_error("call is not a constant expression");
     }
     return nullptr;
 }
@@ -454,6 +404,8 @@ llvm::Value* BinaryExprAST::ToValue(CodeGen* cg) {
         case Op::MUL: return cg->CreateMul(l, r);
         case Op::DIV: return cg->CreateDiv(l, r);
         case Op::MOD: return cg->CreateMod(l, r);
+        case Op::BIT_AND: return cg->CreateAnd(l, r);
+        case Op::BIT_OR: return cg->CreateOr(l, r);
         case Op::LT:  return cg->CreateICmpLT(l, r);
         case Op::GT:  return cg->CreateICmpGT(l, r);
         case Op::LE:  return cg->CreateICmpLE(l, r);
@@ -473,6 +425,8 @@ llvm::Value* BinaryExprAST::ToNumber(CodeGen* cg) {
         case Op::MUL: return cg->CalculateBinaryOp([](int a, int b) { return a * b; }, l, r);
         case Op::DIV: return cg->CalculateBinaryOp([](int a, int b) { return a / b; }, l, r);
         case Op::MOD: return cg->CalculateBinaryOp([](int a, int b) { return a % b; }, l, r);
+        case Op::BIT_AND: return cg->CalculateBinaryOp([](int a, int b) { return a & b; }, l, r);
+        case Op::BIT_OR: return cg->CalculateBinaryOp([](int a, int b) { return a | b; }, l, r);
         case Op::LT:  return cg->CalculateBinaryOp([](int a, int b) { return a < b; }, l, r);
         case Op::GT:  return cg->CalculateBinaryOp([](int a, int b) { return a > b; }, l, r);
         case Op::LE:  return cg->CalculateBinaryOp([](int a, int b) { return a <= b; }, l, r);
@@ -543,36 +497,13 @@ void DeclAST::Codegen(CodeGen* cg) {
 }
 
 void ConstDeclAST::Codegen(CodeGen* cg) {
-    auto* type = btype->Codegen(cg);
+    auto type = btype->Copy();
     for (auto& def : constDefs) def->Codegen(cg, type);
 }
 
 void VarDeclAST::Codegen(CodeGen* cg) {
-    auto* type = btype->Codegen(cg);
+    auto type = btype->Copy();
     for (auto& def : varDefs) def->Codegen(cg, type);
-}
-
-llvm::Value* ConstInitValAST::ToNumber(CodeGen* cg) {
-    assert(!isArray);
-    return expr->ToNumber(cg);
-}
-
-llvm::Value* InitValAST::ToValue(CodeGen* cg, llvm::Value* addr) {
-    return expr->ToValue(cg);
-}
-
-llvm::Value* InitValAST::ToNumber(CodeGen* cg, vector<int> shape, int dim) {
-    if (!isArray) return expr->ToNumber(cg);
-
-    vector<llvm::Value*> values;
-    llvm::Type* type{};
-    auto size = shape[dim];
-    for (int i = 0; i < size; ++i) {
-        auto* val = i < (int)subVals.size() ? subVals[i]->ToNumber(cg, shape, dim + 1) : cg->CreateZero(type);
-        values.push_back(val);
-        type = cg->GetValueType(val);
-    }
-    return cg->CreateArray(cg->GetArrayType(type, size), values);
 }
 
 void BlockItemAST::ToValue(CodeGen* cg) {
@@ -580,91 +511,47 @@ void BlockItemAST::ToValue(CodeGen* cg) {
     else if (stmt) stmt->Codegen(cg);
 }
 
+llvm::Value* UnaryExprAST::ToPointer(CodeGen* cg) {
+    if (type == TYPE::Primary && primaryExpr->type == PrimaryExprAST::TYPE::LVal)
+        return primaryExpr->lval->ToPointer(cg);
+    throw std::runtime_error("address of a non-lvalue");
+}
+LValAST::LValAST(unique_ptr<LValAST>&& base, string member) : base(std::move(base)), member(std::move(member)) {}
+LValAST::LValAST(unique_ptr<UnaryExprAST>&& pointer) : pointer(std::move(pointer)) {}
+LValAST::LValAST(unique_ptr<LValAST>&& base, unique_ptr<ExprAST>&& index) : index(std::move(index)), base(std::move(base)) {}
 llvm::Value* LValAST::ToValue(CodeGen* cg) {
-    auto sym = cg->GetSymbol(ident);
-
-    // A bare array parameter used as a value is the (loaded) pointer it holds.
-    if (sym.pointerParam && indies.empty())
-        return cg->LoadPointer(sym.value);
-
-    // A local const scalar is bound directly to its constant value, not a slot.
-    if (indies.empty() && sym.value && !cg->IsPointerType(sym.value->getType()))
-        return cg->ConvertInt(sym.value, cg->GetInt32Type());
-
-    llvm::Type* elemType = nullptr;
-    auto* ptr = ToPointer(cg, elemType);
-    // A whole (sub)array used as a value decays to the address of its first element.
-    if (elemType && cg->IsArrayType(elemType))
-        return ptr;
-    return cg->CreateLoadInt(ptr, elemType ? elemType : cg->GetInt32Type());
+    if (!base && !pointer && !index && cg->GetSymbolType(cg->GetSymbolValue(ident)) == VAR_TYPE::CONST) {
+        auto* value = cg->GetSymbolValue(ident).value;
+        if (llvm::isa<llvm::ConstantInt>(value)) return value;
+    }
+    return cg->Decay(ToPointer(cg));
 }
-
 llvm::Value* LValAST::ToNumber(CodeGen* cg) {
-    return cg->GetBaseValue(cg->GetSymbol(ident).value);
+    auto* value = cg->GetSymbolValue(ident).value;
+    if (auto* global = llvm::dyn_cast_or_null<llvm::GlobalVariable>(value)) return global->getInitializer();
+    if (!value || !llvm::isa<llvm::Constant>(value)) throw std::runtime_error("nonconstant expression");
+    return value;
 }
-
 llvm::Value* LValAST::ToPointer(CodeGen* cg) {
-    llvm::Type* elemType = nullptr;
-    return ToPointer(cg, elemType);
-}
-
-llvm::Value* LValAST::ToPointer(CodeGen* cg, llvm::Type*& elemOut) {
-    auto sym = cg->GetSymbol(ident);
-    llvm::Value* addr = sym.value;
-    llvm::Type* container = sym.type; // array type, scalar type, or param pointee type
-
-    if (indies.empty()) {
-        elemOut = container;
-        return addr;
-    }
-
-    vector<llvm::Value*> idx;
-    for (auto& index : indies) idx.push_back(index->ToValue(cg));
-
-    if (sym.pointerParam) {
-        // `addr` is a slot holding a decayed pointer to elements of type `container`.
-        // gep <container>, ptr <loaded>, idx0, idx1, ...  (no leading zero)
-        llvm::Value* base = cg->LoadPointer(addr);
-        addr = cg->CreateGEP(container, base, idx);
-        elemOut = cg->PeelArray(container, (int)idx.size() - 1);
-    } else {
-        // `addr` points at the array object; the leading zero steps through it.
-        // gep <arrayType>, ptr <addr>, 0, idx0, idx1, ...
-        vector<llvm::Value*> gidx;
-        gidx.push_back(cg->GetInt32(0));
-        for (auto* v : idx) gidx.push_back(v);
-        addr = cg->CreateGEP(container, addr, gidx);
-        elemOut = cg->PeelArray(container, (int)idx.size());
-    }
-    return addr;
+    auto* value = pointer ? pointer->ToValue(cg) : (base ? base->ToPointer(cg) : cg->GetSymbolValue(ident).value);
+    if (!value) throw std::runtime_error("undeclared identifier: " + ident);
+    if (!member.empty()) value = cg->Member(value, member);
+    if (index) value = cg->Index(value, index->ToValue(cg));
+    return value;
 }
 
 llvm::Value* ConstExprAST::ToValue(CodeGen* cg)  { return expr->ToValue(cg); }
 llvm::Value* ConstExprAST::ToNumber(CodeGen* cg) { return expr->ToNumber(cg); }
 int ConstExprAST::ToInteger(CodeGen* cg) { return cg->GetValueInt(expr->ToNumber(cg)); }
 
-llvm::Type* FuncFParamAST::ToType(CodeGen* cg) {
-    llvm::Type* type = btype->Codegen(cg);
-    if (isArray) {
-        for (auto& sizeExpr : sizeExprs)
-            type = cg->GetArrayType(type, sizeExpr->ToInteger(cg));
-        type = cg->GetPointerType(type);
-    }
-    return type;
+TypeRef FuncFParamAST::SourceType(CodeGen* cg) {
+    auto type = DeclaredType(cg, btype->Copy(), sizeExprs);
+    return isArray ? BaseType::Pointer(type) : type;
 }
-
-llvm::Value* FuncFParamAST::Alloca(CodeGen* cg, llvm::Type* type) {
-    auto* addr = cg->CreateAlloca(type, ident);
-    if (isArray) {
-        // The slot holds a decayed pointer; record the element type it points to
-        // (the declared base with any inner dimensions applied).
-        llvm::Type* elem = btype->Codegen(cg);
-        for (auto& sizeExpr : sizeExprs)
-            elem = cg->GetArrayType(elem, sizeExpr->ToInteger(cg));
-        cg->AddSymbol(ident, {.value = addr, .kind = VAR_TYPE::VAR, .type = elem, .pointerParam = true});
-    } else {
-        cg->AddSymbol(ident, {.value = addr, .kind = VAR_TYPE::VAR, .type = type});
-    }
+llvm::Type* FuncFParamAST::ToType(CodeGen* cg) { return SourceType(cg)->Codegen(cg); }
+llvm::Value* FuncFParamAST::Alloca(CodeGen* cg, llvm::Type*) {
+    auto* addr = cg->Alloca(SourceType(cg), ident);
+    cg->AddSymbol(ident, VAR_TYPE::VAR, {.value = addr});
     return addr;
 }
 

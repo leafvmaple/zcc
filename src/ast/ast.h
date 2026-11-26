@@ -45,7 +45,7 @@ public:
     ConstDefAST(string ident, unique_ptr<ConstInitValAST>&& initVal);
     ConstDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<ConstInitValAST>&& initVal);
 
-    void Codegen(CodeGen* cg, llvm::Type* type);
+    void Codegen(CodeGen* cg, TypeRef type);
 
     string ident;
     vector<unique_ptr<ConstExprAST>> sizeExprs;
@@ -59,7 +59,7 @@ public:
     VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs);
     VarDefAST(string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs, unique_ptr<InitValAST>&& initVal);
 
-    void Codegen(CodeGen* cg, llvm::Type* type);
+    void Codegen(CodeGen* cg, TypeRef type);
 
     string ident;
     vector<unique_ptr<ConstExprAST>> sizeExprs;
@@ -74,6 +74,7 @@ public:
 
     vector<unique_ptr<FuncDefAST>> funcDefs;
     vector<unique_ptr<DeclAST>> decls;
+    vector<std::pair<string, vector<StructField>>> structs;
 };
 
 class FuncDefAST {
@@ -163,10 +164,12 @@ public:
 
 class UnaryExprAST {
 public:
-    enum class TYPE { Primary, Unary, Call };
-    enum class OP { PLUS, MINUS, NOT };
+    enum class TYPE { Primary, Unary, Call, Cast, Sizeof };
+    enum class OP { PLUS, MINUS, NOT, ADDRESS };
 
     UnaryExprAST(TYPE type, unique_ptr<PrimaryExprAST>&& primaryExpr);
+    UnaryExprAST(TYPE type, unique_ptr<BaseType>&& castType, unique_ptr<UnaryExprAST>&& operand = nullptr);
+    llvm::Value* ToPointer(CodeGen* cg);
     UnaryExprAST(TYPE type, OP op, unique_ptr<UnaryExprAST>&& unaryExpr);
     UnaryExprAST(TYPE type, string ident);
     UnaryExprAST(TYPE type, string ident, vector<unique_ptr<ExprAST>>&& callArgs);
@@ -179,13 +182,14 @@ public:
     string ident;
     unique_ptr<PrimaryExprAST> primaryExpr;
     unique_ptr<UnaryExprAST> unaryExpr;
+    unique_ptr<BaseType> castType;
     vector<unique_ptr<ExprAST>> callArgs;
 };
 
 class BinaryExprAST {
 public:
     enum class Op {
-        ADD, SUB, MUL, DIV, MOD,
+        ADD, SUB, MUL, DIV, MOD, BIT_AND, BIT_OR,
         LT, GT, LE, GE, EQ, NE,
     };
 
@@ -263,7 +267,6 @@ public:
     ConstInitValAST(vector<unique_ptr<ConstExprAST>>&& constExprs);
     ConstInitValAST(vector<unique_ptr<ConstInitValAST>>&& subVals);
 
-    llvm::Value* ToNumber(CodeGen* cg);
 
     unique_ptr<ConstExprAST> expr;
     vector<unique_ptr<ConstInitValAST>> subVals;
@@ -277,8 +280,6 @@ public:
     InitValAST(vector<unique_ptr<ExprAST>>&& exprs);
     InitValAST(vector<unique_ptr<InitValAST>>&& subVals);
 
-    llvm::Value* ToValue(CodeGen* cg, llvm::Value* addr);
-    llvm::Value* ToNumber(CodeGen* cg, vector<int> shape, int dim);
 
     unique_ptr<ExprAST> expr;
     vector<unique_ptr<InitValAST>> subVals;
@@ -299,16 +300,19 @@ public:
 class LValAST {
 public:
     LValAST(string ident);
-    LValAST(string ident, vector<unique_ptr<ExprAST>>&& indies);
+    LValAST(unique_ptr<LValAST>&& base, string member);
+    LValAST(unique_ptr<UnaryExprAST>&& pointer);
+    LValAST(unique_ptr<LValAST>&& base, unique_ptr<ExprAST>&& index);
 
     llvm::Value* ToValue(CodeGen* cg);
     llvm::Value* ToNumber(CodeGen* cg);
     llvm::Value* ToPointer(CodeGen* cg);
-    // Address of the l-value, also reporting the pointee element type via `elemOut`.
-    llvm::Value* ToPointer(CodeGen* cg, llvm::Type*& elemOut);
 
     string ident;
-    vector<unique_ptr<ExprAST>> indies;
+    unique_ptr<ExprAST> index;
+    unique_ptr<LValAST> base;
+    unique_ptr<UnaryExprAST> pointer;
+    string member;
 };
 
 class ConstExprAST {
@@ -328,6 +332,7 @@ public:
     FuncFParamAST(unique_ptr<BaseType>&& btype, string ident, vector<unique_ptr<ConstExprAST>>&& sizeExprs);
 
     llvm::Type* ToType(CodeGen* cg);
+    TypeRef SourceType(CodeGen* cg);
     llvm::Value* Alloca(CodeGen* cg, llvm::Type* type);
 
     unique_ptr<BaseType> btype;

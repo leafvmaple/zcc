@@ -40,16 +40,20 @@
  * =================================================================== */
 
 /* keywords */
-%token INT CHAR VOID
+%token INT CHAR VOID LONG UNSIGNED STRUCT SIZEOF
 %token CONST RETURN IF ELSE WHILE FOR BREAK CONTINUE
 
 /* multi-char operators (with precedence, low → high) */
 %left OR
 %left AND
+%left '|'
+%left '&'
 %left EQ NE
 %left '<' '>' LE GE
 %left '+' '-'
 %left '*' '/' '%'
+%precedence UNARY
+%precedence '[' '.'
 
 /* valued tokens */
 %token <std::string> IDENT
@@ -101,10 +105,12 @@
 %type <std::unique_ptr<NumberAST>>      Number
 %type <std::unique_ptr<LValAST>>        LVal
 %type <std::unique_ptr<BaseType>>       BasicType
+%type <std::vector<StructField>> StructFields
+%type <StructField> StructField
 
 /* --- indexing & dimensions --- */
 %type <std::vector<std::unique_ptr<ConstExprAST>>> ArrayDims
-%type <std::vector<std::unique_ptr<ExprAST>>>      Indies
+
 
 /* --- for-statement helpers --- */
 %type <std::unique_ptr<ExprAST>>      OptExpr
@@ -123,6 +129,15 @@ CompUnit
     : %empty
     | CompUnit FuncDef          { ctx.ast.AddFuncDef(std::move($2)); }
     | CompUnit Decl             { ctx.ast.AddDecl(std::move($2)); }
+    | CompUnit STRUCT IDENT '{' StructFields '}' ';' { ctx.ast.structs.emplace_back($3, std::move($5)); }
+    ;
+StructFields
+    : %empty { $$ = {}; }
+    | StructFields StructField { $1.push_back(std::move($2)); $$ = std::move($1); }
+    ;
+StructField
+    : BasicType IDENT ';' { $$ = {$2, TypeRef(std::move($1))}; }
+    | BasicType IDENT '[' INT_CONST ']' ';' { $$ = {$2, BaseType::Array(TypeRef(std::move($1)), $4)}; }
     ;
 
 /* ---------- function definition ---------- */
@@ -134,12 +149,25 @@ FuncDef
     | BasicType IDENT '(' ')' Block {
         $$ = std::make_unique<FuncDefAST>(std::move($1), $2, std::move($5));
       }
+    | BasicType IDENT '(' FuncFParams ')' ';' {
+        $$ = std::make_unique<FuncDefAST>(std::move($1), $2, std::move($4), nullptr);
+      }
+    | BasicType IDENT '(' ')' ';' {
+        $$ = std::make_unique<FuncDefAST>(std::move($1), $2, nullptr);
+      }
+    | BasicType IDENT '(' VOID ')' ';' {
+        $$ = std::make_unique<FuncDefAST>(std::move($1), $2, nullptr);
+      }
     ;
 
 BasicType
     : INT   { $$ = std::make_unique<BaseType>(BaseType::TYPE::INT);  }
     | CHAR  { $$ = std::make_unique<BaseType>(BaseType::TYPE::CHAR); }
     | VOID  { $$ = std::make_unique<BaseType>(BaseType::TYPE::VOID); }
+    | LONG  { $$ = std::make_unique<BaseType>(BaseType::TYPE::LONG); }
+    | UNSIGNED INT { $$ = std::make_unique<BaseType>(BaseType::TYPE::INT); }
+    | STRUCT IDENT { $$ = std::make_unique<BaseType>($2); }
+    | BasicType '*' { $$ = std::make_unique<BaseType>(BaseType::TYPE::POINTER, TypeRef(std::move($1))); }
     ;
 
 FuncFParams
@@ -327,6 +355,8 @@ BinaryExpr
     : UnaryExpr {
         $$ = std::make_unique<BinaryExprAST>(std::move($1));
       }
+    | BinaryExpr '&' BinaryExpr { $$ = std::make_unique<BinaryExprAST>(BinaryExprAST::Op::BIT_AND, std::move($1), std::move($3)); }
+    | BinaryExpr '|' BinaryExpr { $$ = std::make_unique<BinaryExprAST>(BinaryExprAST::Op::BIT_OR, std::move($1), std::move($3)); }
     | BinaryExpr '+' BinaryExpr {
         $$ = std::make_unique<BinaryExprAST>(BinaryExprAST::Op::ADD, std::move($1), std::move($3));
       }
@@ -381,13 +411,16 @@ UnaryExpr
     | IDENT '(' FuncRParams ')' {
         $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Call, $1, std::move($3));
       }
+    | '&' UnaryExpr %prec UNARY { $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Unary, UnaryExprAST::OP::ADDRESS, std::move($2)); }
+    | '(' BasicType ')' UnaryExpr %prec UNARY { $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Cast, std::move($2), std::move($4)); }
+    | SIZEOF '(' BasicType ')' { $$ = std::make_unique<UnaryExprAST>(UnaryExprAST::TYPE::Sizeof, std::move($3)); }
     ;
 
 PrimaryExpr
     : '(' Expr ')' {
         $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::TYPE::Expr, std::move($2));
       }
-    | LVal {
+    | LVal %prec UNARY {
         $$ = std::make_unique<PrimaryExprAST>(PrimaryExprAST::TYPE::LVal, std::move($1));
       }
     | Number {
@@ -531,12 +564,10 @@ InitVals
 /* ---------- l-values & indexing ---------- */
 
 LVal
-    : IDENT {
-        $$ = std::make_unique<LValAST>($1);
-      }
-    | IDENT Indies {
-        $$ = std::make_unique<LValAST>($1, std::move($2));
-      }
+    : IDENT { $$ = std::make_unique<LValAST>($1); }
+    | LVal '[' Expr ']' { $$ = std::make_unique<LValAST>(std::move($1), std::move($3)); }
+    | LVal '.' IDENT { $$ = std::make_unique<LValAST>(std::move($1), $3); }
+    | '*' UnaryExpr %prec UNARY { $$ = std::make_unique<LValAST>(std::move($2)); }
     ;
 
 ArrayDims
@@ -545,17 +576,6 @@ ArrayDims
         $$.emplace_back(std::move($2));
       }
     | ArrayDims '[' ConstExpr ']' {
-        $1.emplace_back(std::move($3));
-        $$ = std::move($1);
-      }
-    ;
-
-Indies
-    : '[' Expr ']' {
-        $$ = std::vector<std::unique_ptr<ExprAST>>();
-        $$.emplace_back(std::move($2));
-      }
-    | Indies '[' Expr ']' {
         $1.emplace_back(std::move($3));
         $$ = std::move($1);
       }

@@ -63,7 +63,7 @@ INC_DIRS += $(INC_DIRS:$(SRC_DIR)%=$(BUILD_DIR)%)
 INC_FLAGS := $(addprefix -I, $(INC_DIRS))
 DEPS := $(OBJS:.o=.d)
 CPPFLAGS = $(INC_FLAGS) -MMD -MP
-LLVM_CXXFLAGS := $(shell llvm-config --cxxflags)
+LLVM_CXXFLAGS := $(filter-out -fno-exceptions,$(shell llvm-config --cxxflags))
 
 # Main target
 all: $(BUILD_DIR)/$(TARGET_EXEC)
@@ -117,7 +117,10 @@ lib-x64:
 lib-riscv64:
 	$(MAKE) -C $(TOP_DIR)/src/runtime riscv64
 
-lib: lib-x64 lib-riscv64
+lib-aarch64:
+	$(MAKE) -C $(TOP_DIR)/src/runtime aarch64
+
+lib: lib-x64 lib-riscv64 lib-aarch64
 
 # ---- Compile test programs ----
 llvm: all

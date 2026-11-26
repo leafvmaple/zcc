@@ -4,10 +4,14 @@
 #include "llvm/Transforms/Scalar/ADCE.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Support/raw_os_ostream.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
 
 #include <fstream>
+#include "llvm/Config/llvm-config.h"
+#if __has_include("llvm/TargetParser/Triple.h")
+#include "llvm/TargetParser/Triple.h"
+#else
+#include "llvm/ADT/Triple.h"
+#endif
 
 // --- Lifecycle ---
 
@@ -17,6 +21,7 @@ CodeGen::CodeGen(const std::string& moduleName)
 }
 
 void CodeGen::Optimize() {
+    if (llvm::verifyModule(Module, &llvm::errs())) throw std::runtime_error("invalid generated LLVM IR");
 #if 0
     llvm::PassBuilder pb;
     llvm::FunctionAnalysisManager fam;
@@ -64,32 +69,12 @@ llvm::Type* CodeGen::GetArrayType(llvm::Type* type, int size) {
     return llvm::ArrayType::get(type, size);
 }
 
-// Build a (possibly nested) array type from a list of dimensions, innermost last:
-// MakeArrayType(i32, {2, 3}) -> [2 x [3 x i32]].
-llvm::Type* CodeGen::MakeArrayType(llvm::Type* elemType, const std::vector<int>& dims) {
-    llvm::Type* type = elemType;
-    for (auto it = dims.rbegin(); it != dims.rend(); ++it)
-        type = GetArrayType(type, *it);
-    return type;
-}
-
-// Strip `levels` array layers: PeelArray([2 x [3 x i32]], 2) -> i32.
-llvm::Type* CodeGen::PeelArray(llvm::Type* type, int levels) {
-    for (int i = 0; i < levels && type && type->isArrayTy(); ++i)
-        type = type->getArrayElementType();
-    return type;
-}
-
 llvm::Type* CodeGen::GetPointerType(llvm::Type* type) {
-    return llvm::PointerType::get(type, 0);
+    return llvm::PointerType::get(Context, 0);
 }
 
 llvm::Type* CodeGen::GetValueType(llvm::Value* value) {
     return value->getType();
-}
-
-llvm::Type* CodeGen::GetElementType(llvm::Type* type) {
-    return type->isArrayTy() ? type->getArrayElementType() : nullptr;
 }
 
 llvm::Type* CodeGen::GetAllocatedType(llvm::Value* value) {
@@ -102,7 +87,6 @@ llvm::Type* CodeGen::GetAllocatedType(llvm::Value* value) {
     return nullptr;
 }
 
-bool CodeGen::IsArrayType(llvm::Type* type)   { return type->isArrayTy(); }
 bool CodeGen::IsPointerType(llvm::Type* type) { return type->isPointerTy(); }
 
 // --- Functions ---
@@ -112,20 +96,23 @@ llvm::BasicBlock* CodeGen::CreateBasicBlock(const std::string& name, llvm::Funct
 }
 
 llvm::Function* CodeGen::CreateFunction(llvm::FunctionType* funcType, const std::string& name, std::vector<std::string> names) {
-    auto* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, &Module);
+    auto* func = Module.getFunction(name);
+    if (func) {
+        if (func->getFunctionType() != funcType || !func->empty()) throw std::runtime_error("conflicting function: " + name);
+    } else func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, &Module);
     auto args = func->arg_begin();
     for (size_t i = 0; i < names.size(); ++i) {
         args->setName(names[i]);
         ++args;
     }
-    AddSymbol(name, { .function = func, .kind = VAR_TYPE::FUNC });
+    AddSymbol(name, VAR_TYPE::FUNC, { func });
     return func;
 }
 
 void CodeGen::CreateBuiltin(const std::string& name, llvm::Type* retType, std::vector<llvm::Type*> params, bool isVarArg) {
     auto* funcType = llvm::FunctionType::get(retType, params, isVarArg);
     auto* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, Module);
-    AddSymbol(name, { .function = func, .kind = VAR_TYPE::FUNC });
+    AddSymbol(name, VAR_TYPE::FUNC, { func });
 }
 
 llvm::Function* CodeGen::GetFunction() {
@@ -142,47 +129,31 @@ llvm::Value* CodeGen::GetFunctionArg(int index) {
 // --- Memory ---
 
 llvm::Value* CodeGen::CreateAlloca(llvm::Type* type, const std::string& name) {
-    return Builder.CreateAlloca(type, nullptr, name);
+    // All supported automatic objects have fixed size: reserve once per call,
+    // even when the declaration or short-circuit expression sits inside a loop.
+    auto& entry = GetFunction()->getEntryBlock();
+    llvm::IRBuilder<> allocations(&entry, entry.begin());
+    return allocations.CreateAlloca(type, nullptr, name);
 }
 
 llvm::Value* CodeGen::CreateGlobal(llvm::Type* type, const std::string& name, llvm::Value* init) {
-    llvm::Constant* initVal = init ? llvm::dyn_cast<llvm::Constant>(init) : nullptr;
-    // A scalar initializer is produced as i32; narrow it to the global's type
-    // (e.g. an i8 `char` global) so the GlobalVariable type and init agree.
-    if (auto* ci = llvm::dyn_cast_or_null<llvm::ConstantInt>(initVal)) {
-        if (type->isIntegerTy() && ci->getType() != type)
-            initVal = llvm::ConstantInt::get(type, ci->getSExtValue());
-    }
-    if (!initVal) initVal = llvm::Constant::getNullValue(type);
+    llvm::Constant* initVal = init ? llvm::dyn_cast<llvm::Constant>(init) : llvm::Constant::getNullValue(type);
     return new llvm::GlobalVariable(Module, type, false, llvm::GlobalValue::ExternalLinkage, initVal, name);
 }
 
 void CodeGen::CreateStore(llvm::Value* value, llvm::Value* dest) {
+    auto type = TypeOf(dest);
+    if (type && type->type == BaseType::TYPE::POINTER) value = Cast(value, type->element);
     Builder.CreateStore(value, dest);
 }
 
-// Store an i32 value into a scalar location of element type `elemType`,
-// truncating first when the destination is narrower (e.g. an i8 `char`).
-void CodeGen::StoreScalar(llvm::Value* value, llvm::Value* dest, llvm::Type* elemType) {
-    Builder.CreateStore(ConvertInt(value, elemType), dest);
-}
-
 llvm::Value* CodeGen::CreateLoad(llvm::Value* src) {
+    auto type = TypeOf(src);
+    if (type && type->type == BaseType::TYPE::POINTER)
+        return Annotate(Builder.CreateLoad(type->element->Codegen(this), src), type->element);
     llvm::Type* loadType = GetAllocatedType(src);
     if (!loadType) loadType = GetInt32Type();
     return Builder.CreateLoad(loadType, src);
-}
-
-// Load a scalar of element type `elemType` and widen it to i32 so all
-// expression values share a single representation (a `char` sign-extends).
-llvm::Value* CodeGen::CreateLoadInt(llvm::Value* ptr, llvm::Type* elemType) {
-    llvm::Value* v = Builder.CreateLoad(elemType, ptr);
-    return ConvertInt(v, GetInt32Type());
-}
-
-// Load a decayed array pointer (the pointer stored in an array parameter's slot).
-llvm::Value* CodeGen::LoadPointer(llvm::Value* ptr) {
-    return Builder.CreateLoad(GetPointerType(GetInt8Type()), ptr);
 }
 
 llvm::Value* CodeGen::CreateGEP(llvm::Type* type, llvm::Value* array, std::vector<llvm::Value*> index) {
@@ -198,96 +169,93 @@ llvm::Value* CodeGen::CreateZero(llvm::Type* type) {
     return llvm::Constant::getNullValue(type);
 }
 
-llvm::Value* CodeGen::CreateArray(llvm::Type* type, std::vector<llvm::Value*> values) {
-    std::vector<llvm::Constant*> constants;
-    for (auto* val : values) {
-        if (auto* c = llvm::dyn_cast<llvm::Constant>(val))
-            constants.push_back(c);
-    }
-    return llvm::ConstantArray::get((llvm::ArrayType*)type, constants);
-}
-
 llvm::Value* CodeGen::CreateGlobalString(const std::string& str) {
-    return Builder.CreateGlobalStringPtr(str);
-}
-
-// Build a constant aggregate for a global array initializer from a row-major,
-// zero-padded list of i32 scalar constants. Leaf constants are narrowed to
-// `elemType` (e.g. i8 for a `char` array).
-llvm::Constant* CodeGen::MakeArrayConstant(llvm::Type* elemType, const std::vector<int>& dims,
-                                           const std::vector<llvm::Value*>& flatValues) {
-    size_t idx = 0;
-    std::function<llvm::Constant*(size_t)> build = [&](size_t dim) -> llvm::Constant* {
-        if (dim == dims.size()) {
-            auto* ci = llvm::cast<llvm::ConstantInt>(flatValues[idx++]);
-            return llvm::ConstantInt::get(elemType, ci->getSExtValue());
-        }
-        std::vector<llvm::Constant*> elems;
-        for (int i = 0; i < dims[dim]; ++i)
-            elems.push_back(build(dim + 1));
-        auto* arrTy = llvm::ArrayType::get(MakeArrayType(elemType,
-                          std::vector<int>(dims.begin() + dim + 1, dims.end())), dims[dim]);
-        return llvm::ConstantArray::get(arrTy, elems);
-    };
-    return build(0);
+    return Annotate(Builder.CreateGlobalString(str, "", 0, &Module), BaseType::Pointer(std::make_shared<BaseType>(BaseType::TYPE::CHAR)));
 }
 
 // --- Arithmetic ---
 
-llvm::Value* CodeGen::CreateAdd(llvm::Value* lhs, llvm::Value* rhs) { return Builder.CreateAdd(lhs, rhs); }
-llvm::Value* CodeGen::CreateSub(llvm::Value* lhs, llvm::Value* rhs) { return Builder.CreateSub(lhs, rhs); }
-llvm::Value* CodeGen::CreateMul(llvm::Value* lhs, llvm::Value* rhs) { return Builder.CreateMul(lhs, rhs); }
-llvm::Value* CodeGen::CreateDiv(llvm::Value* lhs, llvm::Value* rhs) { return Builder.CreateSDiv(lhs, rhs); }
-llvm::Value* CodeGen::CreateMod(llvm::Value* lhs, llvm::Value* rhs) { return Builder.CreateSRem(lhs, rhs); }
-llvm::Value* CodeGen::CreateAnd(llvm::Value* lhs, llvm::Value* rhs) { return Builder.CreateAnd(lhs, rhs); }
+llvm::Value* CodeGen::CreateAdd(llvm::Value* lhs, llvm::Value* rhs) {
+    if (lhs->getType()->isPointerTy()) {
+        auto type = TypeOf(lhs);
+        if (!type || !rhs->getType()->isIntegerTy()) throw std::runtime_error("invalid pointer addition");
+        return Annotate(Builder.CreateGEP(type->element->Codegen(this), lhs, rhs), type);
+    }
+    if (rhs->getType()->isPointerTy()) return CreateAdd(rhs, lhs);
+    CommonIntegers(lhs, rhs); return Builder.CreateAdd(lhs, rhs);
+}
+llvm::Value* CodeGen::CreateSub(llvm::Value* lhs, llvm::Value* rhs) {
+    if (lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy())
+        return CreateAdd(lhs, Builder.CreateNeg(rhs));
+    CommonIntegers(lhs, rhs); return Builder.CreateSub(lhs, rhs);
+}
+llvm::Value* CodeGen::CreateMul(llvm::Value* lhs, llvm::Value* rhs) { CommonIntegers(lhs, rhs); return Builder.CreateMul(lhs, rhs); }
+llvm::Value* CodeGen::CreateDiv(llvm::Value* lhs, llvm::Value* rhs) { CommonIntegers(lhs, rhs); return Builder.CreateSDiv(lhs, rhs); }
+llvm::Value* CodeGen::CreateMod(llvm::Value* lhs, llvm::Value* rhs) { CommonIntegers(lhs, rhs); return Builder.CreateSRem(lhs, rhs); }
+llvm::Value* CodeGen::CreateAnd(llvm::Value* lhs, llvm::Value* rhs) { CommonIntegers(lhs, rhs); return Builder.CreateAnd(lhs, rhs); }
 llvm::Value* CodeGen::CreateOr(llvm::Value* lhs, llvm::Value* rhs)  { return Builder.CreateOr(lhs, rhs); }
 
 // --- Comparisons ---
 
 llvm::Value* CodeGen::CreateICmpNE(llvm::Value* lhs, llvm::Value* rhs) {
+    CommonIntegers(lhs, rhs);
     return Builder.CreateZExt(Builder.CreateICmpNE(lhs, rhs), GetInt32Type());
 }
 llvm::Value* CodeGen::CreateICmpEQ(llvm::Value* lhs, llvm::Value* rhs) {
+    CommonIntegers(lhs, rhs);
     return Builder.CreateZExt(Builder.CreateICmpEQ(lhs, rhs), GetInt32Type());
 }
 llvm::Value* CodeGen::CreateICmpLT(llvm::Value* lhs, llvm::Value* rhs) {
+    CommonIntegers(lhs, rhs);
     return Builder.CreateZExt(Builder.CreateICmpSLT(lhs, rhs), GetInt32Type());
 }
 llvm::Value* CodeGen::CreateICmpGT(llvm::Value* lhs, llvm::Value* rhs) {
+    CommonIntegers(lhs, rhs);
     return Builder.CreateZExt(Builder.CreateICmpSGT(lhs, rhs), GetInt32Type());
 }
 llvm::Value* CodeGen::CreateICmpLE(llvm::Value* lhs, llvm::Value* rhs) {
+    CommonIntegers(lhs, rhs);
     return Builder.CreateZExt(Builder.CreateICmpSLE(lhs, rhs), GetInt32Type());
 }
 llvm::Value* CodeGen::CreateICmpGE(llvm::Value* lhs, llvm::Value* rhs) {
+    CommonIntegers(lhs, rhs);
     return Builder.CreateZExt(Builder.CreateICmpSGE(lhs, rhs), GetInt32Type());
 }
 
 // --- Control flow ---
 
 void CodeGen::CreateCondBr(llvm::Value* cond, llvm::BasicBlock* trueBB, llvm::BasicBlock* falseBB) {
-    auto* boolCond = Builder.CreateICmpNE(cond, GetInt32(0));
+    auto* boolCond = Builder.CreateICmpNE(cond, llvm::Constant::getNullValue(cond->getType()));
     Builder.CreateCondBr(boolCond, trueBB, falseBB);
 }
 
-void CodeGen::CreateBr(llvm::BasicBlock* dest) { Builder.CreateBr(dest); }
+void CodeGen::CreateBr(llvm::BasicBlock* dest) { if (!EndWithTerminator()) Builder.CreateBr(dest); }
 
 void CodeGen::CreateRet(llvm::Value* value) {
-    if (value)
+    auto* result = GetFunction()->getReturnType();
+    if (result->isVoidTy()) Builder.CreateRetVoid();
+    else {
+        if (!value) value = llvm::Constant::getNullValue(result);
+        auto found = returnTypes.find(GetFunction());
+        if (found != returnTypes.end()) value = Cast(value, found->second);
         Builder.CreateRet(value);
-    else
-        Builder.CreateRetVoid();
+    }
 }
 
 llvm::Value* CodeGen::CreateCall(llvm::Function* func, std::vector<llvm::Value*> args) {
-    // Coerce each fixed argument to the callee's declared parameter type
-    // (e.g. narrow an i32 expression to an i8 `char` parameter). Variadic
-    // arguments beyond the fixed list keep their (promoted) i32 form.
-    auto* ft = func->getFunctionType();
-    unsigned n = ft->getNumParams();
-    for (unsigned i = 0; i < args.size() && i < n; ++i)
-        args[i] = ConvertInt(args[i], ft->getParamType(i));
-    return Builder.CreateCall(func, args);
+    if (!func) throw std::runtime_error("call to undeclared function");
+    auto found = parameterTypes.find(func);
+    if (args.size() < func->arg_size() || (!func->isVarArg() && args.size() != func->arg_size()))
+        throw std::runtime_error("wrong argument count for " + func->getName().str());
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (found != parameterTypes.end() && i < found->second.size()) args[i] = Cast(args[i], found->second[i]);
+        else if (i < func->arg_size()) {
+            auto* target = func->getFunctionType()->getParamType(i);
+            if (target->isIntegerTy() && args[i]->getType()->isIntegerTy()) args[i] = Builder.CreateIntCast(args[i], target, true);
+        } else if (args[i]->getType()->isIntegerTy(8)) args[i] = Builder.CreateSExt(args[i], GetInt32Type());
+    }
+    auto* result = Builder.CreateCall(func, args);
+    return found != parameterTypes.end() ? Annotate(result, returnTypes.at(func)) : result;
 }
 
 void CodeGen::SetInsertPoint(llvm::BasicBlock* bb) { Builder.SetInsertPoint(bb); }
@@ -301,16 +269,6 @@ bool CodeGen::EndWithTerminator() {
 
 llvm::Value* CodeGen::CreateTrunc(llvm::Value* value, llvm::Type* type) { return Builder.CreateTrunc(value, type); }
 llvm::Value* CodeGen::CreateZExt(llvm::Value* value, llvm::Type* type)  { return Builder.CreateZExt(value, type); }
-
-llvm::Value* CodeGen::ConvertInt(llvm::Value* value, llvm::Type* dst) {
-    llvm::Type* src = value->getType();
-    if (src == dst || !src->isIntegerTy() || !dst->isIntegerTy())
-        return value;
-    unsigned sb = src->getIntegerBitWidth(), db = dst->getIntegerBitWidth();
-    if (sb < db) return Builder.CreateSExt(value, dst);
-    if (sb > db) return Builder.CreateTrunc(value, dst);
-    return value;
-}
 
 // --- Value utilities ---
 
@@ -326,29 +284,33 @@ int CodeGen::GetValueInt(llvm::Value* value) {
     return 0;
 }
 
-llvm::Value* CodeGen::GetArrayElement(llvm::Value* array, int index) {
-    auto* arrayType = llvm::dyn_cast<llvm::ArrayType>(array->getType());
-    return Builder.CreateGEP(arrayType->getElementType(), array, {GetInt32(index)});
-}
-
 llvm::Value* CodeGen::GetBaseValue(llvm::Value* value) { return value; }
 
 // --- Scope management ---
 
-void CodeGen::EnterScope() { locals.push_back({}); }
-void CodeGen::ExitScope()  { locals.pop_back(); }
+void CodeGen::EnterScope() { locals.push_back({}); types.push_back({}); }
+void CodeGen::ExitScope()  { locals.pop_back(); types.pop_back(); }
 bool CodeGen::IsGlobalScope() const { return locals.size() == 1; }
 
-void CodeGen::AddSymbol(const std::string& name, const Symbol& sym) {
-    locals.back()[name] = sym;
+void CodeGen::AddSymbol(const std::string& name, VAR_TYPE type, SymbolValue value) {
+    locals.back()[name] = value;
+    types.back()[value] = type;
 }
 
-CodeGen::Symbol CodeGen::GetSymbol(const std::string& name) {
+CodeGen::SymbolValue CodeGen::GetSymbolValue(const std::string& name) {
     for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
         auto found = it->find(name);
         if (found != it->end()) return found->second;
     }
-    return {};
+    return { nullptr };
+}
+
+VAR_TYPE CodeGen::GetSymbolType(SymbolValue value) {
+    for (auto it = types.rbegin(); it != types.rend(); ++it) {
+        auto found = it->find(value);
+        if (found != it->end()) return found->second;
+    }
+    return VAR_TYPE::VAR;
 }
 
 // --- While loop tracking ---
@@ -357,3 +319,124 @@ void CodeGen::EnterWhile(llvm::BasicBlock* entry, llvm::BasicBlock* end) { while
 void CodeGen::ExitWhile() { whiles.pop_back(); }
 llvm::BasicBlock* CodeGen::GetWhileEntry() { return whiles.back().entry; }
 llvm::BasicBlock* CodeGen::GetWhileEnd()   { return whiles.back().end; }
+
+// Source type operations shared by declarations, parameters and expressions.
+llvm::Type* CodeGen::GetInt64Type() { return llvm::Type::getInt64Ty(Context); }
+void CodeGen::SetTarget(const std::string& target) {
+#if LLVM_VERSION_MAJOR >= 21
+    Module.setTargetTriple(llvm::Triple(target));
+#else
+    Module.setTargetTriple(target);
+#endif
+    Module.setDataLayout("e-p:64:64-i64:64-n8:16:32:64-S128");
+}
+TypeRef CodeGen::TypeOf(llvm::Value* value) {
+    auto it = sourceTypes.find(value);
+    if (it != sourceTypes.end()) return it->second;
+    if (value->getType()->isIntegerTy(8)) return std::make_shared<BaseType>(BaseType::TYPE::CHAR);
+    if (value->getType()->isIntegerTy(64)) return std::make_shared<BaseType>(BaseType::TYPE::LONG);
+    if (value->getType()->isIntegerTy()) return std::make_shared<BaseType>(BaseType::TYPE::INT);
+    return nullptr;
+}
+llvm::Value* CodeGen::Annotate(llvm::Value* value, TypeRef type) { sourceTypes[value] = std::move(type); return value; }
+llvm::Value* CodeGen::Cast(llvm::Value* value, TypeRef type) {
+    auto* target = type->Codegen(this);
+    if (value->getType() == target) {
+        // Opaque LLVM pointers can represent distinct C pointer types. Keep a
+        // conversion's annotation separate from the original lvalue address.
+        if (target->isPointerTy()) {
+            // Global initializers retain a constant; their destination owns its
+            // declared type. Do not retype the address of a referenced global.
+            if (!Builder.GetInsertBlock()) return value;
+            value = Builder.Insert(llvm::GetElementPtrInst::Create(GetInt8Type(), value, {GetInt32(0)}));
+        }
+        return Annotate(value, type);
+    }
+    if (target->isIntegerTy() && value->getType()->isIntegerTy()) {
+        if (auto* constant = llvm::dyn_cast<llvm::ConstantInt>(value)) return Annotate(llvm::ConstantInt::get(target, constant->getValue().sextOrTrunc(target->getIntegerBitWidth())), type);
+        return Annotate(Builder.CreateIntCast(value, target, true), type);
+    }
+    if (target->isPointerTy() && value->getType()->isIntegerTy()) {
+        if (auto* constant = llvm::dyn_cast<llvm::Constant>(value)) return Annotate(llvm::ConstantExpr::getIntToPtr(constant, target), type);
+        return Annotate(Builder.CreateIntToPtr(value, target), type);
+    }
+    if (target->isIntegerTy() && value->getType()->isPointerTy()) return Annotate(Builder.CreatePtrToInt(value, target), type);
+    throw std::runtime_error("incompatible C types");
+}
+void CodeGen::CommonIntegers(llvm::Value*& lhs, llvm::Value*& rhs) {
+    if (lhs->getType()->isPointerTy() || rhs->getType()->isPointerTy()) {
+        if (!lhs->getType()->isPointerTy()) lhs = Cast(lhs, TypeOf(rhs));
+        if (!rhs->getType()->isPointerTy()) rhs = Cast(rhs, TypeOf(lhs));
+        return;
+    }
+    auto* target = lhs->getType()->getIntegerBitWidth() > 32 || rhs->getType()->getIntegerBitWidth() > 32
+        ? GetInt64Type() : GetInt32Type();
+    lhs = Builder.CreateIntCast(lhs, target, true);
+    rhs = Builder.CreateIntCast(rhs, target, true);
+}
+llvm::Value* CodeGen::Alloca(TypeRef type, const std::string& name) {
+    return Annotate(CreateAlloca(type->Codegen(this), name), BaseType::Pointer(type));
+}
+llvm::Value* CodeGen::Global(TypeRef type, const std::string& name, llvm::Value* init) {
+    if (init) init = Cast(init, type);
+    return Annotate(CreateGlobal(type->Codegen(this), name, init), BaseType::Pointer(type));
+}
+llvm::Value* CodeGen::Decay(llvm::Value* address) {
+    auto type = TypeOf(address)->element;
+    if (type->type != BaseType::TYPE::ARRAY) return CreateLoad(address);
+    return Annotate(Builder.CreateGEP(type->Codegen(this), address, {GetInt32(0), GetInt32(0)}), BaseType::Pointer(type->element));
+}
+llvm::Value* CodeGen::Index(llvm::Value* address, llvm::Value* index) {
+    auto type = TypeOf(address)->element;
+    if (type->type == BaseType::TYPE::ARRAY)
+        return Annotate(Builder.CreateGEP(type->Codegen(this), address, {GetInt32(0), index}), BaseType::Pointer(type->element));
+    if (type->type != BaseType::TYPE::POINTER) throw std::runtime_error("indexing a non-array/pointer");
+    return Annotate(Builder.CreateGEP(type->element->Codegen(this), CreateLoad(address), index), type);
+}
+void CodeGen::DefineStruct(const std::string& name, const std::vector<StructField>& fields) {
+    if (structs.count(name)) throw std::runtime_error("duplicate struct: " + name);
+    structs[name] = fields;
+    auto* type = llvm::StructType::create(Context, name);
+    std::vector<llvm::Type*> members;
+    for (auto& field : fields) members.push_back(field.type->Codegen(this));
+    type->setBody(members);
+}
+llvm::Type* CodeGen::StructType(const std::string& name) {
+    auto* type = llvm::StructType::getTypeByName(Context, name);
+    if (!type) throw std::runtime_error("unknown struct: " + name);
+    return type;
+}
+llvm::Value* CodeGen::Member(llvm::Value* address, const std::string& name) {
+    auto source = TypeOf(address)->element;
+    if (source->type != BaseType::TYPE::STRUCT) throw std::runtime_error("member of a non-struct");
+    auto& fields = structs.at(source->tag);
+    for (size_t i = 0; i < fields.size(); ++i)
+        if (fields[i].name == name)
+            return Annotate(Builder.CreateStructGEP(source->Codegen(this), address, i), BaseType::Pointer(fields[i].type));
+    throw std::runtime_error("unknown member: " + name);
+}
+llvm::Value* CodeGen::SizeOf(TypeRef type) {
+    return llvm::ConstantInt::get(GetInt64Type(), Module.getDataLayout().getTypeAllocSize(type->Codegen(this)));
+}
+void CodeGen::DeclareFunction(const std::string& name, TypeRef result, const std::vector<TypeRef>& params) {
+    std::vector<llvm::Type*> types;
+    for (auto& param : params) types.push_back(param->Codegen(this));
+    auto* functionType = CreateFuncType(result->Codegen(this), types);
+    auto* function = Module.getFunction(name);
+    if (function && function->getFunctionType() != functionType) throw std::runtime_error("conflicting prototype: " + name);
+    if (!function) function = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage, name, Module);
+    AddSymbol(name, VAR_TYPE::FUNC, {function});
+    parameterTypes[function] = params;
+    returnTypes[function] = result;
+}
+llvm::Value* CodeGen::Initializer(TypeRef type, const std::vector<llvm::Value*>& values) {
+    std::vector<llvm::Constant*> elements;
+    for (int i = 0; i < type->count; ++i) {
+        auto* value = i < static_cast<int>(values.size()) ? Cast(values[i], type->element) : CreateZero(type->element->Codegen(this));
+        auto* constant = llvm::dyn_cast<llvm::Constant>(value);
+        if (!constant) throw std::runtime_error("nonconstant aggregate initializer");
+        elements.push_back(constant);
+    }
+    if (values.size() > static_cast<size_t>(type->count)) throw std::runtime_error("too many initializers");
+    return llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(type->Codegen(this)), elements);
+}
